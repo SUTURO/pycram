@@ -25,6 +25,7 @@ robot.set_color([0.5, 0.5, 0.9, 1])
 kitchen = Object("kitchen", "environment", "kitchen.urdf")
 robot.set_joint_state(robot_description.torso_joint, 0.24)
 kitchen_desig = ObjectDesignatorDescription(names=["kitchen"])
+milk = Object("Milkpack", "milk", "milk.stl", pose=Pose([-2.7, 2.3, 0.43]), color=[1, 0, 0, 1])
 
 
 giskardpy.init_giskard_interface()
@@ -53,7 +54,7 @@ def talk_request(data):
     name_drink = data.split(" ")
     talk_actions.name_drink_talker(name_drink)
     rospy.loginfo("nlp data:" + name_drink[0] + " " + name_drink[1])
-
+    #test
 
 def talk_error(data):
 
@@ -62,34 +63,38 @@ def talk_error(data):
     """
 
     error_msgs = "i could not hear you, please repeat"
-    # TalkingMotion("error_msgs").resolve().perform()
-    talk_actions.talker(error_msgs)
+    TalkingMotion(error_msgs).resolve().perform()
+    #talk_actions.talker(error_msgs)
 
 
 with real_robot:
 
     # Perception
-    # DetectAction(BelieveObject(types=[ObjectType.HUMAN]), technique='human').resolve().perform()
+    # human_desig = DetectAction(BelieveObject(types=[milk.type]), technique='human').resolve().perform()
     pub_robokudo = rospy.Publisher('/robokudo/query/goal', QueryActionGoal, queue_size=10)
     msgs = QueryActionGoal()
     rospy.sleep(2)
-    for i in range(0, 5):
-        pub_robokudo.publish(msgs)
-    rospy.loginfo("human detected")
-
-    # NLP
-    pub_nlp = rospy.Publisher('/startListener', String, queue_size=10)
-    talk_actions.talker("Hello, i am Toya and my favorite drink is oil. What about you, talk to me?")
-    #TalkingMotion("Hello, i am Toya and my favorite drink is oil. What about you, talk to me?").resolve().perform()
-    rospy.sleep(2)
-    pub_nlp.publish("start listening")
+    # for i in range(0, 5):
+    pub_robokudo.publish(msgs)
+    # # rospy.loginfo("human detected")
 
     # keep looking at detected human
     giskardpy.move_head_to_human()
 
-    while not rospy.is_shutdown():
-        # failure Handling
-        rospy.Subscriber("nlp_feedback", Bool, talk_error)
+    #
+    # # NLP
+    # #if human_desig:
+    # pub_nlp = rospy.Publisher('/startListener', String, queue_size=10)
+    # talk_actions.talker("Hello, i am Toya and my favorite drink is oil. What about you, talk to me?")
+    # #TalkingMotion("Hello, i am Toya and my favorite drink is oil. What about you, talk to me?").resolve().perform()
+    # rospy.sleep(2)
+    # pub_nlp.publish("start listening")
+    #
 
-        # Nlp Interface, gets data in the form of "name drink"
-        rospy.Subscriber("nlp_out", String, talk_request)
+    #
+    # while not rospy.is_shutdown():
+    #     # failure Handling
+    #     rospy.Subscriber("nlp_feedback", Bool, talk_error)
+    #
+    #     # Nlp Interface, gets data in the form of "name drink"
+    #     rospy.Subscriber("nlp_out", String, talk_request)
