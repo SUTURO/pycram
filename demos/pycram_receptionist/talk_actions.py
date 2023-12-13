@@ -36,7 +36,7 @@ def name_drink_talker(string_list):
     pub = rospy.Publisher('/talk_request', Voice, queue_size=10)
 
     toyas_text = "Hey" + string_list[0] + "your favorite drink is " + string_list[
-        1] + "nice to meet you. this is the end of the demo"
+        1] + "nice to meet you."
     voice_msgs = Voice()
     # language 1 = english
     voice_msgs.language = 1
