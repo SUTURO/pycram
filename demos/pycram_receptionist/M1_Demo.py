@@ -65,6 +65,8 @@ def talk_error(data):
     error_msgs = "i could not hear you, please repeat"
     TalkingMotion(error_msgs).resolve().perform()
     #talk_actions.talker(error_msgs)
+    pub_nlp.publish("start listening")
+
 
 
 with real_robot:
@@ -74,7 +76,6 @@ with real_robot:
     pub_robokudo = rospy.Publisher('/robokudo/query/goal', QueryActionGoal, queue_size=10)
     msgs = QueryActionGoal()
     rospy.sleep(2)
-    # for i in range(0, 5):
     pub_robokudo.publish(msgs)
     # # rospy.loginfo("human detected")
 
