@@ -55,7 +55,7 @@ class BulletWorld:
 
     # Check is for sphinx autoAPI to be able to work in a CI workflow
     if rosgraph.is_master_online():  # and "/pycram" not in rosnode.get_node_names():
-        rospy.init_node('pycram')
+        rospy.init_node('pycram_vanessa')
 
     def __init__(self, type: str = "GUI", is_shadow_world: bool = False):
         """

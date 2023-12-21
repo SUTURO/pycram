@@ -134,6 +134,7 @@ class HSRBDetecting(ProcessModule):
     """
 
     def _execute(self, desig: DetectingMotion.Motion):
+        rospy.loginfo("Detecting technique: {}".format(desig.technique))
         robot = BulletWorld.robot
         object_type = desig.object_type
         # Should be "wide_stereo_optical_frame"
@@ -141,7 +142,7 @@ class HSRBDetecting(ProcessModule):
         # should be [0, 0, 1]
         front_facing_axis = robot_description.front_facing_axis
         if desig.technique == 'all':
-            rospy.loginfo("Detecting all generic objects")
+            rospy.loginfo("Fake detecting all generic objects")
             objects = BulletWorld.current_bullet_world.get_all_objets_not_robot()
         elif desig.technique == 'human':
             rospy.loginfo("Fake detecting human -> spawn 0,0,0")
@@ -154,11 +155,10 @@ class HSRBDetecting(ProcessModule):
                 object_dict[obj.name] = obj
             return object_dict
 
-            return human_pose
-
         else:
-            rospy.loginfo("Detecting specific object type")
+            rospy.loginfo("Fake -> Detecting specific object type")
             objects = BulletWorld.current_bullet_world.get_objects_by_type(object_type)
+
         object_dict = {}
 
         perceived_objects = []
@@ -168,6 +168,8 @@ class HSRBDetecting(ProcessModule):
         # Iterate over the list of objects and store each one in the dictionary
         for i, obj in enumerate(perceived_objects):
             object_dict[obj.name] = obj
+
+        rospy.loginfo("returning dict objects")
         return object_dict
 
 
@@ -347,13 +349,15 @@ class HSRBDetectingReal(ProcessModule):
         for i in range(0, len(query_result.res)):
             # this has to be pose from pose stamped since we spawn the object with given header
             obj_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+            #obj_pose_tmp = query_result.res[i].pose[0]
             obj_type = query_result.res[i].type
-
+            #print(obj_pose)
+            #print(obj_pose_tmp)
             # todo we need the size of the object to be able to spawn it -> todo an perception
-            Physicalobject = Object(obj_type, ObjectType.JEROEN_CUP, "jeroen_cup.stl", pose=obj_pose)
+            Physicalobject = Object(obj_type, ObjectType.BREAKFAST_CEREAL, "milk.stl", pose=obj_pose)
 
             perceived_objects.append(
-                ObjectDesignatorDescription.Object(obj_type, ObjectType.JEROEN_CUP, Physicalobject))
+                ObjectDesignatorDescription.Object(obj_type, ObjectType.BREAKFAST_CEREAL, Physicalobject))
 
         object_dict = {}
 

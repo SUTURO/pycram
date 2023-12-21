@@ -62,9 +62,9 @@ def talk_error(data):
     callback function if no name/drink was heard
     """
 
-    error_msgs = "i could not hear you, please repeat"
-    TalkingMotion(error_msgs).resolve().perform()
-    #talk_actions.talker(error_msgs)
+    error_msgs = "please repeat"
+    #TalkingMotion(error_msgs).resolve().perform()
+    talk_actions.talker(error_msgs)
     pub_nlp.publish("start listening")
 
 

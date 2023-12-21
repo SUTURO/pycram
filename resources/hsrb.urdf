@@ -770,6 +770,7 @@ POSSIBILITY OF SUCH DAMAGE.
       </geometry>
     </collision>
   </link>
+
   <joint name="head_rgbd_sensor_gazebo_frame_joint" type="fixed">
     <origin rpy="1.570796326795 -1.570796326795 0.0" xyz="0 0 0"/>
     <parent link="head_rgbd_sensor_link"/>

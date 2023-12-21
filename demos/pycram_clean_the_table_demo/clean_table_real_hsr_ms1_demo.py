@@ -1,66 +1,89 @@
-from pycram.process_module import  with_real_robot
 from pycram.designators.action_designator import *
-import pycram.external_interfaces.giskard as giskardpy
-from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from pycram.designators.object_designator import *
+from pycram.designators.motion_designator import *
+from pycram.pose import Pose
+from pycram.bullet_world import BulletWorld, Object
+from pycram.process_module import real_robot
 from pycram.enums import ObjectType
-# worked on 11.12.2023
+from pycram.ros.robot_state_updater import RobotStateUpdater
+from pycram.ros.viz_marker_publisher import VizMarkerPublisher
+import pycram.external_interfaces.giskard as giskardpy
 
 world = BulletWorld("DIRECT")
 v = VizMarkerPublisher()
+robot = Object("hsrb", ObjectType.ROBOT, "hsrb.urdf", pose=Pose([1, 2, 0]))
+cereal = Object("cereal", "cereal", "breakfast_cereal.stl", pose=Pose([0, 0, 0]),
+                color=[0, 1, 0, 1])
 
-world.set_gravity([0, 0, -9.8])
-
-# initialize hsr robot in BulletWorld
-robot = Object("hsrb", ObjectType.ROBOT, "../../resources/" + "hsrb" + ".urdf")
-robot.set_color([0.5, 0.5, 0.9, 1])
-robot_desig = ObjectDesignatorDescription(names=["hsrb"]).resolve()
-
-# initialize giskard
 giskardpy.init_giskard_interface()
 
+cereal_desig = BelieveObject(names=["cereal"])
+robot_desig = BelieveObject(names=["hsr"])
 
-@with_real_robot
-def pick_up_and_drop():
-    """
-    Let the HSR detect, pick up and drop five different objects.
-    """
+RobotStateUpdater("/tf", "/giskard_joint_states")
+
+
+def move_and_detect():
+    """HSR takes in a perceiving pose and detects the objects on the table"""
     ParkArmsAction([Arms.LEFT]).resolve().perform()
-    NavigateAction(target_locations=[Pose([3.9, 1.85, 0])]).resolve().perform()
+    NavigateAction(target_locations=[Pose([3.9, 2.2, 0])]).resolve().perform()
+    MoveTorsoAction([0.25]).resolve().perform()
+    LookAtAction(targets=[Pose([4.9, 2.2, 0.18])]).resolve().perform()
+    TalkingMotion("Perceiving now").resolve().perform()
+    object_desig = DetectAction(BelieveObject(types=[cereal.type]), technique='all').resolve().perform()
 
-    # take perceiving pose
-    LookAtAction(targets=[Pose([4.4, 1.85, 0.8])]).resolve().perform()
+    return object_desig
 
-    # use robokudo to perceive object poses
-    object_desig = DetectAction(BelieveObject(types=[ObjectType.MILK]), technique='all').resolve().perform()
-    object_list = [object_desig["Milkpack"], object_desig["Cerealbox"], object_desig["Pringleschipscan"],
-                   object_desig["Crackerbox"], object_desig["Metalmug"]]
 
-    # pick up and drop all five objects
-    for index in range(len(object_list)):
-        new_pose = object_list[index].pose
+def open_gripper():
+    """ Opens the gripper of the HSR """
+    pub_gripper = rospy.Publisher('/hsrb/gripper_controller/grasp/goal', GripperApplyEffortActionGoal,
+                                  queue_size=10)
+    rate = rospy.Rate(10)
+    rospy.sleep(2)
+    msg = GripperApplyEffortActionGoal()
+    msg.goal.effort = 0.8
+    pub_gripper.publish(msg)
 
+
+def close_gripper():
+    """ Closes the gripper of the HSR """
+    pub_gripper = rospy.Publisher('/hsrb/gripper_controller/grasp/goal', GripperApplyEffortActionGoal,
+                                  queue_size=10)
+    rate = rospy.Rate(10)
+    rospy.sleep(2)
+    msg = GripperApplyEffortActionGoal()
+    msg.goal.effort = -0.8
+    pub_gripper.publish(msg)
+
+
+with real_robot:
+    TalkingMotion("Starting Demo").resolve().perform()
+    object_desig = move_and_detect()
+
+    obj_list = [object_desig['Cerealbox'], object_desig['Pringleschipscan'], object_desig['Milkpack'],
+                object_desig['Crackerbox'], object_desig['Metalmug']]
+
+    # spawns the detected objects and semantic map of the kitchen in giskard
+    giskardpy.initial_adding_objects()
+    giskardpy.spawn_kitchen()
+
+    # turning head up, to avoid collision of head with gripper
+    LookAtAction(targets=[Pose([4.9, 2.2, 1.1])]).resolve().perform()
+    
+    for obj in obj_list:
+        new_pose = obj.pose
+        TalkingMotion("Navigating now").resolve().perform()
+        NavigateAction(target_locations=[Pose([4.2, new_pose.position.y, 0])]).resolve().perform()
+
+        TalkingMotion("Moving my arm now").resolve().perform()
+        PickUpAction(obj, ["left"], ["front"]).resolve().perform()
+
+        TalkingMotion("Picked up, dropping in 3").resolve().perform()
+        TalkingMotion("2").resolve().perform()
+        TalkingMotion("1").resolve().perform()
+        open_gripper()
+        rospy.sleep(5)
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        # navigate hsr to the next object to pick up
-        NavigateAction(target_locations=[Pose([4.0, new_pose.position.y, 0])]).resolve().perform()
-        # differentiate the grasping movement between the metalmug and other objects
-        if object_list[index].name == "Metalmug":
-            PickUpAction(object_designator_description=object_list[index],
-                         arms=["left"],
-                         grasps=["top"]).resolve().perform()
-            print("grasp from top")
-        else:
-            PickUpAction(object_designator_description=object_list[index],
-                         arms=["left"],
-                         grasps=["front"]).resolve().perform()
-            print("grasp from front")
 
-        # inform user before dropping the object
-        TalkingMotion("I'll drop the object now!").resolve().perform()
-        # drop the object
-        MoveGripperMotion("open", "left", allow_gripper_collision=True).resolve().perform()
-
-    # navigate hsr back to the starting position
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    NavigateAction(target_locations=[Pose([3.9, 1.85, 0])]).resolve().perform()
-    print("finished")
+    TalkingMotion("I am done").resolve().perform()
