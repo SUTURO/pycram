@@ -1,8 +1,8 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from robokudo_msgs.msg import QueryActionGoal
-from pycram.designators.action_designator import DetectAction, LookAtAction
-from pycram.designators.motion_designator import TalkingMotion
+from pycram.designators.action_designator import DetectAction, LookAtAction, NavigateAction
+from pycram.designators.motion_designator import TalkingMotion, MoveMotion
 from pycram.external_interfaces import robokudo
 from pycram.process_module import simulated_robot, with_simulated_robot, real_robot, with_real_robot, semi_real_robot
 import pycram.external_interfaces.giskard as giskardpy
@@ -29,6 +29,8 @@ kitchen_desig = ObjectDesignatorDescription(names=["kitchen"])
 milk = Object("Milkpack", "milk", "milk.stl", pose=Pose([-2.7, 2.3, 0.43]), color=[1, 0, 0, 1])
 
 giskardpy.init_giskard_interface()
+
+
 # giskardpy.sync_worlds()
 # RobotStateUpdater("/tf", "/joint_states")
 
@@ -66,30 +68,50 @@ def talk_error(data):
 
 
 with real_robot:
-
     # Perception
-    DetectAction(BelieveObject(types=[milk.type]), technique='human').resolve().perform()
-    # TODO: switch Publisher with DetectAction
-    # DetectAction(BelieveObject(types=[milk.type]), technique='human').resolve().perform()
-    pub_robokudo = rospy.Publisher('/robokudo/query/goal', QueryActionGoal, queue_size=10)
-    msgs = QueryActionGoal()
-    rospy.sleep(2)
-    pub_robokudo.publish(msgs)
-    rospy.loginfo("human detected")
+    perceived_object_dict = DetectAction(BelieveObject(types=[milk.type]), technique='human').resolve().perform()
+    while perceived_object_dict[0] is None:
+        TalkingMotion("Please step in front of me")
+        rospy.sleep(5)
 
-    # NLP
+    rospy.loginfo("human detected")
     pub_nlp = rospy.Publisher('/startListener', String, queue_size=10)
+
+    giskardpy.move_head_to_human()
+
     TalkingMotion("Hello, i am Toya and my favorite drink is oil. What about you, talk to me?").resolve().perform()
-    rospy.sleep(2)
+
+    # reicht sleep 1?
+    rospy.sleep(1)
+
     # signal to start listening
     pub_nlp.publish("start listening")
 
-    # Manipulation
-    # keep looking at detected human
-    giskardpy.move_head_to_human()
+    # TODO: knowlede interface erweitern
+    # Idee: jeder Mensch braucht ID, diese kann ich dann hier abfragen
+    while knowrob_call not filled:
+        if knowrob_call.name:
+            TalkingMotion("please repeat your favorite drink")
 
-    # failure handling
-    rospy.Subscriber("nlp_feedback", Bool, talk_error)
+        if knowrob_call.drink:
+            TalkingMotion("please repeat your name")
 
-    # receives name and drink via topic
-    rospy.Subscriber("nlp_out", String, talk_request)
+        # failure handling if receptionist intend was not understood
+        rospy.Subscriber("nlp_feedback", Bool, talk_error)
+
+    # TODO: Position der Couch herausfinden
+    giskardpy.stop_looking()
+    NavigateAction([Pose([5, 3.3, 0.8], [0, 0, 1, 1])]).resolve().perform()
+
+    DetectAction(BelieveObject(types=[milk.type]), technique='human').resolve().perform()
+
+    #Personen einander vorstellen
+
+
+
+
+
+
+
+
+
