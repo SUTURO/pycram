@@ -78,7 +78,7 @@ For information on installing PyCRAM please check the guid [here](https://pycram
 
 ## Documentation
 
-The latest version of the documentation is hosted on Read the Docs [here](pycram-suturo.readthedocs.io).
+The latest version of the documentation is hosted on Read the Docs [here](https://pycram-suturo.readthedocs.io/en/latest/index.html).
 
 The documentation can be found in the `doc` folder, for instructions on how to build and view the documentation please 
 take a look at the respective `README` file.
