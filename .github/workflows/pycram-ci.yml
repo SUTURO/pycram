@@ -6,10 +6,10 @@ on:
   push:
     branches:
       - dev
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
       - dev
 jobs:
   Build_and_run_Tests:
