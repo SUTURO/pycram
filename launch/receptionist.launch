@@ -1,0 +1,14 @@
+<launch>
+
+  <!-- starts rviz/bringup launch -->
+  <include file="/home/jule/common_ws/src/suturo_resources/suturo_bringup/launch/suturo_bringup.launch"/>
+  
+  
+  <node name="nlp" pkg="pycram" type="receptionist_starter.sh" />
+  
+
+	
+ 
+
+</launch>
+

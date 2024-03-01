@@ -361,7 +361,7 @@ class HSRBDetectingReal(ProcessModule):
             return human_pose
         elif desig.technique == 'human' and desig.state == "stop":
             stop_queryHuman()
-            return None
+            return "stopped"
 
 
         query_result = queryEmpty(ObjectDesignatorDescription(types=[desig.object_type]))
@@ -372,7 +372,7 @@ class HSRBDetectingReal(ProcessModule):
             #obj_pose.orientation = [0, 0, 0, 1]
             # obj_pose_tmp = query_result.res[i].pose[0]
             obj_type = query_result.res[i].type
-            obj_size = query_result.res[i].size
+            obj_size = query_result.res[i].shape_size
             obj_color = query_result.res[i].color[0]
             color_switch = {
                 "red": [1, 0, 0, 1],
@@ -389,22 +389,28 @@ class HSRBDetectingReal(ProcessModule):
             # atm this is the string size that describes the object but it is not the shape size thats why string
             def extract_xyz_values(input_string):
                 # Split the input string by commas and colon to separate key-value pairs
-                key_value_pairs = input_string.split(', ')
+                #key_value_pairs = input_string.split(', ')
 
                 # Initialize variables to store the X, Y, and Z values
                 x_value = None
                 y_value = None
                 z_value = None
 
-                # Iterate through the key-value pairs to extract the values
-                for pair in key_value_pairs:
-                    key, value = pair.split(': ')
-                    if key == 'x':
-                        x_value = float(value)
-                    elif key == 'y':
-                        y_value = float(value)
-                    elif key == 'z':
-                        z_value = float(value)
+                for key in input_string:
+                    x_value = key.dimensions.x
+                    y_value = key.dimensions.y
+                    z_value = key.dimensions.z
+
+                #
+                # # Iterate through the key-value pairs to extract the values
+                # for pair in key_value_pairs:
+                #     key, value = pair.split(': ')
+                #     if key == 'x':
+                #         x_value = float(value)
+                #     elif key == 'y':
+                #         y_value = float(value)
+                #     elif key == 'z':
+                #         z_value = float(value)
 
                 return x_value, y_value, z_value
 

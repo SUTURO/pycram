@@ -1,11 +1,17 @@
 import dataclasses
 from typing import List, Union, Optional, Callable, Tuple, Iterable
+
+import rospy
 import sqlalchemy.orm
+from geometry_msgs.msg import PoseStamped
+
 from ..bullet_world import BulletWorld, Object as BulletWorldObject
 from ..designator import DesignatorDescription, ObjectDesignatorDescription
 from ..orm.base import ProcessMetaData
 from ..orm.object_designator import (BelieveObject as ORMBelieveObject, ObjectPart as ORMObjectPart)
 from ..pose import Pose
+from pycram.fluent import Fluent
+from std_msgs.msg import String
 from ..external_interfaces.robokudo import query
 
 
@@ -175,3 +181,47 @@ class RealObject(ObjectDesignatorDescription):
                 # if bullet_obj.get_pose().dist(obj_deisg.pose) < 0.05:
                 #     obj_deisg.bullet_world_object = bullet_obj
                 #     yield obj_deisg
+
+
+class HumanDescription:
+    """
+    Class that represents humans. this class does not spawn a human in a simulation.
+    """
+    def __init__(self, name: str, fav_drink:  Optional = None):
+        """
+        :param name: name of human
+        :param fav_drink: favorite drink of human
+        """
+
+        # TODO: coordinate with Perception on what is easy to implement
+        # characteristics to consider: height, hair color, and age.
+        # self.human_pose = Fluent()
+        self.name = name
+        self.fav_drink = fav_drink  # self.shirt_color = shirt_color  # self.gender = gender
+
+        # self.human_pose_sub = rospy.Subscriber("/human_pose", PoseStamped, self.human_pose_cb)
+
+    # def human_pose_cb(self, HumanPoseMsg):
+        # """
+        # callback function for human_pose Subscriber.
+        # sets the attribute human_pose when someone (e.g. Perception/Robokudo) publishes on the topic
+        # :param HumanPoseMsg: received message
+        # """
+
+        # self.human_pose.set_value(True)
+        # rospy.loginfo("done cb")
+        # rospy.sleep(10)
+
+    def set_name(self, new_name):
+        """
+        function for changing name of human
+        :param new_name: new name of human
+        """
+        self.name = new_name
+
+    def set_drink(self, new_drink):
+        """
+        function for changing/setting favorite drink of human
+        :param new_drink: name of drink
+        """
+        self.fav_drink = new_drink

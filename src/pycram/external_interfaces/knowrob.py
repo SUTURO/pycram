@@ -1,7 +1,8 @@
 import logging
 import os
 import sys
-from std_srvs.srv import IsKnown
+from std_msgs.msg import String
+from knowledge_msgs.srv import IsKnown, ObjectPose
 import rospy
 import rosservice
 
@@ -131,18 +132,30 @@ def knowrob_string_to_pose(pose_as_string: str) -> List[float]:
 def get_guest_info(id):
     """
     function that uses Knowledge Service to get Name and drink from new guest via ID
+    :param id: integer for person
+    :return: ['person_infos: "name', 'drink"']
     """
 
     rospy.wait_for_service('name_server')
     try:
         info_service = rospy.ServiceProxy('name_server', IsKnown)
         guest_data = info_service(id) #guest_data = "name, drink"
-        result = guest_data.split(',') #result = ["name", " drink"]
+        result = str(guest_data).split(',') #result = ["name", " drink"]
         return result
     except rospy.ServiceException as e:
         print("Service call failed")
 
-
-
-
-        
+def get_table_pose(table_name):
+    """
+    Get table pose from knowledge
+    :param table_name: predefined name for each table
+    """
+    print("waiting for server")
+    rospy.wait_for_service('pose_server')
+    try:
+        service = rospy.ServiceProxy('pose_server', ObjectPose)
+        table_pose = service(table_name)#
+        print(f"table_pose_knowrob: {table_pose}")
+        return table_pose
+    except rospy.ServiceException:
+        print("Service call failed")

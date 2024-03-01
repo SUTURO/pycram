@@ -50,7 +50,7 @@ def talk_request(data: String):
     :param data: String "name drink"
     """
 
-    name_drink = data.data.split(" ")
+    name_drink = data.data.split(",")
     talk_actions.name_drink_talker(name_drink)
     rospy.loginfo("nlp data:" + name_drink[0] + " " + name_drink[1])
 

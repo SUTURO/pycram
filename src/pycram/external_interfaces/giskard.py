@@ -468,7 +468,8 @@ def stop_looking():
     # endless mode shut be stopped when new command to move is used
     # moves hsr in standard position
     giskard_wrapper.take_pose("park")
-    giskard_wrapper.plan_and_execute(wait=True)
+    giskard_wrapper.plan_and_execute(wait=False)
+    rospy.loginfo("hsr looks forward instead of looking at human")
     print("hsr looks forward instead of looking at human")
 
 

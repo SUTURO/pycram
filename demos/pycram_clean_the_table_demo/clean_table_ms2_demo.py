@@ -108,6 +108,7 @@ def sort_objects(obj_dict):
         print(f"object name: {value.name} and distance: {distance}")
         object_tuples.append((value, distance))
     sorted_object_list = sorted(object_tuples, key= lambda distance: distance[1])
+
     for (object, distance) in sorted_object_list:
         if object.name in wished_sorted_obj_list:
              sorted_objects.append(object)
@@ -190,7 +191,7 @@ with semi_real_robot:
         NavigateAction(
             target_locations=[Pose([new_pose.position.x, 0.5, 0], transport_orientation)]).resolve().perform()
 
-        PlaceAction(obj, [target_location], ["left"]).resolve().perform()
+        PlaceAction(obj,  ["left"], ["front"], [target_location]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         print("placed")
     TalkingMotion("I am done").resolve().perform()

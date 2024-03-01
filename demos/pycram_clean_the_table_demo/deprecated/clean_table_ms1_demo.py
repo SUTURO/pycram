@@ -8,6 +8,7 @@ from pycram.ros.robot_state_updater import RobotStateUpdater
 
 # worked on 8.12.2023 together with Mohammad
 # worked on 10.12.2023
+# worked on 11.12.2023
 
 world = BulletWorld("DIRECT")
 v = VizMarkerPublisher()
@@ -55,7 +56,7 @@ with semi_real_robot:
     # take perceiving pose
     LookAtAction(targets=[Pose([-2.6, 2.0, 0.5])]).resolve().perform()
     object_desig = DetectAction(milk_desig, technique='all').resolve().perform()
-    object_list= [object_desig["Pringleschipscan"], object_desig["Metalmug"], object_desig["Milkpack"], object_desig["Cerealbox"], object_desig["Crackerbox"]]
+    object_list= [object_desig["Cerealbox"], object_desig["Crackerbox"], object_desig["Pringleschipscan"], object_desig["Metalmug"], object_desig["Milkpack"]]
 
     # pick up and drop all five objects
     for index in range(len(object_list)):
@@ -71,6 +72,11 @@ with semi_real_robot:
                          arms=["left"],
                          grasps=["top"]).resolve().perform()
             print("grasp from top")
+        elif object_list[index].name == "Cerealbox" or object_list[index].name == "Crackerbox":
+            PickUpAction(object_designator_description=object_list[index],
+                         arms=["left"],
+                         grasps=["left"]).resolve().perform()
+            print("grasp from left")
         else:
             PickUpAction(object_designator_description=object_list[index],
                          arms=["left"],
@@ -80,10 +86,12 @@ with semi_real_robot:
         # inform user before dropping the object
         TalkingMotion("I drop the object now!").resolve().perform()
         print("I drop the object now!")
+
         # drop/place the object
         place_pose = Pose([new_pose.position.x - 0.3, new_pose.position.y, new_pose.position.z])
         PlaceAction(object_list[index], [place_pose], ["left"]).resolve().perform()
         print("placing finished")
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
         # go back for perceiving the next object
         NavigateAction(target_locations=[Pose([-2.6, 1.5, 0], object_orientation)]).resolve().perform()
 
