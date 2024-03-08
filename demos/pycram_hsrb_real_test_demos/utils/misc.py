@@ -39,8 +39,6 @@ def sort_objects(robot: BulletWorldObject, obj_dict: dict, wished_sorted_obj_lis
                                  pow((value.pose.position.y - robot_pose.pose.position.y), 2) +
                                  pow((value.pose.position.z - robot_pose.pose.position.z), 2))
 
-            print(f"object name: {value.name} and distance: {distance}")
-
             # fill list with tupels of the objects and their distance.
             # Add Metalplate only once, if seen multiple times
             if isPlate or value.type != "Metalplate":
@@ -62,13 +60,13 @@ def sort_objects(robot: BulletWorldObject, obj_dict: dict, wished_sorted_obj_lis
     # print which objects are in the final list
     test_list = []
     for test_object in sorted_objects:
-        test_list.append(test_object.name)
+        test_list.append(test_object.type)
     print(test_list)
 
     return sorted_objects
 
 
-def try_pick_up(robot, obj, grasps):
+def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription, grasps: str):
     """
     Picking up any object with failure handling.
 
@@ -80,29 +78,28 @@ def try_pick_up(robot, obj, grasps):
         PickUpAction(obj, ["left"], [grasps]).resolve().perform()
     except (EnvironmentUnreachable, GripperClosedCompletely):
         print("try pick up again")
-        TalkingMotion("Try pick up again")
+        TalkingMotion("Try pick up again").resolve().perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
+        # TODO: x-pose und orentation sollten allgemein sein
         NavigateAction(
-            [Pose([robot.get_pose().position.x - 0.3, robot.get_pose().position.y, robot.get_pose().position.z],
-                  robot.get_pose().orientation)]).resolve().perform()
+            [Pose([robot.get_pose().position.x + 0.3, robot.get_pose().position.y,
+                   robot.get_pose().position.z], [0, 0, 1, 0])]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         # try to detect the object again
-        if EnvironmentUnreachable:
-            object_desig = DetectAction(technique='default').resolve().perform()
-            # TODO nur wenn key (name des vorherigen objektes) in object_desig enthalten ist
-            # TODO umschreiben, geht so nicht mehr, da das dict in einem tupel ist
-            new_object = object_desig[1][obj.name]
-        # when the robot just grabed next to the object
-        # TODO wieso unterscheiden wir hier überhaupt, wenn er daneben gegriffen hat, hat er das objekt
-        # TODO wahrscheinlich verschoben und sollte auch nochmal perceiven
-        else:
-            new_object = obj
+        object_desig = DetectAction(technique='default').resolve().perform()
+        new_object = sort_objects(robot, object_desig, [obj.type])[0]
+
         # second try to pick up the object
         try:
+            TalkingMotion("try again").resolve().perform()
             PickUpAction(new_object, ["left"], [grasps]).resolve().perform()
         # ask for human interaction if it fails a second time
-        except:
-            TalkingMotion(f"Can you pleas give me the {obj.name} on the table?")
+        except (EnvironmentUnreachable, GripperClosedCompletely):
+            NavigateAction(
+                [Pose([robot.get_pose().position.x + 0.3, robot.get_pose().position.y,
+                       robot.get_pose().position.z], [0, 0, 1, 0])]).resolve().perform()
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            TalkingMotion(f"Can you pleas give me the {obj.type} on the table?").resolve().perform()
             MoveGripperMotion("open", "left").resolve().perform()
             time.sleep(4)
             MoveGripperMotion("close", "left").resolve().perform()

@@ -464,13 +464,11 @@ def stop_looking():
     """
     stops the move_head_to_human function so that hsr looks forward
     """
-    # TODO: implement when manipulation is ready
-    # endless mode shut be stopped when new command to move is used
+
     # moves hsr in standard position
     giskard_wrapper.take_pose("park")
     giskard_wrapper.plan_and_execute(wait=False)
     rospy.loginfo("hsr looks forward instead of looking at human")
-    print("hsr looks forward instead of looking at human")
 
 
 def spawn_kitchen():
@@ -482,7 +480,13 @@ def spawn_kitchen():
 
 
 def place_objects(object, target, grasp):
-    # TODO: Decide placing from_above or align_vertical. Maybe using Objecttype for that?
+    """
+    function for placing objects
+    :param object: ObjectDesignator describing the object
+    :param target: target pose where to place the object
+    :param grasp: how the object was picked up
+    """
+
     from_above_objects = ["Bowl", "Metalmug", "Spoon", "Knife", "Fork"]
 
 
@@ -491,10 +495,9 @@ def place_objects(object, target, grasp):
 
     if object.name in from_above_objects:
         giskard_wrapper.placing(context=context_from_above, goal_pose=target)
-        print("if placed")
 
     else:
         giskard_wrapper.placing(context="align_vertical", goal_pose=target)
 
-    print("placed object")
+    rospy.loginfo("placed object")
 

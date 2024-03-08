@@ -187,7 +187,7 @@ class HumanDescription:
     """
     Class that represents humans. this class does not spawn a human in a simulation.
     """
-    def __init__(self, name: str, fav_drink:  Optional = None):
+    def __init__(self, name: String, fav_drink:  Optional = None):
         """
         :param name: name of human
         :param fav_drink: favorite drink of human

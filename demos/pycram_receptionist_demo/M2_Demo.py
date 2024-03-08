@@ -31,7 +31,7 @@ giskardpy.init_giskard_interface()
 RobotStateUpdater("/tf", "/giskard_joint_states")
 
 robot_orientation_couch = axis_angle_to_quaternion([0, 0, 1], 180)
-pose_couch = Pose([3, 5, 0])
+pose_couch = Pose([3, 5, 0], [0, 0, 1, 0])
 
 robot_orientation_from_couch = axis_angle_to_quaternion([0, 0, 1], -90)
 pose_from_couch = Pose([4.2, 3.8, 0], robot_orientation_from_couch)
@@ -53,7 +53,6 @@ def demo_ms2(area):
         guest1 = HumanDescription("guest1")
 
         # look for human
-        # TODO: only continue when human stands for longer than 3s in front of robot
         DetectAction(technique='human', state='start').resolve().perform()
         rospy.loginfo("human detected")
 
@@ -68,15 +67,16 @@ def demo_ms2(area):
         # wait for human to say something
         rospy.sleep(15)
 
-        # guest_data format is = ['person infos: "name', 'drink"']
+        # guest_data format is = [ "name", "drink"]
         guest_data = get_guest_info("1.0")
-        while guest_data == ['person_infos: "No name saved under this ID!"']:
+        print(get_guest_info("1.0"))
+        while guest_data == [' "No name saved under this ID!"']:
             talk_error("no name")
             rospy.sleep(13)
             guest_data = get_guest_info("1.0")
 
         # set heard name and drink of guest
-        guest1.set_name(guest_data[0][13:])
+        guest1.set_name(guest_data[0])
         guest1.set_drink(guest_data[1])
         talk_request(guest_data)
         rospy.sleep(1)
@@ -94,7 +94,7 @@ def demo_ms2(area):
 
         if area == 'to_couch':
             # wait for human to step out of way
-            rospy.sleep(5)
+            rospy.sleep(3)
             NavigateAction([pose_kitchen_to_couch]).resolve().perform()
             NavigateAction([pose_couch]).resolve().perform()
             TalkingMotion("Welcome to the living room").resolve().perform()
@@ -112,5 +112,4 @@ def demo_ms2(area):
         introduce(guest1.name, guest1.fav_drink, host.name, host.fav_drink)
 
 
-# demo_test('from_couch')
 demo_ms2('to_couch')

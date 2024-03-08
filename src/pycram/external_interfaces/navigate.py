@@ -13,12 +13,9 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
 
 def queryPoseNav(navpose):
     """
-    Sends a query to RoboKudo to look for an object that fits the description given by the Object designator description.
-    For sending the query to RoboKudo a simple action client will be created and the Object designator description is
-    sent as a goal.
-
-    :param object_desc: The object designator description which describes the object that should be perceived
-    :return: An object designator for the found object, if there was an object that fitted the description.
+    Sends a goal to the move_base Service. Connection to Giskard interface,
+    will move robot to the given pose: navpose
+    :param navpose: PoseStamped pose robot will navigate to
     """
 
     global query_result
@@ -37,10 +34,8 @@ def queryPoseNav(navpose):
     goal_msg = MoveBaseGoal()
 
     goal_msg.target_pose = navpose
-    print(goal_msg)
-    print("navigating")
+    rospy.loginfo("navigating")
     client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
-    print(client)
     rospy.loginfo("Waiting for action server")
     client.wait_for_server()
     client.send_goal(goal_msg, active_cb=active_callback, done_cb=done_callback, feedback_cb=feedback_callback)

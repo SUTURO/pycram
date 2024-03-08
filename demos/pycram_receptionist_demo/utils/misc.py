@@ -17,7 +17,7 @@ def talk_request(data: list):
     """
 
     rospy.loginfo("in callback success")
-    toyas_text = "Hey " + data[0][13:] + " your favorite drink is " + data[
+    toyas_text = "Hey " + data[0] + " your favorite drink is " + data[
         1]
     TalkingMotion(toyas_text).resolve().perform()
     rospy.sleep(1)

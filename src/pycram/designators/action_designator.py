@@ -12,9 +12,10 @@ import rospy
 from .location_designator import CostmapLocation
 from .motion_designator import *
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
+from .. import helper
 from ..bullet_world import BulletWorld
 from ..designator import ActionDesignatorDescription
-from ..enums import Arms
+from ..enums import Arms, ObjectType
 from ..helper import multiply_quaternions, axis_angle_to_quaternion
 from ..local_transformer import LocalTransformer
 from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, NavigateAction as ORMNavigateAction,
@@ -240,7 +241,7 @@ class ParkArmsAction(ActionDesignatorDescription):
                 kwargs["left_arm_config"] = "park"
                 MoveArmJointsMotion(**kwargs).resolve().perform()
                 # MoveTorsoAction([0.005]).resolve().perform()
-                MoveTorsoAction([0.2]).resolve().perform()
+                MoveTorsoAction([0.30]).resolve().perform()
             # add park right arm if wanted
             if self.arm in [Arms.RIGHT, Arms.BOTH]:
                 kwargs["right_arm_config"] = "park"
@@ -305,7 +306,6 @@ class PickUpAction(ActionDesignatorDescription):
         @with_tree
         def perform(self) -> None:
             # Initialize the local transformer and robot reference
-
             lt = LocalTransformer()
             robot = BulletWorld.robot
             # Retrieve object and robot from designators
@@ -321,8 +321,8 @@ class PickUpAction(ActionDesignatorDescription):
                 if self.object_designator.type == "Cutlery":
                     # todo: this z is the popcorn-table height, we need to define location to get that z otherwise it
                     #  is hardcoded
-                    oTm.pose.position.z = 0.718
-                oTm.pose.position.z += 0.04
+                    oTm.pose.position.z = 0.71
+                oTm.pose.position.z += 0.035
 
             # Determine the grasp orientation and transform the pose to the base link frame
             grasp_rotation = robot_description.grasps.get_orientation_for_grasp(self.grasp)
@@ -342,7 +342,6 @@ class PickUpAction(ActionDesignatorDescription):
             # Execute Bool, because sometimes u only want to visualize the poses to test things
             if execute:
                 MoveTCPMotion(oTmG, self.arm).resolve().perform()
-
             # Calculate and apply any special knowledge offsets based on the robot and object type
             # Note: This currently includes robot-specific logic that should be generalized
             tool_frame = robot_description.get_tool_frame(self.arm)
@@ -353,19 +352,8 @@ class PickUpAction(ActionDesignatorDescription):
             if robot.name == "hsrb":
                 if self.grasp == "top":
                     if self.object_designator.type == "Bowl":
-                        print(f"x_pose: {special_knowledge_offset.pose.position.x}")
-                        print(f"y_pose: {special_knowledge_offset.pose.position.y}")
-                        special_knowledge_offset.pose.position.y += 0.06
-                        special_knowledge_offset.pose.position.x -= 0.03  # 0.022
-                        print(f"x_pose_after: {special_knowledge_offset.pose.position.x}")
-                        print(f"y_pose_after: {special_knowledge_offset.pose.position.y}")
-                    if self.object_designator.type == "Cutlery":
-                        print(f"Cutlery erkannt, rechne -x")
-                        print(special_knowledge_offset.pose.position.x)
-                       # special_knowledge_offset.pose.position.x -= 0.11  # 0.11 before, fork needs more
-                        print(special_knowledge_offset.pose.position.x)
-                    # if self.object_designator.type == "Fork":
-                    #     special_knowledge_offset.pose.position.x -= 0.02
+                        special_knowledge_offset.pose.position.y += 0.085
+                        special_knowledge_offset.pose.position.x -= 0.03
 
             push_base = special_knowledge_offset
             # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
@@ -373,16 +361,15 @@ class PickUpAction(ActionDesignatorDescription):
             if robot.name == "hsrb":
                 z = 0.04
                 if self.grasp == "top":
-                    z = 0.039
+                    z = 0.025
                     if self.object_designator.type == "Bowl":
-                        z = 0.045  # 0.05
+                        z = 0.044
                 push_base.pose.position.z += z
             push_baseTm = lt.transform_pose(push_base, "map")
             special_knowledge_offsetTm = lt.transform_pose(push_base, "map")
 
             # Grasping from the top inherently requires calculating an offset, whereas front grasping involves
             # slightly pushing the object forward.
-            # if self.grasp == "top":
             rospy.logwarn("Offset now")
             BulletWorld.current_bullet_world.add_vis_axis(special_knowledge_offsetTm)
             if execute:
@@ -391,7 +378,6 @@ class PickUpAction(ActionDesignatorDescription):
             rospy.logwarn("Pushing now")
             BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
             if execute:
-                print("Push_pose")
                 MoveTCPMotion(push_baseTm, self.arm).resolve().perform()
 
             # Finalize the pick-up by closing the gripper and lifting the object
@@ -423,6 +409,7 @@ class PickUpAction(ActionDesignatorDescription):
             session.commit()
 
             return action
+
 
     def __init__(self,
                  object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
@@ -456,7 +443,12 @@ class PickUpAction(ActionDesignatorDescription):
 
 class PlaceAction(ActionDesignatorDescription):
     """
-    Places an Object at a position using an arm.
+     A class representing a designator for a place action, allowing a robot to place a specified object.
+
+    This class encapsulates the details of the place action, including the object to be placed, the arm to be used,
+    the target_location to place the object and the grasp type. It defines the sequence of operations for the robot
+    to execute the place action, such as moving the arm holding the object to the target_location, opening
+    the gripper, and lifting the arm.
     """
 
     @dataclasses.dataclass
@@ -483,17 +475,19 @@ class PlaceAction(ActionDesignatorDescription):
         def perform(self) -> None:
             lt = LocalTransformer()
             robot = BulletWorld.robot
-            # Retrieve object and robot from designators
-            # object = self.object_designator.bullet_world_object
+
             # oTm = Object Pose in Frame map
             oTm = self.target_location
 
             if self.grasp == "top":
                 oTm.pose.position.z += 0.05
 
+            # Determine the grasp orientation and transform the pose to the base link frame
             grasp_rotation = robot_description.grasps.get_orientation_for_grasp(self.grasp)
             oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+            # Set pose to the grasp rotation
             oTb.orientation = grasp_rotation
+            # Transform the pose to the map frame
             oTmG = lt.transform_pose(oTb, "map")
 
             rospy.logwarn("Placing now")
@@ -512,7 +506,8 @@ class PlaceAction(ActionDesignatorDescription):
             rospy.logwarn("Pushing now")
             MoveTCPMotion(push_baseTm, self.arm).resolve().perform()
 
-            rospy.logwarn("Close Gripper")
+            # Finalize the placing by opening the gripper and lifting the arm
+            rospy.logwarn("Open Gripper")
             MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
 
             rospy.logwarn("Lifting now")
@@ -561,7 +556,8 @@ class PlaceAction(ActionDesignatorDescription):
         :param arms: List of possible arms that could be used
         :param grasps: List of possible grasps for the object
         :param target_locations: List of possible target locations for the object to be placed
-        :param resolver: An optional resolver that returns a performable designator with elements from the lists of possible paramter
+        :param resolver: An optional resolver that returns a performable designator with elements from the lists of
+                         possible paramter
         """
         super().__init__(resolver)
         self.object_designator_description: Union[
@@ -584,7 +580,13 @@ class PlaceAction(ActionDesignatorDescription):
 
 class PlaceGivenObjAction(ActionDesignatorDescription):
     """
-    Arm movement of the robot for placing human given objects.
+     A class representing a designator for a place action of human given objects, allowing a robot to place a
+     human given object, that could not be picked up or were not found in the FOV.
+
+    This class encapsulates the details of the place action of human given objects, including the type of the object to
+    be placed, the arm to be used, the target_location to place the object and the grasp type. It defines the sequence
+    of operations for the robot to execute the place action of human given object, such as moving the arm holding the
+    object to the target_location, opening the gripper, and lifting the arm.
     """
 
     @dataclasses.dataclass
@@ -618,9 +620,6 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
 
             # TODO add for other robots
             if self.object_type == "Metalplate" and robot.name == "hsrb":
-                print("in hsrb and metalplate placing")
-                self.target_location.pose.position.z = 0.9
-
                 grasp_rotation = robot_description.grasps.get_orientation_for_grasp("front")
                 oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
                 oTb.orientation = grasp_rotation
@@ -642,14 +641,16 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
                 MoveJointsMotion(["wrist_flex_joint"], [-0.8]).resolve().perform()
 
                 # correct a possible sloped orientation
-                NavigateAction([Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y, 0])]).resolve().perform()
+                NavigateAction(
+                    [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y, 0])]).resolve().perform()
 
                 MoveGripperMotion(motion="open", gripper="left").resolve().perform()
 
                 # Move away from the table
-                # todo if turned in an other direction hsr is not moving backwards but forward
+                # todo generalize so that hsr is always moving backwards
                 NavigateAction(
-                    [Pose([robot.get_pose().pose.position.x - 0.1, robot.get_pose().pose.position.y, 0])]).resolve().perform()
+                    [Pose([robot.get_pose().pose.position.x - 0.1, robot.get_pose().pose.position.y,
+                           0])]).resolve().perform()
 
             # placing everything else except the Metalplate
             else:
@@ -677,7 +678,7 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
                 rospy.logwarn("Pushing now")
                 MoveTCPMotion(push_baseTm, self.arm).resolve().perform()
 
-                rospy.logwarn("Close Gripper")
+                rospy.logwarn("Open Gripper")
                 MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
 
                 rospy.logwarn("Lifting now")
@@ -691,14 +692,16 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
                  object_types: List[str], arms: List[str], target_locations: List[Pose], grasps: List[str],
                  resolver=None):
         """
-        Lets the robot place a human given object. The description needs an object type describing the object that should be
-        placed, an arm that should be used as well as the target location where the object should be placed and the needed grasping movement.
+        Lets the robot place a human given object. The description needs an object type describing the object that
+        should be placed, an arm that should be used as well as the target location where the object should be placed
+        and the needed grasping movement.
 
         :param object_types: List of possible object types
         :param arms: List of possible arms that could be used
         :param target_locations: List of possible target locations for the object to be placed
         :param grasps: List of possible grasps for the object
-        :param resolver: An optional resolver that returns a performable designator with elements from the lists of possible paramter
+        :param resolver: An optional resolver that returns a performable designator with elements from the lists of
+                         possible paramter
         """
         super().__init__(resolver)
         self.object_types: List[str] = object_types
@@ -708,7 +711,8 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
 
     def ground(self) -> Action:
         """
-        Default resolver that returns a performable designator with the first entries from the lists of possible parameter.
+        Default resolver that returns a performable designator with the first entries from the lists of possible
+        parameter.
 
         :return: A performable designator
         """
