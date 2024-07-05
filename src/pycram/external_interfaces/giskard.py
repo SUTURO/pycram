@@ -12,7 +12,7 @@ from ..utilities import tf_wrapper as tf
 giskard_wrapper = None
 giskard_update_service = None
 is_init = False
-
+giskard_error_state = None
 
 def init_giskard_interface():
     global giskard_wrapper
@@ -189,7 +189,8 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) -> 'M
     #sync_worlds()
     giskard_wrapper.avoid_all_collisions()
     giskard_wrapper.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
-    return giskard_wrapper.execute()
+    giskard_error_state = giskard_wrapper.execute()
+    return giskard_error_state
 
 
 def achieve_straight_cartesian_goal(goal_pose: Pose, tip_link: str,

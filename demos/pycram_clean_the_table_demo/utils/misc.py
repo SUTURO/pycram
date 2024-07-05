@@ -84,7 +84,7 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription, gras
     """
     try:
         PickUpAction(obj, ["left"], [grasps]).resolve().perform()
-    except (EnvironmentUnreachable, GripperClosedCompletely):
+    except (PickUpException):
         # print("try pick up again")
         # TalkingMotion("Try pick up again").resolve().perform()
         # # after failed attempt to pick up the object, the robot moves 30cm back on x pose

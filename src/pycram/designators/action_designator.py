@@ -10,6 +10,7 @@ import rospy
 import sqlalchemy.orm
 from typing import Any, Union
 import rospy
+import pycram.external_interfaces.giskard as giskardpy
 
 from .location_designator import CostmapLocation
 from .motion_designator import *
@@ -31,7 +32,7 @@ from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, Naviga
 
 from ..orm.base import Quaternion, Position, Base
 from ..plan_failures import ObjectUnfetchable, ReachabilityFailure, EnvironmentUnreachable, GripperClosedCompletely, \
-    SensorMonitoringCondition
+    SensorMonitoringCondition, PickUpException
 from ..pose import Pose
 from ..robot_descriptions import robot_description
 from ..ros.viz_marker_publisher import ManualMarkerPublisher
@@ -324,10 +325,6 @@ class PickUpAction(ActionDesignatorDescription):
                 print("Metalbowl from top")
                 # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
                 # Note: This includes hardcoded adjustments and should ideally be generalized
-                # if self.object_designator.type == "Cutlery":
-                # todo: this z is the popcorn-table height, we need to define location to get that z otherwise it
-                #  is hardcoded
-                # oTm.pose.position.z = 0.71
                 oTm.pose.position.z += 0.035
 
             # Determine the grasp orientation and transform the pose to the base link frame
@@ -348,7 +345,8 @@ class PickUpAction(ActionDesignatorDescription):
             # Execute Bool, because sometimes u only want to visualize the poses to pp.py things
             if execute:
                 MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).resolve().perform()
-
+                if giskardpy.giskard_error_state.error.code == 812:
+                    raise PickUpException
             # Calculate and apply any special knowledge offsets based on the robot and object type
             # Note: This currently includes robot-specific logic that should be generalized
             tool_frame = robot_description.get_tool_frame(self.arm)
@@ -383,11 +381,15 @@ class PickUpAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(special_knowledge_offsetTm)
             if execute:
                 MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                if giskardpy.giskard_error_state.error.code == 812:
+                    raise PickUpException
 
             rospy.logwarn("Pushing now")
             BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
             if execute:
                 MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                if giskardpy.giskard_error_state.error.code == 812:
+                    raise PickUpException
 
             # Finalize the pick-up by closing the gripper and lifting the object
             rospy.logwarn("Close Gripper")
@@ -399,6 +401,9 @@ class PickUpAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
             if execute:
                 MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                if giskardpy.giskard_error_state.error.code == 812:
+                    raise PickUpException
+
             tool_frame = robot_description.get_tool_frame(self.arm)
             robot.attach(object=self.object_designator.bullet_world_object, link=tool_frame)
 
