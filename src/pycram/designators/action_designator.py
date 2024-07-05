@@ -345,7 +345,7 @@ class PickUpAction(ActionDesignatorDescription):
             # Execute Bool, because sometimes u only want to visualize the poses to pp.py things
             if execute:
                 MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).resolve().perform()
-                if giskardpy.giskard_error_state.error.code == 812:
+                if giskardpy.giskard_error_state.error.code == 811:
                     raise PickUpException
             # Calculate and apply any special knowledge offsets based on the robot and object type
             # Note: This currently includes robot-specific logic that should be generalized
@@ -381,14 +381,14 @@ class PickUpAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(special_knowledge_offsetTm)
             if execute:
                 MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).resolve().perform()
-                if giskardpy.giskard_error_state.error.code == 812:
+                if giskardpy.giskard_error_state.error.code == 811:
                     raise PickUpException
 
             rospy.logwarn("Pushing now")
             BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
             if execute:
                 MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).resolve().perform()
-                if giskardpy.giskard_error_state.error.code == 812:
+                if giskardpy.giskard_error_state.error.code == 811:
                     raise PickUpException
 
             # Finalize the pick-up by closing the gripper and lifting the object
@@ -401,7 +401,7 @@ class PickUpAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
             if execute:
                 MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).resolve().perform()
-                if giskardpy.giskard_error_state.error.code == 812:
+                if giskardpy.giskard_error_state.error.code == 811:
                     raise PickUpException
 
             tool_frame = robot_description.get_tool_frame(self.arm)
