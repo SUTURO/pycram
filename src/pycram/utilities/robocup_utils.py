@@ -140,11 +140,11 @@ class TextToSpeechPublisher():
     def status_callback(self, msg):
         self.status_list = msg.status_list
 
-    def pub_now(self, sentence, talk_bool: bool = True):
+    def pub_now(self, sentence, talk_bool: bool = True, wait_bool: bool = True):
         rospy.logerr("talking sentence: " + str(sentence))
         if talk_bool:
             while not rospy.is_shutdown():
-                if not self.status_list:  # Check if the status list is empty
+                if not self.status_list or not wait_bool:  # Check if the status list is empty
                     goal_msg = TalkRequestActionGoal()
                     goal_msg.header.stamp = rospy.Time.now()
                     goal_msg.goal.data.language = 1

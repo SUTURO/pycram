@@ -268,8 +268,10 @@ def achieve_align_planes_goal(goal_normal: List[float], tip_link: str, tip_norma
     sync_worlds()
     giskard_wrapper.set_align_planes_goal(make_vector_stamped(goal_normal), tip_link, make_vector_stamped(tip_normal),
                                           root_link)
-    return giskard_wrapper.execute()
-
+    g_return= giskard_wrapper.execute()
+    while not g_return:
+        rospy.sleep(0.1)
+    return g_return
 
 def achieve_open_container_goal(tip_link: str, environment_link: str, goal_state: Optional[float] = None,
                                 special_door: Optional[bool] = False) -> 'MoveResult':

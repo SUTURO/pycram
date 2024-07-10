@@ -386,7 +386,7 @@ def is_location_clear(location_pose, world, clearance_radius=0.20):
             obj_position = obj.pose.position  # Assuming 'pose' attribute with 'position'
             distance = ((obj_position.x - location_pose.position.x) ** 2 +
                         (obj_position.y - location_pose.position.y) ** 2 +
-                        (obj_position.z - location_pose.position.z) ** 2) ** 0.5
+                        (obj_position.z - location_pose.position.z) ** 2) ** 0.6
             if distance < clearance_radius:
                 return False  # An object is within the clearance radius
     return True  # No objects are within the clearance radius

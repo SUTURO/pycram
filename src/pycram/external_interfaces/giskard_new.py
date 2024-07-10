@@ -306,9 +306,18 @@ def achieve_sequence_pick_up(pose1):
 
     giskard_wrapper.monitors.add_end_motion(start_condition=end_monitor)
     #giskard_wrapper.motion_goals.avoid_all_collisions()
-    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    #giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    giskard_wrapper.motion_goals.allow_all_collisions()
     return giskard_wrapper.execute()
 
+def test(config):
+    giskard_wrapper.motion_goals.add_joint_position(config)
+    # js_reached = giskard.monitors.add_joint_position(js1, threshold=0.03)
+    # giskard.monitors.add_end_motion(start_condition=js_reached)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
 
 def achieve_attached(obj_desig, tip_link='hand_gripper_tool_frame'):
     root_link = 'map'

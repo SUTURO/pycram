@@ -114,16 +114,16 @@ def callback(point):
 
 def first_part(talk_bool):
     try:
-        talk.pub_now("Starting Carry my Luggage demo.", talk_bool)
+        talk.pub_now("Starting Carry my Luggage demo.", talk_bool, False)
         img.pub_now(ImageEnum.HI.value)  # hi im toya
-        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool)
+        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
         plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func)
         plan.perform()
     except SensorMonitoringCondition:
         img.pub_now(ImageEnum.HI.value)  # hi im toya
 
-        talk.pub_now("Looking for a human", talk_bool)
+        talk.pub_now("Looking for a human", talk_bool,False)
         img.pub_now(ImageEnum.SEARCH.value)  # search
         goal_msg = QueryGoal()
         rkclient.send_goal(goal_msg)
@@ -135,18 +135,18 @@ def first_part(talk_bool):
             if human.human_pose.wait_for(timeout=5):
                 no_human = False
             else:
-                talk.pub_now("Looking for a human, please step in front of me", talk_bool)
+                talk.pub_now("Looking for a human, please step in front of me", talk_bool,False)
                 rkclient.send_goal(goal_msg)
 
-        talk.pub_now("Found a Human", talk_bool)
+        talk.pub_now("Found a Human", talk_bool,False)
         img.pub_now(ImageEnum.HI.value)
 
         gripper.pub_now("open")
         rospy.sleep(1)
-        talk.pub_now("I am not able to pick up the bag. Please hand it in", talk_bool)
+        talk.pub_now("I am not able to pick up the bag. Please hand it in", talk_bool,False)
         rospy.sleep(1)
 
-        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool)
+        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
         try:
             plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
@@ -173,11 +173,11 @@ def cml(step="default"):  # worksme
                     no_human = False
                 else:
                     rospy.sleep(5)
-                    talk.pub_now("I lost you, please step in front of me", talk_bool)
+                    talk.pub_now("I lost you, please step in front of me", talk_bool,False)
                     rkclient.send_goal(goal_msg)
-        talk.pub_now("Following you.", talk_bool)
+        talk.pub_now("Following you.", talk_bool,False)
         img.pub_now(ImageEnum.FOLLOWSTOP.value)
-        talk.pub_now("Push down my Hand, when we arrived.", talk_bool)
+        talk.pub_now("Push down my Hand, when we arrived.", talk_bool,False)
 
         try:
             plan = Code(lambda: giskardpy.cml(False)) >> Monitor(monitor_func_human)
@@ -187,19 +187,19 @@ def cml(step="default"):  # worksme
 
             if isinstance(e, SensorMonitoringCondition):
 
-                talk.pub_now("We have arrived.", talk_bool)
-                talk.pub_now("I will open my Gripper, to give you the bag.", talk_bool)
-                talk.pub_now("Push down my Hand, when you are Ready.", talk_bool)
+                talk.pub_now("We have arrived.", talk_bool,False)
+                talk.pub_now("I will open my Gripper, to give you the bag.", talk_bool,False)
+                talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
                 img.pub_now(ImageEnum.PUSHBUTTONS.value)
                 try:
                     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
                     plan.perform()
                 except SensorMonitoringCondition:
                     gripper.pub_now("open")
-                    talk.pub_now("Driving Back.", talk_bool)
+                    talk.pub_now("Driving Back.", talk_bool,False)
                     img.pub_now(ImageEnum.DRIVINGBACK.value)
                     giskardpy.cml(True)
-                    talk.pub_now("done.", talk_bool)
+                    talk.pub_now("done.", talk_bool,False)
             elif isinstance(e, HumanNotFoundCondition):
                 cml("lost_human")
             # fixme i dont know what to do here

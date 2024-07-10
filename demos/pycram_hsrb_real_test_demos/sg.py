@@ -97,8 +97,8 @@ groups = {"Kitchen Utensils and Tools": ["Fork", "Spoon", "Knife"],
           "Sports Equipment": ["Minisoccerball", "Baseball", "Softball", "Tennisball"],
           "Miscellaneous": ["Rubikscube", "Largemarker", "Scissors", "screwdriver", "clamp", "hammer", "wooden_block"],
           "Unknown": ["Unknown"]}
-
-links_from_shelf = ['shelf:shelf:shelf_floor_0', 'shelf:shelf:shelf_floor_1', 'shelf:shelf:shelf_floor_2', ]
+# 'shelf:shelf:shelf_floor_0',
+links_from_shelf = ['shelf:shelf:shelf_floor_1', 'shelf:shelf:shelf_floor_2', ]
 
 popcorn_frame = "popcorn_table:p_table:table_front_edge_center"
 
@@ -142,32 +142,47 @@ def get_closest_pose(obj_pose, pose_list):
 
 def find_pose_in_shelf(group, object, groups_in_shelf):
     link = None
-    if groups_in_shelf[group] not in [None, "Unknown"]:
-        try:
-            link = groups_in_shelf[group][1]
-            group_pose = groups_in_shelf[group][0]
-        except TypeError:
-            pass  # todome for now, later new group
+    nearest_pose_to_group = None
+    try:
+        link = groups_in_shelf[group][1]
+        group_pose = groups_in_shelf[group][0]
         place_poses = find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
                                           object_desig=object)
         nearest_pose_to_group = get_closest_pose(group_pose, place_poses)
-    else:
+        pace_poses = []
+        for link in links_from_shelf:
+            place_poses.append(
+                (find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
+                                     object_desig=object), link)
+            )
+
+        # in this case its the biggest group since why not? i assume most poses are then free
+        longest_group = max(place_poses, key=lambda x: len(x[0]))
+        nearest_pose_to_group = longest_group[0]
+        group = ...  # Assuming 'group' is defined somewhere in your code
+        groups_in_shelf[group][1] = longest_group[1]  # link
+        groups_in_shelf[group][0] = nearest_pose_to_group
+
         place_poses = []
         for link in links_from_shelf:
             place_poses.append(
                 find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
-                                    object_desig=object))
+                                    object_desig=object), link)
         # in this case its the biggest group since why not? i assume most poses are then free
         longest_group = max(place_poses, key=len)
         nearest_pose_to_group = longest_group[0]
+        groups_in_shelf[group][1] = link
+        groups_in_shelf[group][0] = nearest_pose_to_group
+    except TypeError:
 
-    print(nearest_pose_to_group)
+
 
     if nearest_pose_to_group:
         world.current_bullet_world.add_vis_axis(nearest_pose_to_group)
 
         pose_in_shelf = lt.transform_pose(nearest_pose_to_group, kitchen.get_link_tf_frame(link))
         pose_in_shelf.pose.position.x = -0.10
+        pose_in_shelf.pose.position.z += 0.06
         adjusted_pose_in_map = lt.transform_pose(pose_in_shelf, "map")
         world.current_bullet_world.add_vis_axis(adjusted_pose_in_map)
 
@@ -175,7 +190,34 @@ def find_pose_in_shelf(group, object, groups_in_shelf):
         return adjusted_pose_in_map, link
 
 
+previous_value = None
+
+
+def monitor_func_place():
+    global previous_value
+    der = fts.get_last_value()
+    current_value = fts.get_last_value()
+
+    prev_force_x = previous_value.wrench.force.x
+    curr_force_x = current_value.wrench.force.x
+    change_in_force_x = abs(curr_force_x - prev_force_x)
+    print(f"Current Force X: {curr_force_x}, Previous Force X: {prev_force_x}, Change: {change_in_force_x}")
+
+    def calculate_dynamic_threshold(previous_force_x):
+        # Placeholder for a dynamic threshold calculation based on previous values
+        # This function can be enhanced to calculate a threshold based on the history of values or other logic
+        return max(0.1 * abs(previous_force_x), 1.5)  # Example: 10% of the previous value or a minimum of 1.5
+
+    if change_in_force_x >= calculate_dynamic_threshold(previous_force_x=prev_force_x):
+        print("Significant change detected")
+
+        return SensorMonitoringCondition
+
+    return False
+
+
 def placeorpark(object_name, object, grasp, talk_bool, target_location, link, pick_up_bool):
+    global previous_value
     oTm = target_location
     oTm.pose.position.z += 0.02
 
@@ -192,12 +234,13 @@ def placeorpark(object_name, object, grasp, talk_bool, target_location, link, pi
 
     BulletWorld.current_bullet_world.add_vis_axis(oTmG)
 
-    #todome this mshoudl be depending on the height of the shelf tbh
+    # todome this mshoudl be depending on the height of the shelf tbh
+
     if grasp == "front":
-        config_for_placing = {'arm_lift_joint':  0.20, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
+        config_for_placing = {'arm_lift_joint': 0.20, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
                               'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
     else:
-        config_for_placing = {'arm_flex_joint':  0.20, 'arm_lift_joint': 1.15, 'arm_roll_joint': 0,
+        config_for_placing = {'arm_flex_joint': 0.20, 'arm_lift_joint': 1.15, 'arm_roll_joint': 0,
                               'wrist_flex_joint': -1.6, 'wrist_roll_joint': 0, }
 
     pakerino(config=config_for_placing)
@@ -208,23 +251,19 @@ def placeorpark(object_name, object, grasp, talk_bool, target_location, link, pi
     giskard_return = giskardpy.achieve_sequence_pick_up(oTmG)
     while not giskard_return:
         rospy.sleep(0.1)
+    config_after_place = {'arm_lift_joint': 0.0}
+    talk.pub_now("tracking placning now")
+    previous_value = fts.get_last_value()
+    try:
+        plan = Code(lambda: giskardpy.test(config_after_place)) >> Monitor(monitor_func_place)
+        return_plan = plan.perform()
 
-    if pick_up_bool:
-        giskardpy.achieve_attached(object, tip_link='hand_gripper_tool_frame')
-        BulletWorld.robot.attach(object=object, link='hand_gripper_tool_frame')
-        gripper.pub_now("close")
-        grasped_bool = None
-        if grasp_listener.check_grasp():
-            talk.pub_now("Vanessas functions says i grasped a object")
-            grasped_bool = True
-        else:
-            talk.pub_now("Vanessas functions says i  was not able to grasped a object")
-            grasped_bool = False
-        return grasped_bool
-    else:
-        giskardpy.achieve_attached(object, tip_link="map")
-        BulletWorld.robot.detach_all()
-        gripper.pub_now("open")
+    except Exception as e:
+        print(f"Exception type: {type(e).__name__}")
+
+    giskardpy.achieve_attached(object, tip_link="map")
+    BulletWorld.robot.detach(object)
+    gripper.pub_now("open")
 
     giskardpy.avoid_all_collisions()
     park = pakerino()
@@ -423,7 +462,11 @@ def process_objects_in_shelf(talk_bool):
     return groups_in_shelf
 
 
+groups_in_shelf = {}
+
+
 def demo(step):
+    global groups_in_shelf
     with ((((real_robot)))):
         object_name = None,
         object = None,
@@ -454,7 +497,11 @@ def demo(step):
             move.pub_now(rotated_shelf_pose, interrupt_bool=False)
             move.pub_now(shelf_pose, interrupt_bool=False)
             place_pose, link = find_pose_in_shelf(group, object_raw, groups_in_shelf)
-            placeorpark(object.name, object, grasp, talk_bool, place_pose, link, False)
+            placeorpark(object.name, object, "front", talk_bool, place_pose, link, False)
+            demo(2)
 
 
+# previous_value = fts.get_last_value()
+#
+# monitor_func_place()
 demo(0)
