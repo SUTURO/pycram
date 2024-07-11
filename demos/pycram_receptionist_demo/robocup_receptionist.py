@@ -44,10 +44,11 @@ laser = StartSignalWaiter()
 
 # Declare variables for humans
 host = HumanDescription("Vanessa", fav_drink="coffee")
+host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
 # for testing, if the first part of the demo is skipped
 guest1.set_attributes(['male', 'without a hat', 'wearing a t-shirt', ' a dark top'])
-guest1.set_id(9)
+guest1.set_id(0)
 
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
 # for testing, if the first part of the demo is skipped
@@ -173,13 +174,14 @@ def welcome_guest(num, guest: HumanDescription):
 
     # look for human
     DetectAction(technique='human').resolve().perform()
+    rospy.sleep(1)
 
     # look at guest and introduce
     giskardpy.move_head_to_human()
     rospy.sleep(2.3)
 
     talk.pub_now("Hello, i am Toya and my favorite drink is oil.", True, wait_bool=wait_bool)
-    rospy.sleep(2.9)
+    rospy.sleep(3)
 
     talk.pub_now("please answer me after the sound", True, wait_bool=wait_bool)
     rospy.sleep(1.4)
@@ -254,6 +256,7 @@ def welcome_guest(num, guest: HumanDescription):
                     # understood both
                     guest.set_drink(response[2])
                     guest.set_name(response[1])
+                    break
                 else:
                     name = False
                     drink = False
@@ -268,9 +271,11 @@ def welcome_guest(num, guest: HumanDescription):
 
                     if name:
                         guest.set_name(name_repeat())
+                        break
 
                     if drink:
                         guest.set_drink(drink_repeat())
+                        break
 
     # get attributes and face if first guest
     if num == 1:
@@ -339,6 +344,7 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
             if place[0] == 'chair':
                 if place[1] == 'False':
                     pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
+                    talk.pub_now("please take a seat on the free chair")
                     free_seat = True
 
     if free_seat:
@@ -424,11 +430,6 @@ def demo(step):
             giskardpy.move_head_to_pose(couch_pose_semantik)
             rospy.sleep(1)
 
-            # detect host
-            #host_pose = DetectAction(technique='human').resolve().perform()
-            #host.set_pose(host_pose[1])
-            #DetectAction(technique='human', state='stop').resolve().perform()
-
             ########################################################
             # update poses from guest1 and host
             counter = 0
@@ -449,20 +450,22 @@ def demo(step):
                     print("i am a faliure and i hate my life")
                     if counter == 2:
                         talk.pub_now("please look at me", wait_bool=wait_bool)
-                        rospy.sleep(0.5)
+                        rospy.sleep(1.5)
 
                     elif counter == 3:
                         # TODO change according to arena
-                        config = {'head_pan_joint': -0.1}
-                        pakerino(config)
+                        config = {'head_pan_joint': -0.2}
+                        pakerino(config=config)
                         talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(1.5)
 
                     counter += 1
 
             if not found_host:
                 try:
+                    print("not found host human detect")
                     pakerino()
-                    host_pose = DetectAction(technique='human').resolve().perform()
+                    host_pose = DetectAction(technique='human').resolve().perform()[1]
                     host.set_pose(host_pose)
 
                 except Exception as e:
@@ -470,11 +473,12 @@ def demo(step):
             ########################################################
 
             # find free seat
+            giskardpy.move_head_to_pose(couch_pose_semantik)
             guest_pose = detect_point_to_seat()
             image_switch_publisher.pub_now(ImageEnum.SOFA.value)
             if not guest_pose:
                 # move head a little to perceive chairs
-                # TODO: cange according to arena
+                # TODO: change according to arena
                 config = {'head_pan_joint': -0.1}
                 pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
@@ -544,12 +548,14 @@ def demo(step):
             move.pub_now(door_to_couch)
 
             talk.pub_now("welcome to the living room", wait_bool=wait_bool)
-            giskardpy.move_head_to_pose(couch_pose_semantik)
-            rospy.sleep(1)
-            gripper.pub_now("close")
+
             # place new guest in living room
 
         if step <= 7:
+
+            giskardpy.move_head_to_pose(couch_pose_semantik)
+            rospy.sleep(1)
+            gripper.pub_now("close")
 
             # 3 trys to update poses from guest1 and host
             counter = 0
@@ -561,15 +567,14 @@ def demo(step):
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
                     id_humans = human_dict["keys"]
-                    print("id humans: " + str(id_humans))
 
                     # loop through detected face Ids
                     for key in id_humans:
                         print("key: " + str(key))
+                        print("counter: " + str(counter))
 
                         # found guest
                         if key == guest1.id:
-                            talk.pub_now("found guest", wait_bool=wait_bool)
                             # update pose
                             guest1_pose = human_dict[guest1.id]
                             found_guest = True
@@ -577,7 +582,6 @@ def demo(step):
 
                         # found host
                         elif key == host.id:
-                            talk.pub_now("found host", wait_bool=wait_bool)
                             # update pose
                             found_host = True
                             host_pose = human_dict[host.id]
@@ -588,21 +592,27 @@ def demo(step):
 
                     if counter > 4 or (found_guest and found_host):
                         break
-
                     elif counter == 2:
                         talk.pub_now("please look at me", wait_bool=wait_bool)
-                        rospy.sleep(0.5)
-
+                        rospy.sleep(2.5)
                     # move head to side to detect faces that were not in vision before
                     # TODO: change direction according to arena
                     elif counter == 3:
-                        config = {'head_pan_joint': -0.1}
-                        pakerino(config)
+                        config = {'head_pan_joint': -0.2}
+                        pakerino(config=config)
                         talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(2.5)
+
 
                 except PerceptionObjectNotFound:
                     print("i am a failure and i hate my life")
                     counter += 1
+                    print(counter)
+                    if counter == 3:
+                        config = {'head_pan_joint': -0.2}
+                        pakerino(config=config)
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(2.5)
 
             # Failure Handling if at least one person was not recognized
             if not found_guest and not found_host:
@@ -628,6 +638,7 @@ def demo(step):
         if step <= 8:
             # look t couch
             giskardpy.move_head_to_pose(couch_pose_semantik)
+            rospy.sleep(1)
 
             # find a place for guest2 to sit and point
             guest_pose = detect_point_to_seat()
@@ -637,7 +648,7 @@ def demo(step):
                 # move head a little
                 # TODO: cange according to arena
                 config = {'head_pan_joint': -0.1}
-                pakerino(config)
+                pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
                 if guest_pose:
                     guest2.set_pose(guest_pose)
@@ -653,4 +664,4 @@ def demo(step):
                 introduce(guest1, guest2)
                 rospy.sleep(3)
 
-demo(2)
+demo(1)
