@@ -16,6 +16,15 @@ class SensorMonitoringCondition(PlanFailure):
         super().__init__(*args, **kwargs)
 
 
+class PickUpException(PlanFailure):
+    """
+    When the robot missed the object during a pick up action
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 class FailureDiagnosis(PlanFailure):
     """"""
 

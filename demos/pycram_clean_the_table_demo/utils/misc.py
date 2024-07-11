@@ -5,7 +5,7 @@ from pycram.designators.motion_designator import *
 import pycram.external_interfaces.giskard as giskardpy
 from pycram.designators.object_designator import *
 from std_msgs.msg import String
-from pycram.plan_failures import EnvironmentUnreachable, GripperClosedCompletely
+from pycram.plan_failures import EnvironmentUnreachable, GripperClosedCompletely, PickUpException
 from pycram.language import Monitor, Code
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, SoundRequestPublisher
 
@@ -74,6 +74,12 @@ def sort_objects(robot: BulletWorldObject, obj_dict: dict, wished_sorted_obj_lis
     return sorted_objects
 
 
+def pakerino(torso_z=0.15, config=None):
+    if not config:
+        config = {'arm_lift_joint': torso_z, 'arm_flex_joint': 0, 'arm_roll_joint': -1.2, 'wrist_flex_joint': -1.5,
+                  'wrist_roll_joint': 0}
+
+
 def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription, grasps: str):
     """
     Picking up any object with failure handling.
@@ -84,7 +90,8 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription, gras
     """
     try:
         PickUpAction(obj, ["left"], [grasps]).resolve().perform()
-    except (EnvironmentUnreachable, GripperClosedCompletely):
+
+    except (PickUpException):
         # print("try pick up again")
         # TalkingMotion("Try pick up again").resolve().perform()
         # # after failed attempt to pick up the object, the robot moves 30cm back on x pose

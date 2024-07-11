@@ -50,7 +50,7 @@ goal_pose = None
 fts = ForceTorqueSensor(robot_name='hsrb')
 
 # Initialize the Bullet world for simulation
-world = BulletWorld("DIRECT")
+world = BulletWorld()
 
 # Visualization Marker Publisher for ROS
 v = VizMarkerPublisher()
@@ -59,20 +59,20 @@ v = VizMarkerPublisher()
 robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
 
 # Update robot state
-RobotStateUpdater("/tf", "/giskard_joint_states")
+RobotStateUpdater("/tf", "/hsrb/robot_state/joint_states")
 giskardpy.init_giskard_interface()
 
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_version_15.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "pre_robocup_clean_v1.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
 giskardpy.sync_worlds()
 
 # Wait for the start signal
-start_signal_waiter.wait_for_startsignal()
+#start_signal_waiter.wait_for_startsignal()
 
 # Once the start signal is received, continue with the rest of the script
 rospy.loginfo("Start signal received, now proceeding with tasks.")
@@ -117,11 +117,20 @@ def pickup_and_place_objects(sorted_obj: list):
 
         else:
             # change object x pose if the grasping pose is too far in the table
-            if sorted_obj[value].type == "Cutlery" and sorted_obj[value].pose.position.x > table_pose + 0.125:
-                sorted_obj[value].pose.position.x -= 0.08
+            # if sorted_obj[value].type == "Cutlery" and sorted_obj[value].pose.position.x > table_pose + 0.125:
+            #     sorted_obj[value].pose.position.x -= 0.08
 
             text_to_speech_publisher.pub_now("Picking up with: " + grasp)
             image_switch_publisher.pub_now(7)
+            if grasp == "top":
+                config_for_placing = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.6, 'arm_roll_joint': 0,
+                  'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4}
+                # {'arm_flex_joint': -1.6, 'arm_lift_joint': 1.15, 'arm_roll_joint': 1.6,
+                #  'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4
+                giskardpy.avoid_all_collisions()
+                giskardpy.achieve_joint_goal(config_for_placing)
+            else:
+                print("not from top")
             try_pick_up(robot, sorted_obj[value], grasp)
             image_switch_publisher.pub_now(0)
 
@@ -219,7 +228,7 @@ def check_position():
     current_pose = robot.get_pose().pose.position
     euclidean_dist = math.sqrt(pow((goal_pose.pose.position.x - current_pose.x), 2) +
                                pow((goal_pose.pose.position.y - current_pose.y), 2))
-    if euclidean_dist < 0.5:
+    if euclidean_dist < 0.1:
         print("return true")
         return True
     print("return false")
@@ -235,9 +244,9 @@ def navigate_to(location_name: str, y: Optional[float] = None):
     """
     global goal_pose
     if location_name == pickup_location_name and y is not None:
-        goal_pose = Pose([3.9, y, 0], [0, 0, 0, 1])
-        if not check_position():
-            move.pub_now(Pose(move_to_the_middle_table_pose, [0, 0, 1, 1]))
+        goal_pose = Pose([4.0, y, 0], [0, 0, 0, 1])
+        if sorted_obj_len == 1:
+             move.pub_now(Pose(move_to_the_middle_table_pose, [0, 0, 1, 1]))
         while not check_position():
             move.pub_now(goal_pose)
     elif location_name == placing_location_name_left:
@@ -269,10 +278,12 @@ def navigate_and_detect():
 
     :return: tupel of State and dictionary of found objects in the FOV
     """
+    global sorted_obj_len
     text_to_speech_publisher.pub_now("Navigating")
 
     navigate_to(pickup_location_name, 2.45)  # 1.6
     MoveTorsoAction([0.1]).resolve().perform()
+    MoveJointsMotion(["arm_roll_joint"], [1.5]).resolve().perform()
     LookAtAction(targets=[Pose([5.0, 2.45, 0.15])]).resolve().perform()
     #plan = move_up | look_at
     # couch table
@@ -282,6 +293,8 @@ def navigate_and_detect():
     try:
         object_desig = DetectAction(technique='all').resolve().perform()
         giskardpy.sync_worlds()
+        if len(object_desig) > 0:
+            sorted_obj_len = 1
     except PerceptionObjectNotFound:
         object_desig = {}
     return object_desig
@@ -396,17 +409,18 @@ def excecute_plan(exec_type: str, monitor_function: Optional = None, task1: Opti
 with ((real_robot)):
     rospy.loginfo("Starting demo")
     text_to_speech_publisher.pub_now("Starting demo")
-
-    navigate_to(placing_location_name)
-
-    # todo removed turn arm
-    image_switch_publisher.pub_now(2)
-    OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
-
-    text_to_speech_publisher.pub_now("Please pull out the lower rack")
-    # todo can talk be integrated
-    park = ParkArmsAction([Arms.LEFT]).resolve().perform()
-    open_gripper = MoveGripperMotion("open", "left").resolve().perform()
+    sorted_obj_len = 0
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    #navigate_to(placing_location_name)
+    # #
+    # # # todo removed turn arm
+    #image_switch_publisher.pub_now(2)
+    #OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
+    # #
+    #text_to_speech_publisher.pub_now("Please pull out the lower rack")
+    # # todo can talk be integrated
+    #park = ParkArmsAction([Arms.LEFT]).resolve().perform()
+    #open_gripper = MoveGripperMotion("open", "left").resolve().perform()
     # plan = park | open_gripper
     # plan.perform()
     # todo example code

@@ -18,7 +18,7 @@ from .. import helper
 from ..bullet_world import BulletWorld
 from ..designator import ActionDesignatorDescription
 from ..enums import Arms, ObjectType
-from ..helper import multiply_quaternions, axis_angle_to_quaternion
+from ..helper import multiply_quaternions, axis_angle_to_quaternion, multiply_quaternions_by_vanessa
 from ..language import Monitor
 from ..local_transformer import LocalTransformer
 from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, NavigateAction as ORMNavigateAction,
@@ -318,10 +318,15 @@ class PickUpAction(ActionDesignatorDescription):
             # Calculate the object's pose in the map frame
             oTm = object.get_pose()
             execute = True
-
-            # Adjust object pose for top-grasping, if applicable
+            # todo workaround to get object frame
+            # print("this is a test")
+            # print(object.tf_frame)
+            # cutlery_pose = lt.transform_pose(oTm, object.tf_frame)
+            # while execute:
+            #     print(object.get_object_dimensions())
+            #     print("heheheheh")
+            # # Adjust object pose for top-grasping, if applicable
             if self.grasp == "top":
-                print("Metalbowl from top")
                 # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
                 # Note: This includes hardcoded adjustments and should ideally be generalized
                 # if self.object_designator.type == "Cutlery":
@@ -329,14 +334,45 @@ class PickUpAction(ActionDesignatorDescription):
                 #  is hardcoded
                 # oTm.pose.position.z = 0.71
                 oTm.pose.position.z += 0.035
+                # if object.type == "Cutlery":
+                #     cutlery_pose = lt.transform_pose(oTm, object.tf_frame)
+                #     cutlery_pose.pose.position.x -= 0.3
 
+            pose_in_table = lt.transform_pose(oTm,
+                                    BulletWorld.current_bullet_world.environment.get_link_tf_frame("couch_table:couch_table:table_center"))
+            print(pose_in_table.pose.orientation)
             # Determine the grasp orientation and transform the pose to the base link frame
             grasp_rotation = robot_description.grasps.get_orientation_for_grasp(self.grasp)
-            oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+            # oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
             # Set pose to the grasp rotation
-            oTb.orientation = grasp_rotation
+            if self.grasp == "front":
+                pose_in_table.pose.orientation.x = grasp_rotation[0]
+                pose_in_table.pose.orientation.y = grasp_rotation[1]
+                pose_in_table.pose.orientation.z = grasp_rotation[2]
+                pose_in_table.pose.orientation.w = grasp_rotation[3]
+            elif self.grasp == "top":
+                angle = helper.quaternion_to_angle(
+                    (pose_in_table.pose.orientation.x, pose_in_table.pose.orientation.y, pose_in_table.pose.orientation.z,
+                     pose_in_table.pose.orientation.w))
+                print("angle: " + str(angle))
+                grasp_q = Quaternion(grasp_rotation[0], grasp_rotation[1], grasp_rotation[2], grasp_rotation[3])
+                if angle > 110:
+                    print("größer: " + str(angle))
+                    pose_in_table.pose.orientation.x = grasp_rotation[0]
+                    pose_in_table.pose.orientation.y = grasp_rotation[1]
+                    pose_in_table.pose.orientation.z = grasp_rotation[2]
+                    pose_in_table.pose.orientation.w = grasp_rotation[3]
+
+                else:
+                    print("kleiner: " + str(angle))
+                    new_q = multiply_quaternions_by_vanessa(pose_in_table.pose.orientation,
+                                                                                     grasp_q)
+                    pose_in_table.pose.orientation.x = new_q[0]
+                    pose_in_table.pose.orientation.y = new_q[1]
+                    pose_in_table.pose.orientation.z = new_q[2]
+                    pose_in_table.pose.orientation.w = new_q[3]
             # Transform the pose to the map frame
-            oTmG = lt.transform_pose(oTb, "map")
+            oTmG = lt.transform_pose(pose_in_table, "map")
 
             # Open the gripper before picking up the object
             rospy.logwarn("Opening Gripper")

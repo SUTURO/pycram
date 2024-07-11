@@ -278,15 +278,15 @@ def _move_arm_tcp(target: Pose, robot: Object, arm: str) -> None:
 ###########################################################
 
 
-class HSRBNavigationReal(ProcessModule):
-    """
-    Process module for the real HSRB that sends a cartesian goal to giskard to move the robot base
-    """
-
-    def _execute(self, designator: MoveMotion.Motion) -> Any:
-        rospy.logdebug(f"Sending goal to giskard to Move the robot")
-        # giskard.achieve_cartesian_goal(designator.target, robot_description.base_link, "map")
-        queryPoseNav(designator.target)
+# class HSRBNavigationReal(ProcessModule):
+#     """
+#     Process module for the real HSRB that sends a cartesian goal to giskard to move the robot base
+#     """
+#
+#     def _execute(self, designator: MoveMotion.Motion) -> Any:
+#         rospy.logdebug(f"Sending goal to giskard to Move the robot")
+#         # giskard.achieve_cartesian_goal(designator.target, robot_description.base_link, "map")
+#         queryPoseNav(designator.target)
 
 
 class HSRBNavigationSemiReal(ProcessModule):
@@ -577,7 +577,7 @@ class HSRBMoveTCPReal(ProcessModule):
         if designator.allow_gripper_collision:
             giskard.allow_gripper_collision(designator.arm)
         giskard.achieve_cartesian_goal(pose_in_map, robot_description.get_tool_frame(designator.arm),
-                                       "map")
+                                       "map", designator.arm)
         return State.SUCCEEDED, "Nice"
 
 

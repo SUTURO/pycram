@@ -173,10 +173,11 @@ def achieve_joint_goal(goal_poses: Dict[str, float]) -> 'MoveResult':
     """
     sync_worlds()
     giskard_wrapper.set_joint_goal(goal_poses)
+    avoid_all_collisions()
     return giskard_wrapper.execute()
 
 
-def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) -> 'MoveResult':
+def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str, arm: str) -> 'MoveResult':
     """
     Takes a cartesian position and tries to move the tip_link to this position using the chain defined by
     tip_link and root_link.
@@ -187,9 +188,13 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) -> 'M
     :return: MoveResult message for this goal
     """
     #sync_worlds()
-    giskard_wrapper.avoid_all_collisions()
+    # giskard_wrapper.avoid_all_collisions()
+    # allow_gripper_collision(arm)
     giskard_wrapper.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
-    return giskard_wrapper.execute()
+    giskard_wrapper.avoid_all_collisions()
+    giskard_wrapper.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    # giskard_wrapper.allow_collision("left_gripper", CollisionEntry.ALL)
+    giskard_wrapper.execute()
 
 
 def achieve_straight_cartesian_goal(goal_pose: Pose, tip_link: str,
@@ -373,6 +378,7 @@ def allow_gripper_collision(gripper: str):
         giskard_wrapper.allow_collision("right_gripper", CollisionEntry.ALL)
     elif gripper == "left":
         giskard_wrapper.allow_collision("left_gripper", CollisionEntry.ALL)
+
     elif gripper == "both":
         giskard_wrapper.allow_collision("right_gripper", CollisionEntry.ALL)
         giskard_wrapper.allow_collision("left_gripper", CollisionEntry.ALL)
