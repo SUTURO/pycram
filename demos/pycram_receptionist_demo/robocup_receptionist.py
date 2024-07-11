@@ -174,7 +174,6 @@ def welcome_guest(num, guest: HumanDescription):
     # look for human
     DetectAction(technique='human').resolve().perform()
 
-
     # look at guest and introduce
     giskardpy.move_head_to_human()
     rospy.sleep(2.3)
@@ -188,12 +187,10 @@ def welcome_guest(num, guest: HumanDescription):
     talk.pub_now("What is your name and favorite drink?", True, wait_bool=wait_bool)
     rospy.sleep(1.5)
 
-
     # signal to start listening
     print("nlp start")
     pub_nlp.publish("start listening")
-    rospy.sleep(1.0)
-
+    rospy.sleep(1.3)
     image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
     # wait for nlp answer
@@ -207,20 +204,29 @@ def welcome_guest(num, guest: HumanDescription):
     callback = False
 
     if response[0] == "<GUEST>":
-        print("in guest")
         # success a name and intent was understood
-        if response[1].strip() == "None":
-            # ask for name again once
-            guest.set_name(name_repeat())
-
-        elif response[2].strip() == "None":
-            # ask for drink again
-            guest.set_drink(drink_repeat())
-        else:
+        if response[1].strip() != "None" and response[2].strip() != "None":
             print("in success")
             # understood both
             guest.set_drink(response[2])
             guest.set_name(response[1])
+        else:
+            name = False
+            drink = False
+            if response[1].strip() == "None":
+                # ask for name again once
+                name = True
+                guest.set_drink(response[2])
+            elif response[2].strip() == "None":
+                drink = True
+                # ask for drink again
+                guest.set_name(response[1])
+
+            if name:
+                guest.set_name(name_repeat())
+
+            if drink:
+                guest.set_drink(drink_repeat())
 
     else:
         # two chances to get name and drink
@@ -243,19 +249,28 @@ def welcome_guest(num, guest: HumanDescription):
 
             if response[0] == "<GUEST>":
                 # success a name and intent was understood
-                if response[1].strip() == "None":
-                    # ask for name again once
-                    guest.set_name(name_repeat())
-                    guest.set_drink(response[2])
-
-                elif response[2].strip() == "None":
-                    # ask for drink again
-                    guest.set_name(response[1])
-                    guest.set_drink(drink_repeat())
-                else:
+                if response[1].strip() != "None" and response[2].strip() != "None":
+                    print("in success")
                     # understood both
                     guest.set_drink(response[2])
                     guest.set_name(response[1])
+                else:
+                    name = False
+                    drink = False
+                    if response[1].strip() == "None":
+                        # ask for name again once
+                        name = True
+                        guest.set_drink(response[2])
+                    elif response[2].strip() == "None":
+                        drink = True
+                        # ask for drink again
+                        guest.set_name(response[1])
+
+                    if name:
+                        guest.set_name(name_repeat())
+
+                    if drink:
+                        guest.set_drink(drink_repeat())
 
     # get attributes and face if first guest
     if num == 1:
@@ -377,7 +392,7 @@ def demo(step):
             # set it back to false for second guest
             doorbell = False
 
-            door_opening()
+            # door_opening()
 
         if step <= 1:
 
@@ -391,16 +406,17 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # leading to living room and pointing to free seat
-            #talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
+            talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
 
             # head straight
             pakerino()
             rospy.sleep(0.5)
 
             # lead human to living room
-            # move.pub_now(after_door_ori)
-            # move.pub_now(pose_corner)
-            # move.pub_now(door_to_couch)
+            # TODO: change according to arena
+            move.pub_now(after_door_ori)
+            move.pub_now(pose_corner)
+            move.pub_now(door_to_couch)
 
             # place new guest in living room
             gripper.pub_now("close")
@@ -417,7 +433,6 @@ def demo(step):
             # update poses from guest1 and host
             counter = 0
             while counter < 3:
-                id_humans = []
                 found_host = False
                 try:
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
@@ -436,12 +451,17 @@ def demo(step):
                         talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(0.5)
 
+                    elif counter == 3:
+                        # TODO change according to arena
+                        config = {'head_pan_joint': -0.1}
+                        pakerino(config)
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
+
                     counter += 1
 
             if not found_host:
                 try:
-                    config = {'head_pan_joint': -0.1}
-                    pakerino(config=config)
+                    pakerino()
                     host_pose = DetectAction(technique='human').resolve().perform()
                     host.set_pose(host_pose)
 
@@ -454,6 +474,7 @@ def demo(step):
             image_switch_publisher.pub_now(ImageEnum.SOFA.value)
             if not guest_pose:
                 # move head a little to perceive chairs
+                # TODO: cange according to arena
                 config = {'head_pan_joint': -0.1}
                 pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
@@ -468,7 +489,7 @@ def demo(step):
             if guest1.pose:
                 pub_pose.publish(guest1.pose)
 
-            rospy.sleep(1)
+            rospy.sleep(1.5)
 
             # introduce humans and look at them
             introduce(host, guest1)
@@ -479,8 +500,8 @@ def demo(step):
 
             # drive back to door
             # head straight
+            # TODO: change accoring to map
             pakerino()
-
             move.pub_now(pose_corner_back)
             move.pub_now(pose3)
 
@@ -498,7 +519,7 @@ def demo(step):
 
                 time.sleep(0.5)
 
-            # TODO: Giskard has to fix world state
+            # TODO: Giskard has to fix movement
             # door_opening()
 
         if step <= 5:
@@ -506,8 +527,7 @@ def demo(step):
 
         if step <= 6:
             # head straight
-            config = {'head_pan_joint': 0}
-            pakerino(config=config)
+            pakerino()
 
             # leading to living room and pointing to free seat
             talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
@@ -518,6 +538,7 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # lead human to living room
+            # TODO: cange according to arena
             move.pub_now(after_door_ori, interrupt_bool=False)
             move.pub_now(pose_corner)
             move.pub_now(door_to_couch)
@@ -529,53 +550,83 @@ def demo(step):
             # place new guest in living room
 
         if step <= 7:
-            # update poses from guest1 and host
+
+            # 3 trys to update poses from guest1 and host
             counter = 0
+            found_guest = False
+            found_host = False
             while True:
-                id_humans = []
+                unknown = []
                 try:
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
                     id_humans = human_dict["keys"]
                     print("id humans: " + str(id_humans))
 
-                    found_guest = False
-                    found_host = False
+                    # loop through detected face Ids
                     for key in id_humans:
                         print("key: " + str(key))
+
+                        # found guest
                         if key == guest1.id:
-                            guest1_pose = human_dict[guest1.id]
                             talk.pub_now("found guest", wait_bool=wait_bool)
+                            # update pose
+                            guest1_pose = human_dict[guest1.id]
                             found_guest = True
                             guest1.set_pose(PoseStamped_to_Point(guest1_pose))
-                        else:
-                            print("nothing to see here")
-                            if not found_host:
-                                found_host = True
-                                host_pose = human_dict[key]
-                                host.set_pose(PoseStamped_to_Point(host_pose))
 
-                    if found_guest or counter > 3:
+                        # found host
+                        elif key == host.id:
+                            talk.pub_now("found host", wait_bool=wait_bool)
+                            # update pose
+                            found_host = True
+                            host_pose = human_dict[host.id]
+                            host.set_pose(PoseStamped_to_Point(host_pose))
+                        else:
+                            # store unknown ids for failure handling
+                            unknown.append(key)
+
+                    if counter > 4 or (found_guest and found_host):
                         break
+
                     elif counter == 2:
                         talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(0.5)
 
-                except PerceptionObjectNotFound:
-                     print("i am a faliure and i hate my life")
-                     counter += 1
+                    # move head to side to detect faces that were not in vision before
+                    # TODO: change direction according to arena
+                    elif counter == 3:
+                        config = {'head_pan_joint': -0.1}
+                        pakerino(config)
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
 
-            if not found_guest:
+                except PerceptionObjectNotFound:
+                    print("i am a failure and i hate my life")
+                    counter += 1
+
+            # Failure Handling if at least one person was not recognized
+            if not found_guest and not found_host:
                 try:
-                    guest1.set_pose(human_dict[id_humans[0]])
-                    host.set_pose(human_dict[id_humans[1]])
+                    # both have not been recognized
+                    guest1.set_pose(PoseStamped_to_Point(human_dict[unknown[0]]))
+                    host.set_pose(PoseStamped_to_Point(human_dict[unknown[1]]))
                 except Exception as e:
                     print(e)
-
-
-
+            else:
+                # either guest or host was not found
+                if not found_guest:
+                    try:
+                        guest1.set_pose(PoseStamped_to_Point(human_dict[unknown[0]]))
+                    except Exception as e:
+                        print(e)
+                elif not found_host:
+                    try:
+                        host.set_pose(PoseStamped_to_Point(human_dict[unknown[0]]))
+                    except Exception as e:
+                        print(e)
 
         if step <= 8:
+            # look t couch
             giskardpy.move_head_to_pose(couch_pose_semantik)
 
             # find a place for guest2 to sit and point
@@ -584,10 +635,10 @@ def demo(step):
 
             if not guest_pose:
                 # move head a little
-                # TODO: failure handling for couch seat
+                # TODO: cange according to arena
                 config = {'head_pan_joint': -0.1}
                 pakerino(config)
-                guest_pose = detect_point_to_seat(no_sofa= True)
+                guest_pose = detect_point_to_seat(no_sofa=True)
                 if guest_pose:
                     guest2.set_pose(guest_pose)
             else:
@@ -596,11 +647,10 @@ def demo(step):
             if step <= 9:
                 # introduce everyone to guest 2
                 giskardpy.move_head_to_human()
+                rospy.sleep(1.2)
                 introduce(host, guest2)
                 rospy.sleep(3)
                 introduce(guest1, guest2)
                 rospy.sleep(3)
 
-
-#door_opening()
 demo(2)
