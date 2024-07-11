@@ -990,6 +990,7 @@ class Object:
 
         :param prev_object: A list of Objects that were already moved, these will be excluded to prevent loops in the update.
         """
+
         for obj in self.attachments:
             if obj in prev_object:
                 continue
