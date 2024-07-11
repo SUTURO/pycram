@@ -6,14 +6,14 @@ from pycram.ros.robot_state_updater import RobotStateUpdater
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_serve_breakfast_demo.utils.misc import *
 from pycram.utilities.robocup_utils import *
-
+import pycram.external_interfaces.giskard_new as giskardpy
 # from pycram.external_interfaces.knowrob import get_table_pose
 
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
 
 # Wished objects for the Demo
-wished_sorted_obj_list = ["Metalbowl", "Cerealbox", "Milkpackja", "Spoon"]
+wished_sorted_obj_list = ["Metalbowl", "Cerealbox", "Milkpack", "Spoon"]
 
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
@@ -60,10 +60,10 @@ RobotStateUpdater("/tf", "/giskard_joint_states")
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_version_12.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "pre_robocup_sg.urdf")
 
 giskardpy.init_giskard_interface()
-
+giskardpy.clear()
 giskardpy.sync_worlds()
 
 
@@ -77,7 +77,7 @@ class PlacingZPose(Enum):
     PLASTICKNIFE = 0.775
     KNIFE = 0.775
     METALBOWL = 0.815
-    MILKPACKJA = 0.845
+    MILKPACK = 0.845
     METALMUG = 0.775
     CEREALBOX = 0.875
     METALPLATE = 0.875
@@ -120,7 +120,8 @@ def navigate_to(x: float, y: float, table_name: str):
     elif table_name == "popcorn table":
         move.pub_now(Pose([x, y, 0], [0, 0, 0.7, 0.7]))
     elif table_name == "long table":
-        move.pub_now(Pose([x, y, 0], [0, 0, 1, 0]))
+        move.pub_now(Pose([4.375257854937237, 4.991582584825204, 0.0],
+                          [0.0, 0.0, 0.7220721042045632, 0.6918178057332686]))
 
 
 def pickup_and_place_objects(sorted_obj: list):
@@ -188,6 +189,7 @@ def place_objects(first_placing, objects_list, index, grasp):
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     text_to_speech_publisher.pub_now("Navigating")
     # MoveGripperMotion("open", "left").resolve().perform()
+
     navigate_to(3.6, 4.9, "long table")
     # navigate_to(2, 4.8, "popcorn table")
 
@@ -214,7 +216,7 @@ def place_objects(first_placing, objects_list, index, grasp):
     # navigate_to(2, 4.8, "popcorn table")
     ##############################################################################
 
-    if object_type in ["Cerealbox", "Cronybox", "Milkpackja", "Cutlery"]:
+    if object_type in ["Cerealbox", "Cronybox", "Milkpack", "Cutlery"]:
         if bowl is None:
             # move 30cm back
             navigate_to(robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, "popcorn table")
@@ -230,13 +232,13 @@ def place_objects(first_placing, objects_list, index, grasp):
                 if bowl is None:
                     text_to_speech_publisher.pub_now(f"I can not find the Metalbowl."
                                                      "I will skip pouring and place the objects on the table")
-                    if object_type is "Cutlery":
+                    if object_type == "Cutlery":
                         # TODO: nach Variante anpassen
                         # x_pos += 0.3
                         place_pose.pose.position.x += 0.3
 
         if bowl is not None:
-            if object_type in ["Cerealbox", "Cronybox", "Milkpackja"]:
+            if object_type in ["Cerealbox", "Cronybox", "Milkpack"]:
                 # TODO: Werte anpassen
                 navigate_to(bowl.pose.position.x - 0.1, 5, "popcorn table")
                 # print(f"arm_roll: {robot.get_joint_state('arm_roll_joint')}")
@@ -343,6 +345,7 @@ def remove_objects(value):
 
 with ((real_robot)):
     rospy.loginfo("Starting demo")
+    MoveGripperMotion("close", "left").resolve().perform()
     text_to_speech_publisher.pub_now("Starting demo")
     image_switch_publisher.pub_now(0)
     # # Wait for the start signal
@@ -358,10 +361,11 @@ with ((real_robot)):
     # navigate from door to a place in front of shelf
     # TODO: koordinaten bestimmen
     # navigate_to(2.1, 1.87, "shelf")
-    navigate_to(2, 4.8, "popcorn table")
+    #navigate_to(2, 4.8, "popcorn table")
 
     # navigate to shelf
     navigate_to(4.3, 4.9, "shelf")
+    MoveTorsoAction([0.2]).resolve().perform()
     obj_desig = try_detect(Pose([5.25, 4.9, 0.21], [0, 0, 0, 1]), False)
     sorted_obj = sort_objects(obj_desig, wished_sorted_obj_list)
     print(sorted_obj[0].type)

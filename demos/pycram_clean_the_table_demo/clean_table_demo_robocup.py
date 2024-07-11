@@ -65,14 +65,14 @@ giskardpy.init_giskard_interface()
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_version_15.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "pre_robocup_clean_v2.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
 giskardpy.sync_worlds()
 
 # Wait for the start signal
-start_signal_waiter.wait_for_startsignal()
+#start_signal_waiter.wait_for_startsignal()
 
 # Once the start signal is received, continue with the rest of the script
 rospy.loginfo("Start signal received, now proceeding with tasks.")
@@ -128,7 +128,6 @@ def pickup_and_place_objects(sorted_obj: list):
         # placing the object
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 
-        # todo check if parallel is working
         if sorted_obj[value].type == "Metalplate" or sorted_obj[value].type == "Metalbowl":
             move.pub_now(Pose(move_to_the_middle_table_pose, [0, 0, 1, 0]))
             MoveJointsMotion(["arm_roll_joint"], [-1.5]).resolve().perform()
@@ -219,7 +218,7 @@ def check_position():
     current_pose = robot.get_pose().pose.position
     euclidean_dist = math.sqrt(pow((goal_pose.pose.position.x - current_pose.x), 2) +
                                pow((goal_pose.pose.position.y - current_pose.y), 2))
-    if euclidean_dist < 0.5:
+    if euclidean_dist < 0.3:
         print("return true")
         return True
     print("return false")
@@ -236,8 +235,8 @@ def navigate_to(location_name: str, y: Optional[float] = None):
     global goal_pose
     if location_name == pickup_location_name and y is not None:
         goal_pose = Pose([3.9, y, 0], [0, 0, 0, 1])
-        if not check_position():
-            move.pub_now(Pose(move_to_the_middle_table_pose, [0, 0, 1, 1]))
+        # if not check_position():
+        #     move.pub_now(Pose(move_to_the_middle_table_pose, [0, 0, 1, 1]))
         while not check_position():
             move.pub_now(goal_pose)
     elif location_name == placing_location_name_left:
@@ -255,7 +254,9 @@ def navigate_to(location_name: str, y: Optional[float] = None):
         while not check_position():
             move.pub_now(goal_pose)
     elif location_name == placing_location_name:
+        print("go to dishwasher")
         goal_pose = Pose([2.55, -0.9, 0], [0, 0, -1, 1])
+        print(goal_pose)
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).resolve().perform()
         while not check_position():
             move.pub_now(goal_pose)
@@ -396,7 +397,7 @@ def excecute_plan(exec_type: str, monitor_function: Optional = None, task1: Opti
 with ((real_robot)):
     rospy.loginfo("Starting demo")
     text_to_speech_publisher.pub_now("Starting demo")
-
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
     navigate_to(placing_location_name)
 
     # todo removed turn arm

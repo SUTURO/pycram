@@ -1,6 +1,8 @@
 import itertools
 import time
 from typing import Any, Union
+
+import pycram.external_interfaces.giskard_new as giskardpy
 from geometry_msgs.msg import WrenchStamped
 
 from pycram.ros.force_torque_sensor import ForceTorqueSensor
@@ -19,7 +21,7 @@ from ..bullet_world import BulletWorld
 from ..designator import ActionDesignatorDescription
 from ..enums import Arms, ObjectType
 from ..helper import multiply_quaternions, axis_angle_to_quaternion
-from ..language import Monitor
+from ..language import Monitor, Code
 from ..local_transformer import LocalTransformer
 from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, NavigateAction as ORMNavigateAction,
                                      PickUpAction as ORMPickUpAction, PlaceAction as ORMPlaceAction,
@@ -347,7 +349,8 @@ class PickUpAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(oTmG)
             # Execute Bool, because sometimes u only want to visualize the poses to pp.py things
             if execute:
-                MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(oTmG)
+                #MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).resolve().perform()
 
             # Calculate and apply any special knowledge offsets based on the robot and object type
             # Note: This currently includes robot-specific logic that should be generalized
@@ -382,12 +385,14 @@ class PickUpAction(ActionDesignatorDescription):
             # m.create_marker("pose_pickup", special_knowledge_offsetTm)
             BulletWorld.current_bullet_world.add_vis_axis(special_knowledge_offsetTm)
             if execute:
-                MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(special_knowledge_offsetTm)
+                # MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).resolve().perform()
 
             rospy.logwarn("Pushing now")
             BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
             if execute:
-                MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(push_baseTm)
+                # MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).resolve().perform()
 
             # Finalize the pick-up by closing the gripper and lifting the object
             rospy.logwarn("Close Gripper")
@@ -398,9 +403,11 @@ class PickUpAction(ActionDesignatorDescription):
             liftingTm.pose.position.z += 0.03
             BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
             if execute:
-                MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(liftingTm)
+                # MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).resolve().perform()
             tool_frame = robot_description.get_tool_frame(self.arm)
             robot.attach(object=self.object_designator.bullet_world_object, link=tool_frame)
+            giskardpy.achieve_attached(self.object_designator.bullet_world_object, tip_link='hand_gripper_tool_frame')
 
         def to_sql(self) -> ORMPickUpAction:
             return ORMPickUpAction(self.arm, self.grasp)
@@ -462,6 +469,28 @@ def monitor_func():
         return SensorMonitoringCondition
     return False
 
+def monitor_func_place():
+    global previous_value
+    der = fts.get_last_value()
+    current_value = fts.get_last_value()
+
+    prev_force_x = previous_value.wrench.force.x
+    curr_force_x = current_value.wrench.force.x
+    change_in_force_x = abs(curr_force_x - prev_force_x)
+    print(f"Current Force X: {curr_force_x}, Previous Force X: {prev_force_x}, Change: {change_in_force_x}")
+
+    def calculate_dynamic_threshold(previous_force_x):
+        # Placeholder for a dynamic threshold calculation based on previous values
+        # This function can be enhanced to calculate a threshold based on the history of values or other logic
+        return max(0.1 * abs(previous_force_x), 1.5)  # Example: 10% of the previous value or a minimum of 1.5
+
+    if change_in_force_x >= calculate_dynamic_threshold(previous_force_x=prev_force_x):
+        print("Significant change detected")
+
+        return SensorMonitoringCondition
+
+    return False
+
 
 class PlaceAction(ActionDesignatorDescription):
     """
@@ -515,7 +544,8 @@ class PlaceAction(ActionDesignatorDescription):
             rospy.logwarn("Placing now")
             BulletWorld.current_bullet_world.add_vis_axis(oTmG)
             if execute:
-                MoveTCPMotion(oTmG, self.arm).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(oTmG)
+                # MoveTCPMotion(oTmG, self.arm).resolve().perform()
 
             tool_frame = robot_description.get_tool_frame(self.arm)
             push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
@@ -530,13 +560,15 @@ class PlaceAction(ActionDesignatorDescription):
             rospy.logwarn("Pushing now")
             BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
             if execute:
-                MoveTCPMotion(push_baseTm, self.arm).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(push_baseTm)
+                # MoveTCPMotion(push_baseTm, self.arm).resolve().perform()
             if self.object_designator.type == "Metalplate":
                 loweringTm = push_baseTm
                 loweringTm.pose.position.z -= 0.08
                 BulletWorld.current_bullet_world.add_vis_axis(loweringTm)
                 if execute:
-                    MoveTCPMotion(loweringTm, self.arm).resolve().perform()
+                    giskard_return = giskardpy.achieve_sequence_pick_up(loweringTm)
+                    #MoveTCPMotion(loweringTm, self.arm).resolve().perform()
                 # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
                 rospy.logwarn("sidepush monitoring")
                 TalkingMotion("sidepush.").resolve().perform()
@@ -545,23 +577,34 @@ class PlaceAction(ActionDesignatorDescription):
                     [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
                      push_baseTm.orientation.w])
                 try:
-                    plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
+                    plan = Code(lambda: giskardpy.achieve_sequence_pick_up(side_push)) >> Monitor(monitor_func)
                     plan.perform()
                 except (SensorMonitoringCondition):
                     rospy.logwarn("Open Gripper")
                     MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
+            if self.object_designator.type != "Metalplate":
+                config_after_place = {'arm_flex_joint': -2.0}
+                TalkingMotion("tracking placning now").resolve().perform()
+                previous_value = fts.get_last_value()
+                try:
+                    plan = Code(lambda: giskardpy.achieve_joint_goal(config_after_place)) >> Monitor(monitor_func_place)
+                    return_plan = plan.perform()
 
-            # Finalize the placing by opening the gripper and lifting the arm
-            rospy.logwarn("Open Gripper")
-            MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
+                except Exception as e:
+                    print(f"Exception type: {type(e).__name__}")
+                    # Finalize the placing by opening the gripper and lifting the arm
+                    rospy.logwarn("Open Gripper")
+                    MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
 
             rospy.logwarn("Lifting now")
             liftingTm = push_baseTm
             liftingTm.pose.position.z += 0.08
             BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
             if execute:
-                MoveTCPMotion(liftingTm, self.arm).resolve().perform()
-
+                giskard_return = giskardpy.achieve_sequence_pick_up(liftingTm)
+                # MoveTCPMotion(liftingTm, self.arm).resolve().perform()
+            giskardpy.achieve_attached(self.object_designator.bullet_world_object, tip_link="map")
+            BulletWorld.robot.detach_all()
         def to_sql(self) -> ORMPlaceAction:
             return ORMPlaceAction(self.arm)
 
@@ -1638,9 +1681,12 @@ class PouringAction(ActionDesignatorDescription):
             BulletWorld.current_bullet_world.add_vis_axis(oTmsp)
 
             if execute:
-                 MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).resolve().perform()
-                 MoveTCPMotion(oTmsp, self.arm, allow_gripper_collision=False).resolve().perform()
-                 MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).resolve().perform()
+                giskard_return = giskardpy.achieve_sequence_pick_up(oTgm)
+                giskard_return = giskardpy.achieve_sequence_pick_up(oTmsp)
+                giskard_return = giskardpy.achieve_sequence_pick_up(oTgm)
+                 # MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).resolve().perform()
+                 # MoveTCPMotion(oTmsp, self.arm, allow_gripper_collision=False).resolve().perform()
+                 # MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).resolve().perform()
             # # Move to the pre-grasp position and visualize the action
             # rospy.logwarn("Pre Pour")
             # BulletWorld.current_bullet_world.add_vis_axis(oTmso)

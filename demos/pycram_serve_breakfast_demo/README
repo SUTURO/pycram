@@ -12,7 +12,7 @@ rosrun robokudo main.py _ae=serve_breakfast _ros_pkg=milestone1
 cd ~/suturo23_24/robokudo_ws/src/suturo_perception2324/milestone1/src/milestone1
 
 # launch popcornTable
-roslaunch popcornTable.launch
+roslaunch popcorn_table.launch
 
 # After demo don't forget to restart at least giskard before relaunching the demo!
 

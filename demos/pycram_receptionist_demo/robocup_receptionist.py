@@ -192,6 +192,7 @@ def welcome_guest(num, guest: HumanDescription):
     # signal to start listening
     print("nlp start")
     pub_nlp.publish("start listening")
+    rospy.sleep(1.0)
 
     image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
@@ -229,7 +230,7 @@ def welcome_guest(num, guest: HumanDescription):
             rospy.sleep(1.5)
 
             pub_nlp.publish("start")
-            rospy.sleep(1.3)
+            rospy.sleep(1.8)
             image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
             start_time = time.time()
@@ -249,7 +250,7 @@ def welcome_guest(num, guest: HumanDescription):
 
                 elif response[2].strip() == "None":
                     # ask for drink again
-                    guest.set_drink(response[1])
+                    guest.set_name(response[1])
                     guest.set_drink(drink_repeat())
                 else:
                     # understood both
@@ -260,7 +261,8 @@ def welcome_guest(num, guest: HumanDescription):
     if num == 1:
         try:
             talk.pub_now("i will take a picture of you to recognize you later", wait_bool=wait_bool)
-            rospy.sleep(2)
+            pakerino()
+            rospy.sleep(1.4)
             talk.pub_now("please wait and look at me", wait_bool=wait_bool)
             get_attributes(guest)
 
@@ -275,10 +277,10 @@ def welcome_guest(num, guest: HumanDescription):
             except PerceptionObjectNotFound:
                 print("continue without attributes")
 
-    # talk.pub_now("i will show you the living room now", wait_bool=wait_bool)
+    talk.pub_now("i will show you the living room now", wait_bool=wait_bool)
 
-    #print(guest.id)
-    introduce(host, guest)
+    print("guest ID welcome seq:" + str(guest.id))
+    rospy.sleep(1.2)
     return guest
 
 
@@ -348,6 +350,7 @@ def demo(step):
         global guest2
         pose3 = Pose([1.9, 4.5, 0], [0, 0, 1, 0])
 
+
         # signal start
         pakerino()
 
@@ -380,9 +383,7 @@ def demo(step):
 
             # reception/talking sequence
             pakerino()
-            guest1 = welcome_guest(2, guest1)
-            rospy.sleep(3)
-            guest1 = welcome_guest(2, guest1)
+            guest1 = welcome_guest(1, guest1)
 
         if step <= 2:
             # stop looking at human
@@ -390,17 +391,16 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # leading to living room and pointing to free seat
-            talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
+            #talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
 
             # head straight
-            config = {'head_pan_joint': 0}
-            pakerino(config=config)
+            pakerino()
             rospy.sleep(0.5)
 
             # lead human to living room
-            move.pub_now(after_door_ori)
-            move.pub_now(pose_corner)
-            move.pub_now(door_to_couch)
+            # move.pub_now(after_door_ori)
+            # move.pub_now(pose_corner)
+            # move.pub_now(door_to_couch)
 
             # place new guest in living room
             gripper.pub_now("close")
@@ -409,12 +409,49 @@ def demo(step):
             rospy.sleep(1)
 
             # detect host
-            host_pose = DetectAction(technique='human').resolve().perform()
-            host.set_pose(host_pose[1])
-            DetectAction(technique='human', state='stop').resolve().perform()
+            #host_pose = DetectAction(technique='human').resolve().perform()
+            #host.set_pose(host_pose[1])
+            #DetectAction(technique='human', state='stop').resolve().perform()
+
+            ########################################################
+            # update poses from guest1 and host
+            counter = 0
+            while counter < 3:
+                id_humans = []
+                found_host = False
+                try:
+                    human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
+                    counter += 1
+                    id_humans = human_dict["keys"]
+                    print("id humans: " + str(id_humans))
+                    host_pose = human_dict[id_humans[0]]
+                    host.set_id(id_humans[0])
+                    host.set_pose(PoseStamped_to_Point(host_pose))
+                    found_host = True
+                    break
+
+                except:
+                    print("i am a faliure and i hate my life")
+                    if counter == 2:
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(0.5)
+
+                    counter += 1
+
+            if not found_host:
+                try:
+                    config = {'head_pan_joint': -0.1}
+                    pakerino(config=config)
+                    host_pose = DetectAction(technique='human').resolve().perform()
+                    host.set_pose(host_pose)
+
+                except Exception as e:
+                    print(e)
+            ########################################################
 
             # find free seat
             guest_pose = detect_point_to_seat()
+            image_switch_publisher.pub_now(ImageEnum.SOFA.value)
             if not guest_pose:
                 # move head a little to perceive chairs
                 config = {'head_pan_joint': -0.1}
@@ -442,8 +479,7 @@ def demo(step):
 
             # drive back to door
             # head straight
-            config = {'head_pan_joint': 0}
-            pakerino(config=config)
+            pakerino()
 
             move.pub_now(pose_corner_back)
             move.pub_now(pose3)
@@ -475,6 +511,7 @@ def demo(step):
 
             # leading to living room and pointing to free seat
             talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
+            pakerino()
 
             # stop looking at human
             giskardpy.cancel_all_called_goals()
@@ -495,6 +532,7 @@ def demo(step):
             # update poses from guest1 and host
             counter = 0
             while True:
+                id_humans = []
                 try:
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
@@ -509,14 +547,13 @@ def demo(step):
                             guest1_pose = human_dict[guest1.id]
                             talk.pub_now("found guest", wait_bool=wait_bool)
                             found_guest = True
-                            guest1.set_pose(guest1_pose)
-                            break
+                            guest1.set_pose(PoseStamped_to_Point(guest1_pose))
                         else:
                             print("nothing to see here")
                             if not found_host:
                                 found_host = True
                                 host_pose = human_dict[key]
-                                host.set_pose(host_pose)
+                                host.set_pose(PoseStamped_to_Point(host_pose))
 
                     if found_guest or counter > 3:
                         break
@@ -526,6 +563,7 @@ def demo(step):
 
                 except PerceptionObjectNotFound:
                      print("i am a faliure and i hate my life")
+                     counter += 1
 
             if not found_guest:
                 try:
@@ -542,15 +580,14 @@ def demo(step):
 
             # find a place for guest2 to sit and point
             guest_pose = detect_point_to_seat()
-            # TODO fix sofa pic
-            #image_switch_publisher.pub_now(ImageEnum.SOFA.value)
+            image_switch_publisher.pub_now(ImageEnum.SOFA.value)
 
             if not guest_pose:
                 # move head a little
                 # TODO: failure handling for couch seat
-                config = {'head_pan_joint': -0.3}
+                config = {'head_pan_joint': -0.1}
                 pakerino(config)
-                guest_pose = detect_point_to_seat()
+                guest_pose = detect_point_to_seat(no_sofa= True)
                 if guest_pose:
                     guest2.set_pose(guest_pose)
             else:

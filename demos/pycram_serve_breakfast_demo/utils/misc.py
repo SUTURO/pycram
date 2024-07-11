@@ -3,7 +3,7 @@ from docutils.nodes import math
 
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
-import pycram.external_interfaces.giskard as giskardpy
+
 from pycram.designators.object_designator import *
 from std_msgs.msg import String
 from deprecated import deprecated

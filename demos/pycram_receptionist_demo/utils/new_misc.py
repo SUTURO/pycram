@@ -349,3 +349,16 @@ def toPoseStamped(x_cord: float, y_cord: float, z_cord: float) -> PoseStamped:
     pose.pose.position.z = z_cord
 
     return pose
+
+
+def PoseStamped_to_Point(pose: PoseStamped):
+    """
+    function to transform PoseStamped to PointStamped in '/map' frame
+    """
+    point_pose = PointStamped()
+    point_pose.header.frame_id = "map"
+    point_pose.point.x = pose.pose.position.x
+    point_pose.point.y = pose.pose.position.y
+    point_pose.point.z = pose.pose.position.z
+
+    return point_pose

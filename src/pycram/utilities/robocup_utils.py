@@ -10,7 +10,7 @@ import pycram.external_interfaces.giskard_new as giskardpy
 from pycram.designators.object_designator import *
 
 
-def pakerino(torso_z=0.15, config=None
+def pakerino(torso_z=0.15, config=None):
     if not config:
         config = {'arm_lift_joint': torso_z, 'arm_flex_joint': 0, 'arm_roll_joint': -1.2, 'wrist_flex_joint': -1.5,
                   'wrist_roll_joint': 0}
@@ -140,11 +140,11 @@ class TextToSpeechPublisher():
     def status_callback(self, msg):
         self.status_list = msg.status_list
 
-    def pub_now(self, sentence, talk_bool: bool = True):
-        rospy.logerr("talking sentence: " + str(sentence))
+    def pub_now(self, sentence, talk_bool: bool = True, wait_bool: bool = True):
+        rospy.loginfo(sentence)
         if talk_bool:
             while not rospy.is_shutdown():
-                if not self.status_list:  # Check if the status list is empty
+                if not self.status_list or not wait_bool:  # Check if the status list is empty
                     goal_msg = TalkRequestActionGoal()
                     goal_msg.header.stamp = rospy.Time.now()
                     goal_msg.goal.data.language = 1

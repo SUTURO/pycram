@@ -305,7 +305,7 @@ def achieve_sequence_pick_up(pose1):
     #                                                 end_condition=cart_monitor4)
 
     giskard_wrapper.monitors.add_end_motion(start_condition=end_monitor)
-    #giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.avoid_all_collisions()
     giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
     return giskard_wrapper.execute()
 
@@ -373,10 +373,28 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) -> 'M
     :param root_link: The starting link of the chain which should be used to achieve this goal
     :return: MoveResult message for this goal
     """
+    print("in giskard stuff")
+    root_link = 'map'
+    tip_link = 'hand_gripper_tool_frame'
     sync_worlds()
-    giskard_wrapper.motion_goals.avoid_all_collisions()
-    giskard_wrapper.motion_goals.add_cartesian_pose(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
-    return giskard_wrapper.execute()
+    cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link,
+                                                                tip_link=tip_link,
+                                                                goal_pose=_pose_to_pose_stamped(goal_pose),
+                                                                position_threshold=0.02,
+                                                                orientation_threshold=0.02,
+                                                                name='achieve_cartesian_pose1')
+
+    end_monitor = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
+
+    giskard_wrapper.motion_goals.add_cartesian_pose(name='g1-cartesian',
+                                                    root_link=root_link,
+                                                    tip_link=tip_link,
+                                                    goal_pose=_pose_to_pose_stamped(goal_pose),
+                                                    end_condition=cart_monitor1)
+
+    giskard_wrapper.monitors.add_end_motion(start_condition=end_monitor)
+    # giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
 
 
 def achieve_straight_cartesian_goal(goal_pose: Pose, tip_link: str,
@@ -473,12 +491,14 @@ def achieve_open_container_goal(tip_link: str, environment_link: str, goal_state
     print(tip_link)
     print(environment_link)
     if goal_state is None:
-        giskard_wrapper.motion_goals.set_open_container_goal(tip_link, environment_link)
+        giskard_wrapper.motion_goals.open_container_goal(tip_link, environment_link)
     else:
-        giskard_wrapper.motion_goals.set_open_container_goal(tip_link, environment_link, goal_joint_state=goal_state,
+        giskard_wrapper.motion_goals.open_container_goal(tip_link, environment_link, goal_joint_state=goal_state,
                                                              special_door=special_door)
 
     giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.add_default_end_motion_conditions()
+
     return giskard_wrapper.execute()
 
 
@@ -489,7 +509,9 @@ def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
     :param handle_name: the name of the handle the HSR was grasping.
     :return: MoveResult message for this goal
     """
-    giskard_wrapper.motion_goals.set_hsrb_dishwasher_door_around(handle_name)
+    giskard_wrapper.motion_goals.hsrb_dishwasher_door_around(handle_name)
+    giskard_wrapper.add_default_end_motion_conditions()
+
     giskard_wrapper.execute()
 
 
@@ -503,11 +525,13 @@ def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult'
     :return: MoveResult message for this goal.
     """
 
-    giskard_wrapper.motion_goals.set_hsrb_align_to_push_door_goal(handle_name, door_name)
+    giskard_wrapper.motion_goals.hsrb_align_to_push_door_goal(handle_name, door_name)
     giskard_wrapper.execute()
 
-    giskard_wrapper.motion_goals.set_hsrb_pre_push_door_goal(handle_name=handle_name, hinge_frame_id=door_name)
+    giskard_wrapper.motion_goals.hsrb_pre_push_door_goal(handle_name=handle_name, hinge_frame_id=door_name)
     giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.add_default_end_motion_conditions()
+
     giskard_wrapper.execute()
 
 
@@ -729,15 +753,16 @@ def grasp_doorhandle(handle_name: str):
     return giskard_wrapper.execute()
 #
 #
-# def grasp_handle(handle_name: str):
-#     """
-#     grasps the dishwasher handle.
-#
-#     :param handle_name: name of the dishwasher handle, which should be grasped
-#     """
-#     giskard_wrapper.set_hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
-#     giskard_wrapper.execute()
-#
+def grasp_handle(handle_name: str):
+    """
+    grasps the dishwasher handle.
+
+    :param handle_name: name of the dishwasher handle, which should be grasped
+    """
+    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
+
 #
 def open_doorhandle(handle_name: str):
     giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name)
