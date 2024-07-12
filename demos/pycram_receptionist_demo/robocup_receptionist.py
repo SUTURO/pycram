@@ -33,11 +33,12 @@ move = PoseNavigator()
 talk = TextToSpeechPublisher()
 
 # variables for communcation with nlp
-pub_nlp = rospy.Publisher('/startListener', String, queue_size=10)
+pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
+pub_bell = rospy.Publisher('/startSoundDetection', String, queue_size=16)
 response = ""
 wait_bool = False
 callback = False
-doorbell = True
+doorbell = False
 timeout = 12  # 12 seconds timeout
 laser = StartSignalWaiter()
 
@@ -71,8 +72,7 @@ def data_cb(data):
     image_switch_publisher.pub_now(ImageEnum.HI.value)
     response = data.data.split(",")
     for ele in response:
-        print(ele)
-        print(type(ele))
+
         ele.strip()
     response.append("None")
     print(response)
@@ -160,6 +160,76 @@ def get_attributes(guest: HumanDescription):
     rospy.loginfo(attr_list)
 
 
+def name_repeat():
+    """
+    HRI-function to ask for name again once.
+    """
+
+    global callback
+    global response
+    global  wait_bool
+    callback = False
+    got_name = False
+    rospy.Subscriber("nlp_out", String, data_cb)
+
+    while not got_name:
+        talk.pub_now("i am sorry, please repeat your name", wait_bool=wait_bool)
+        rospy.sleep(1.2)
+        pub_nlp.publish("start")
+
+        # sound/picture
+        rospy.sleep(3)
+        image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        start_time = time.time()
+        while not callback:
+            # signal repeat to human
+            if time.time() - start_time == timeout:
+                print("guest needs to repeat")
+                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
+        callback = False
+
+        if response[0] == "<GUEST>" and response[1].strip() != "None":
+            return response[1]
+
+def drink_repeat():
+    """
+    HRI-function to ask for drink again once.
+    """
+    global callback
+    #global response
+    global wait_bool
+    callback = False
+    got_name = False
+    rospy.Subscriber("nlp_out", String, data_cb)
+
+    while not got_name:
+        talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
+        rospy.sleep(3.5)
+        talk.pub_now("and use the sentence: my favorite drink is", wait_bool=wait_bool)
+        rospy.sleep(3.3)
+        pub_nlp.publish("start")
+
+        # sound/picture
+        rospy.sleep(3)
+        image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        start_time = time.time()
+        while not callback:
+            # signal repeat to human
+            if time.time() - start_time == timeout:
+                print("guest needs to repeat")
+                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
+        callback = False
+
+        if response[0] == "<GUEST>" and response[2].strip() != "None":
+            return response[2]
+
+
 def welcome_guest(num, guest: HumanDescription):
     """
     talking sequence to get name and favorite drink of guest
@@ -183,16 +253,16 @@ def welcome_guest(num, guest: HumanDescription):
     talk.pub_now("Hello, i am Toya and my favorite drink is oil.", True, wait_bool=wait_bool)
     rospy.sleep(3)
 
-    talk.pub_now("please answer me after the sound", True, wait_bool=wait_bool)
-    rospy.sleep(1.4)
-
     talk.pub_now("What is your name and favorite drink?", True, wait_bool=wait_bool)
-    rospy.sleep(1.5)
+    rospy.sleep(2)
+
+    talk.pub_now("please answer me after the beep sound", True, wait_bool=wait_bool)
+    rospy.sleep(2.5)
 
     # signal to start listening
     print("nlp start")
     pub_nlp.publish("start listening")
-    rospy.sleep(1.3)
+    rospy.sleep(2.3)
     image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
     # wait for nlp answer
@@ -223,6 +293,9 @@ def welcome_guest(num, guest: HumanDescription):
                 drink = True
                 # ask for drink again
                 guest.set_name(response[1])
+            else:
+                name = True
+                drink = True
 
             if name:
                 guest.set_name(name_repeat())
@@ -235,10 +308,10 @@ def welcome_guest(num, guest: HumanDescription):
         i = 0
         while i < 2:
             talk.pub_now("please repeat your name and drink loud and clear", True, wait_bool=wait_bool)
-            rospy.sleep(1.5)
+            rospy.sleep(2.1)
 
             pub_nlp.publish("start")
-            rospy.sleep(1.8)
+            rospy.sleep(2.5)
             image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
             start_time = time.time()
@@ -375,7 +448,7 @@ def demo(step):
         # signal start
         pakerino()
 
-        #talk.pub_now("waiting for guests", wait_bool=wait_bool)
+        talk.pub_now("waiting for guests", wait_bool=wait_bool)
         image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         # receive data from nlp via topic
@@ -384,6 +457,7 @@ def demo(step):
 
         if step <= 0:
             # door opening sequence
+            pub_bell.publish("start bell detection")
 
             # wait 15 seconds for sound
             start_time = time.time()
@@ -514,6 +588,7 @@ def demo(step):
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
             # wait 12 seconds for sound
+            pub_bell.publish("start bell detection")
             start_time = time.time()
             while not doorbell:
                 # continue challenge to not waste time
@@ -646,7 +721,7 @@ def demo(step):
 
             if not guest_pose:
                 # move head a little
-                # TODO: cange according to arena
+                # TODO: change according to arena
                 config = {'head_pan_joint': -0.1}
                 pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
@@ -663,5 +738,6 @@ def demo(step):
                 rospy.sleep(3)
                 introduce(guest1, guest2)
                 rospy.sleep(3)
+                describe(guest1)
 
 demo(1)

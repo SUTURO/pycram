@@ -99,7 +99,7 @@ def name_confirm(name):
     global callback
     global response
     callback = False
-    rospy.Subscriber("nlp_out", String, data_cb)
+    # rospy.Subscriber("nlp_out", String, data_cb)
 
     talk.pub_now("is your name " + str(name) + "?")
     rospy.sleep(0.8)
@@ -151,72 +151,72 @@ def name_confirm(name):
             return name
 
 
-def name_repeat():
-    """
-    HRI-function to ask for name again once.
-    """
-
-    global callback
-    global response
-    global  wait_bool
-    callback = False
-    got_name = False
-    rospy.Subscriber("nlp_out", String, data_cb)
-
-    while not got_name:
-        talk.pub_now("i am sorry, please repeat your name", wait_bool=wait_bool)
-        rospy.sleep(0.7)
-        pub_nlp.publish("start")
-
-        # sound/picture
-        rospy.sleep(3)
-        image_switch_publisher.pub_now(ImageEnum.TALK.value)
-
-        start_time = time.time()
-        while not callback:
-            # signal repeat to human
-            if time.time() - start_time == timeout:
-                print("guest needs to repeat")
-                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
-
-        image_switch_publisher.pub_now(ImageEnum.HI.value)
-        callback = False
-
-        if response[0] == "<GUEST>" and response[1].strip() != "None":
-            return response[1]
-
-def drink_repeat():
-    """
-    HRI-function to ask for drink again once.
-    """
-    global callback
-    global response
-    global wait_bool
-    callback = False
-    got_name = False
-    rospy.Subscriber("nlp_out", String, data_cb)
-
-    while not got_name:
-        talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
-        rospy.sleep(1)
-        pub_nlp.publish("start")
-
-        # sound/picture
-        rospy.sleep(3)
-        image_switch_publisher.pub_now(ImageEnum.TALK.value)
-
-        start_time = time.time()
-        while not callback:
-            # signal repeat to human
-            if time.time() - start_time == timeout:
-                print("guest needs to repeat")
-                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
-
-        image_switch_publisher.pub_now(ImageEnum.HI.value)
-        callback = False
-
-        if response[0] == "<GUEST>" and response[2].strip() != "None":
-            return response[2]
+# def name_repeat():
+#     """
+#     HRI-function to ask for name again once.
+#     """
+#
+#     global callback
+#     global response
+#     global  wait_bool
+#     callback = False
+#     got_name = False
+#     rospy.Subscriber("nlp_out", String, data_cb)
+#
+#     while not got_name:
+#         talk.pub_now("i am sorry, please repeat your name", wait_bool=wait_bool)
+#         rospy.sleep(0.7)
+#         pub_nlp.publish("start")
+#
+#         # sound/picture
+#         rospy.sleep(3)
+#         image_switch_publisher.pub_now(ImageEnum.TALK.value)
+#
+#         start_time = time.time()
+#         while not callback:
+#             # signal repeat to human
+#             if time.time() - start_time == timeout:
+#                 print("guest needs to repeat")
+#                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+#
+#         image_switch_publisher.pub_now(ImageEnum.HI.value)
+#         callback = False
+#
+#         if response[0] == "<GUEST>" and response[1].strip() != "None":
+#             return response[1]
+#
+# def drink_repeat():
+#     """
+#     HRI-function to ask for drink again once.
+#     """
+#     global callback
+#     global response
+#     global wait_bool
+#     callback = False
+#     got_name = False
+#     rospy.Subscriber("nlp_out", String, data_cb)
+#
+#     while not got_name:
+#         talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
+#         rospy.sleep(1)
+#         pub_nlp.publish("start")
+#
+#         # sound/picture
+#         rospy.sleep(3)
+#         image_switch_publisher.pub_now(ImageEnum.TALK.value)
+#
+#         start_time = time.time()
+#         while not callback:
+#             # signal repeat to human
+#             if time.time() - start_time == timeout:
+#                 print("guest needs to repeat")
+#                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+#
+#         image_switch_publisher.pub_now(ImageEnum.HI.value)
+#         callback = False
+#
+#         if response[0] == "<GUEST>" and response[2].strip() != "None":
+#             return response[2]
 
 def drink_confirm(drink):
     """
@@ -229,7 +229,7 @@ def drink_confirm(drink):
     global callback
     global response
     callback = False
-    rospy.Subscriber("nlp_out", String, data_cb)
+    # rospy.Subscriber("nlp_out", String, data_cb)
 
     talk.pub_now("is your favorite drink " + str(drink) + "?")
     rospy.sleep(0.6)
