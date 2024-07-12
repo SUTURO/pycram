@@ -10,7 +10,7 @@ from demos.pycram_serve_breakfast_demo.utils.misc import *
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
 
 # Wished objects for the Demo
-wished_sorted_obj_list = ["Metalbowl", "Cerealbox", "Milkpackja", "Spoon"]
+wished_sorted_obj_list = ["Metalbowl", "Cerealbox", "Milkpack", "Spoon"]
 
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
@@ -62,7 +62,7 @@ class PlacingZPose(Enum):
     PLASTICKNIFE = 0.775
     KNIFE = 0.775
     METALBOWL = 0.815
-    MILKPACKJA = 0.845
+    MILKPACK = 0.845
     METALMUG = 0.775
     CEREALBOX = 0.875
     METALPLATE = 0.875
@@ -195,7 +195,7 @@ def place_objects(first_placing, objects_list, index, grasp):
     # navigate_to(2, 4.8, "popcorn table")
     ##############################################################################
 
-    if object_type in ["Cerealbox", "Cronybox", "Milkpackja", "Cutlery"]:
+    if object_type in ["Cerealbox", "Cronybox", "Milkpack", "Cutlery"]:
         if bowl is None:
             # move 30cm back
             navigate_to(robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, "popcorn table")
@@ -217,7 +217,7 @@ def place_objects(first_placing, objects_list, index, grasp):
                         place_pose.pose.position.x += 0.3
 
         if bowl is not None:
-            if object_type in ["Cerealbox", "Cronybox", "Milkpackja"]:
+            if object_type in ["Cerealbox", "Cronybox", "Milkpack"]:
                 # TODO: Werte anpassen
                 navigate_to(bowl.pose.position.x - 0.1, 5, "popcorn table")
                 # print(f"arm_roll: {robot.get_joint_state('arm_roll_joint')}")
@@ -332,6 +332,7 @@ with ((real_robot)):
 
     # navigate to shelf
     navigate_to(4.3, 4.9, "shelf")
+    MoveTorsoAction([0.2]).resolve().perform()
     obj_desig = try_detect(Pose([5.25, 4.9, 0.21], [0, 0, 0, 1]), False)
     sorted_obj = sort_objects(obj_desig, wished_sorted_obj_list)
     print(sorted_obj[0].type)
