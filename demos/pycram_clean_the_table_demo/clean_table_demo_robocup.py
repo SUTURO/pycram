@@ -15,9 +15,8 @@ from pycram.language import Monitor, Code
 start_signal_waiter = StartSignalWaiter()
 text_to_speech_publisher = TextToSpeechPublisher()
 image_switch_publisher = ImageSwitchPublisher()
-print("here")
 move = PoseNavigator()
-print("here2")
+
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
 
