@@ -743,11 +743,9 @@ class SemanticCostmap(Costmap):
         # Trim the left and right sides, only keep points before the 0s
         non_zero_cols = np.where(self.map.any(axis=0))[0]
         if len(non_zero_cols) > 0:
-            self.map = self.map[:, :non_zero_cols[-1] + 1]
-
-        non_zero_rows = np.where(self.map.any(axis=1))[0]
-        if len(non_zero_rows) > 0:
-            self.map = self.map[:non_zero_rows[-1] + 1, :]
+            left_trim = 2000  # Adjust this value to trim more from the left
+            right_trim = 20  # Adjust this value to trim more from the right
+            self.map = self.map[:, max(0, non_zero_cols[0] - left_trim):non_zero_cols[-1] + 1 + right_trim]
 
     def get_aabb_for_link(self) -> Tuple[List[float], List[float]]:
         """

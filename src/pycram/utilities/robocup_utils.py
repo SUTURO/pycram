@@ -214,8 +214,8 @@ class GraspListener:
         # Define the positions that indicate a grasp
         # Define the positions that indicate a grasp
         self.grasp_thresholds = {
-            "hand_r_distal_joint": (-1.3, 0.63),  # Adjusted based on open and closed state data with offset
-            "hand_l_distal_joint": (-1.3, 0.63)
+            "hand_r_distal_joint": (-1.3, 0.61),  # Adjusted based on open and closed state data with offset
+            "hand_l_distal_joint": (-1.3, 0.61)
         }
         # Open
         # State:
