@@ -170,7 +170,6 @@ def name_repeat():
     global wait_bool
     callback = False
     got_name = False
-    rospy.Subscriber("nlp_out", String, data_cb)
 
     while not got_name:
         talk.pub_now("i am sorry, please repeat your name", wait_bool=wait_bool)
@@ -204,7 +203,6 @@ def drink_repeat():
     global wait_bool
     callback = False
     got_name = False
-    rospy.Subscriber("nlp_out", String, data_cb)
 
     while not got_name:
         talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
@@ -515,7 +513,7 @@ def demo(step):
 
             # update poses from guest1 and host
             counter = 0
-            while counter < 3:
+            while counter < 6:
                 found_host = False
                 try:
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
