@@ -45,17 +45,16 @@ apart_desig = BelieveObject(names=["kitchen"])
 giskardpy.initial_adding_objects()
 giskardpy.sync_worlds()
 
-#move = PoseNavigator()
+move = PoseNavigator()
 
-with semi_real_robot:
+with real_robot:
     rospy.loginfo("Starting demo")
     MoveGripperMotion("close","left").resolve().perform()
 
-    #move.pub_now(Pose([8.9, 4.72, 0], [0, 0, 0, 1]))
-    #config_for_pushing_rack = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.05, 'arm_roll_joint': 0,
-                         #  'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4}
-    config_for_pushing_rack = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.67, 'arm_roll_joint': 0,
-                                      'wrist_flex_joint': -1.4, 'wrist_roll_joint': 0}
+    move.pub_now(Pose([8.9, 4.72, 0], [0, 0, 0, 1]))
+    config_for_pushing_rack = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.05, 'arm_roll_joint': 0,
+                          'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4}
+
     giskardpy.avoid_all_collisions()
     giskardpy.achieve_joint_goal(config_for_pushing_rack)
     text_to_speech_publisher.pub_now("Pushing")
