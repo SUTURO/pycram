@@ -51,14 +51,14 @@ door_name = "sink_area_dish_washer_door"
 
 # Intermediate positions for a safer navigation
 move_to_the_middle_dishwasher_pose = Pose([8.9, 4.72, 0], [0, 0, 0, 1])
-
+move_to_middle_table_pose = Pose([9.1, 4.72, 0], [0,0,1,0])
 # navigating position to the correct room
-move_to_living_room = Pose([5.8, 0.2, 0], [0, 0, 0, 1])
+move_to_living_room = Pose([5.8, 0.26, 0], [0, 0, 0, 1])
 move_in_the_middle_of_living_room = Pose([8.4, 0.86, 0], [0, 0, 0, 1])
 move_to_kitchen = Pose([9.2, 3.08, 0], [0, 0, 0.7, 0.7])
 
 perceiving_y_pos = 4.76
-look_at_pose = Pose([7.8, 4.9, 0.25])
+look_at_pose = Pose([8, 4.76, 0.25])
 
 goal_pose = None
 
@@ -132,7 +132,7 @@ def pickup_and_place_objects(sorted_obj: list):
                 MoveGripperMotion(motion="close", gripper="left").resolve().perform()
 
         else:
-            text_to_speech_publisher.pub_now("Picking up with: " + grasp)
+            text_to_speech_publisher.pub_now("Picking up with: " + sorted_obj[value].type)
             image_switch_publisher.pub_now(7)
             if grasp == "front":
                 config_for_placing = {'arm_flex_joint': -0.16, 'arm_lift_joint': 0.50, 'arm_roll_joint': -0.0145,
@@ -228,7 +228,7 @@ def check_position():
     current_pose = robot.get_pose().pose.position
     euclidean_dist = math.sqrt(pow((goal_pose.pose.position.x - current_pose.x), 2) +
                                pow((goal_pose.pose.position.y - current_pose.y), 2))
-    if euclidean_dist < 0.1:
+    if euclidean_dist < 0.08:
         print("return true")
         return True
     print("return false")
@@ -249,19 +249,20 @@ def navigate_to(location_name: str, y: Optional[float] = None):
             goal_pose = Pose([8.9, y, 0], [0, 0, 1, 0])
             #move.pub_now(Pose([8.9, y, 0], [0, 0, 1, 0]))
 
+        move.pub_now(move_to_middle_table_pose)
         while not check_position():
             move.pub_now(goal_pose)
-
+    # todo left is not needed right now
     elif location_name == placing_location_name_left:
         print("left")
-        goal_pose = Pose([9.8, 4.3, 0], [0, 0, -0.7, 0.7])
+        goal_pose = Pose([9.8, 5.1, 0], [0, 0, -0.7, 0.7])
         move.pub_now(move_to_the_middle_dishwasher_pose)
         while not check_position():
             move.pub_now(goal_pose)
-    # todo right is not needed right now
+
     elif location_name == placing_location_name_right:
-        goal_pose = Pose([9.8, 5.1, 0], [0, 0, 0.7, 0.7])
-        # move.pub_now(move_to_the_middle_dishwasher_pose)
+        goal_pose = Pose([9.75, 4.18, 0], [0, 0, 0.7, 0.7])
+        move.pub_now(move_to_the_middle_dishwasher_pose)
         while not check_position():
             move.pub_now(goal_pose)
 
@@ -287,9 +288,7 @@ def navigate_and_detect():
     MoveTorsoAction([0.2]).resolve().perform()
     MoveJointsMotion(["arm_roll_joint"], [1.5]).resolve().perform()
     LookAtAction(targets=[look_at_pose]).resolve().perform()
-    # plan = move_up | look_at
-    # couch table
-    # plan.perform()
+
     text_to_speech_publisher.pub_now("Perceiving")
     image_switch_publisher.pub_now(10)
     try:
@@ -297,7 +296,7 @@ def navigate_and_detect():
         giskardpy.sync_worlds()
 
         if len(object_desig) == 0:
-             sorted_obj_len = 1
+            sorted_obj_len = 1
         else:
             sorted_obj_len = 0
     except PerceptionObjectNotFound:
@@ -413,10 +412,11 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
 # Main interaction sequence with real robot
 with real_robot:
     rospy.loginfo("Starting demo")
-    text_to_speech_publisher.pub_now("Starting demo")
+    text_to_speech_publisher.pub_now("Starting demo Clean The Table")
     sorted_obj_len = 0
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     # navigate to dishwasher
+    # todo: add functionality to drive into the room
     move.pub_now(move_to_living_room)
     move.pub_now(move_in_the_middle_of_living_room)
     move.pub_now(move_to_kitchen)
@@ -425,6 +425,7 @@ with real_robot:
     navigate_to(dishwasher_placing_pos)
 
     image_switch_publisher.pub_now(2)
+    text_to_speech_publisher.pub_now("Opening")
     OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
 
     text_to_speech_publisher.pub_now("Please pull out the lower rack")
