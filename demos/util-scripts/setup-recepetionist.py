@@ -35,7 +35,8 @@ run_command(f'gnome-terminal -- bash -c "tmux new-session -d -s {session_name}; 
             f'tmux split-window -v -t {session_name}:0.6; '
             f'tmux split-window -v -t {session_name}:0.7; '
             # Terminal1 0: Rviz map launch 
-            f'tmux send-keys -t {session_name}:0.0 \'roslaunch suturo_bringup pre_robocup_door_envi.launch\' C-m; '
+            # roslaunch suturo_bringup pre_robocup_door_envi.launch
+            f'tmux send-keys -t {session_name}:0.0 \'roslaunch suturo_bringup robocup_bringup.launch\' C-m; '
             
             # Terminal1 1: Giskard launch
             f'tmux send-keys -t {session_name}:0.1 \'roslaunch giskardpy giskardpy_hsr_real_vel.launch\' C-m; '
@@ -49,12 +50,12 @@ run_command(f'gnome-terminal -- bash -c "tmux new-session -d -s {session_name}; 
             
             # Terminal 4: Rasa start and Audio topic check
             f'tmux send-keys -t {session_name}:0.4 \'virtual_nlp\' C-m; '
-            f'tmux send-keys -t {session_name}:0.4 \'cd /home/suturo/suturo23_24/nlp_ws/src/Rasa/rasa \' C-m; '
-            f'tmux send-keys -t {session_name}:0.4 \'rasa run --enable-api & \' C-m; '
+            f'tmux send-keys -t {session_name}:0.4 \'cd /home/suturo/suturo23_24/nlp_ws/src/Rasa/rasa_new/suturo_rasa \' C-m; '
+            f'tmux send-keys -t {session_name}:0.4 \'rasa run --enable-api &\' C-m; '
             f'tmux send-keys -t {session_name}:0.4 \'rostopic hz /audio/audio\' C-m; '
             
             # Terminal1 5: NLP Bell-Detection script start
-            f'tmux send-keys -t {session_name}:0.5 \'rosrun sound_detection nlp_sound_detect.py  \' C-m; '
+            f'tmux send-keys -t {session_name}:0.5 \'rosrun sound_detection nlp_sound_detect.py 5 \' C-m; '
             
             # Terminal1 6: NLP HRI-Script start
             f'tmux send-keys -t {session_name}:0.6 \'nlp_venv; cd /home/suturo/suturo23_24/nlp_ws/src/suturo_nlp/activate_language_processing/scripts ; python3 nlp_receptionist.py -hsr\' C-m; '

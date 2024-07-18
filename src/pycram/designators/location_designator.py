@@ -316,7 +316,6 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
         :param for_object: Optional object that should be placed at the found location
         :param resolver: An alternative resolver that creates a resolved location for the input parameter of this description
         """
-        print("init")
         super().__init__(resolver)
         self.urdf_link_name: str = urdf_link_name
         self.part_of: ObjectDesignatorDescription.Object = part_of
@@ -347,15 +346,18 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
 
         height_offset = 0
         if self.for_object:
-            min, max = self.for_object.bullet_world_object.get_AABB()
-            height_offset = ((max[2] - min[2]) / 2) + 0.01
+            try:
+                min, max = self.for_object.bullet_world_object.get_AABB()
+            except AttributeError:
+                min, max = self.for_object.get_AABB()
+            height_offset = ((max[2] - min[2]) / 2)
         for maybe_pose in pose_generator(sem_costmap):
             maybe_pose.position.z += height_offset
             yield self.Location(maybe_pose)
 
 
 def find_placeable_pose(enviroment_link, enviroment_desig, robot_desig, arm, world,
-                        margin_cm=0.2, inner_margin_cm=0.1, object_desig=None):
+                        margin_cm=0.2, inner_margin_cm=0.2, object_desig=None):
     # rospy.loginfo("Create a SemanticCostmapLocation instance")
     location_desig = SemanticCostmapLocation(urdf_link_name=enviroment_link,
                                              part_of=enviroment_desig,
@@ -375,7 +377,7 @@ def find_placeable_pose(enviroment_link, enviroment_desig, robot_desig, arm, wor
     return empty_loc
 
 
-def is_location_clear(location_pose, world, clearance_radius=0.20):
+def is_location_clear(location_pose, world, clearance_radius=0.25):
     """
     Check if the specified location is clear of objects within the given clearance radius.
     Implement the logic to check for nearby objects in the environment.

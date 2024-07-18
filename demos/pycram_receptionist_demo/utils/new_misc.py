@@ -289,7 +289,7 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
         pub_pose.publish(human1.pose)
         rospy.sleep(1.0)
     talk.pub_now(f"Hey, {human1.name}", wait_bool=wait_bool)
-    rospy.sleep(2.0)
+    rospy.sleep(2.5)
 
     if human2.pose:
         pub_pose.publish(human2.pose)
@@ -297,7 +297,7 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
     talk.pub_now(f" This is {human2.name} and their favorite drink is {human2.fav_drink}", wait_bool=wait_bool)
     rospy.sleep(2.2)
     talk.pub_now(f"Hey, {human2.name}", wait_bool=wait_bool)
-    rospy.sleep(1.5)
+    rospy.sleep(2)
 
     if human1.pose:
         pub_pose.publish(human1.pose)
@@ -319,23 +319,23 @@ def describe(human: HumanDescription):
             pub_pose.publish(human.pose)
 
         talk.pub_now(f"I will describe {human.name} further now", wait_bool=wait_bool)
-        rospy.sleep(1)
+        rospy.sleep(1.5)
 
         # gender
         talk.pub_now(f"i think your gender is {human.attributes[0]}", wait_bool=wait_bool)
-        rospy.sleep(1)
+        rospy.sleep(1.5)
 
         # headgear or not
         talk.pub_now(f"you are {human.attributes[1]}", wait_bool=wait_bool)
         rospy.sleep(1)
 
         # kind of clothes
-        talk.pub_now(f"you are  {human.attributes[2]}", wait_bool=wait_bool)
+        # talk.pub_now(f"you are  {human.attributes[2]}", wait_bool=wait_bool)
         rospy.sleep(1)
 
         # brightness of clothes
         talk.pub_now(f"you are wearing {human.attributes[3]}", wait_bool=wait_bool)
-        rospy.sleep(1)
+        rospy.sleep(2)
 
 
 def toPoseStamped(x_cord: float, y_cord: float, z_cord: float) -> PoseStamped:

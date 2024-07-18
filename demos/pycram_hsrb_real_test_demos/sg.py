@@ -140,6 +140,36 @@ def get_closest_pose(obj_pose, pose_list):
     return nearest_pose
 
 
+def calculate_z_offsets(links_from_shelf):
+    """
+    Calculate the Z offsets between each link in links_from_shelf and return a dictionary mapping each link
+    to the Z height difference to the next link.
+    """
+    z_offsets = {}
+
+    # Get the pose (including Z position) for each link
+    link_poses = {link: kitchen.get_link_pose(link) for link in links_from_shelf}
+
+    # Iterate through the links and calculate Z offsets
+    for i, link in enumerate(links_from_shelf[:-1]):  # Skip the last link
+        current_pose = link_poses[link]
+        next_pose = link_poses[links_from_shelf[i + 1]]
+        current_z = current_pose.position.z  # Adjust according to the structure of Pose
+        next_z = next_pose.position.z  # Adjust according to the structure of Pose
+        z_offset = next_z - current_z
+        z_offsets[link] = z_offset
+
+    return z_offsets
+
+
+def get_z_height_to_next_link(link, z_offsets):
+    """
+    Return the Z height difference from the given link to the next link.
+    """
+    return z_offsets.get(link, None)
+
+
+#noteme if you want to be able to run this in simulation you will have to do get.aabb without bullet world obj
 def find_pose_in_shelf(group, object, groups_in_shelf):
     link = None
     nearest_pose_to_group = None
@@ -149,44 +179,35 @@ def find_pose_in_shelf(group, object, groups_in_shelf):
         place_poses = find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
                                           object_desig=object)
         nearest_pose_to_group = get_closest_pose(group_pose, place_poses)
-        pace_poses = []
+
+    except (TypeError, KeyError):
+        place_poses = []
         for link in links_from_shelf:
             place_poses.append(
                 (find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
                                      object_desig=object), link)
             )
 
-        # in this case its the biggest group since why not? i assume most poses are then free
+        # in this case it's the biggest group since why not? i assume most poses are then free
         longest_group = max(place_poses, key=lambda x: len(x[0]))
-        nearest_pose_to_group = longest_group[0]
-        group = ...  # Assuming 'group' is defined somewhere in your code
-        groups_in_shelf[group][1] = longest_group[1]  # link
-        groups_in_shelf[group][0] = nearest_pose_to_group
-
-        place_poses = []
-        for link in links_from_shelf:
-            place_poses.append(
-                find_placeable_pose(link, kitchen_desig.resolve(), robot_desig.resolve(), "left", world, 0.1,
-                                    object_desig=object), link)
-        # in this case its the biggest group since why not? i assume most poses are then free
-        longest_group = max(place_poses, key=len)
-        nearest_pose_to_group = longest_group[0]
-        groups_in_shelf[group][1] = link
-        groups_in_shelf[group][0] = nearest_pose_to_group
-    except TypeError:
-
-
+        nearest_pose_to_group = longest_group[0][0]
+        link = longest_group[1]
+        if group not in groups_in_shelf:
+            groups_in_shelf[group] = [nearest_pose_to_group, longest_group[1]]
 
     if nearest_pose_to_group:
-        world.current_bullet_world.add_vis_axis(nearest_pose_to_group)
+        z_offsets = calculate_z_offsets(links_from_shelf)
+        z_height_to_next = get_z_height_to_next_link(link, z_offsets)
 
         pose_in_shelf = lt.transform_pose(nearest_pose_to_group, kitchen.get_link_tf_frame(link))
         pose_in_shelf.pose.position.x = -0.10
-        pose_in_shelf.pose.position.z += 0.06
+        if z_height_to_next:
+            pose_in_shelf.pose.position.z = (z_height_to_next / 2) - 0.01
+        else:
+            pose_in_shelf.pose.position.z += 0.03
         adjusted_pose_in_map = lt.transform_pose(pose_in_shelf, "map")
         world.current_bullet_world.add_vis_axis(adjusted_pose_in_map)
 
-        talk.pub_now("placing to group:" + group)
         return adjusted_pose_in_map, link
 
 
@@ -417,10 +438,10 @@ def process_pick_up_objects(talk_bool):
             rospy.sleep(0.1)
         grasped_bool = None
         if grasp_listener.check_grasp():
-            talk.pub_now("Vanessas functions says i grasped a object")
+            talk.pub_now("Grasped a object")
             grasped_bool = True
         else:
-            talk.pub_now("Vanessas functions says i  was not able to grasped a object")
+            talk.pub_now("I was not able to grasped a object")
             grasped_bool = False
 
         return grasped_bool, grasp, group, object, obj_id, object_raw, groups_on_table
