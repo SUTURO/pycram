@@ -49,6 +49,35 @@ def sort_objects(obj_dict: dict, wished_sorted_obj_list: list):
     return sorted_objects
 
 
+def get_objects(obj_dict: dict, wished_sorted_obj_list: list):
+    """
+    return all perceived objects to the middle of the table.
+
+    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
+    :param wished_sorted_obj_list: list of object types we like to keep with the wished order
+    :return: list of seen objects in the
+    """
+    objects_list = []
+
+    if len(obj_dict) == 0:
+        return objects_list
+
+    # cut of the given State and keep the dictionary
+    first, *remaining = obj_dict
+    for dictionary in remaining:
+        for value in dictionary.values():
+            if value.pose.position.x <= 7.65:
+                objects_list.append(value)
+
+    # print which objects are in the final list
+    test_list = []
+    for test_object in objects_list:
+        test_list.append(test_object.type)
+    print(test_list)
+
+    return objects_list
+
+
 def get_bowl_list(obj_dict: dict):
     """
     searches in a dictionary of objects for all bowls and returns them
