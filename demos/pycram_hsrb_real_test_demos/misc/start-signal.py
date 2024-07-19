@@ -9,3 +9,5 @@ start_signal_waiter.wait_for_startsignal()
 
 # Once the start signal is received, continue with the rest of the script
 rospy.loginfo("Start signal received, now proceeding with tasks.")
+
+

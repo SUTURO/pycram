@@ -417,6 +417,9 @@ with real_robot:
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     # navigate to dishwasher
     # todo: add functionality to drive into the room
+    image_switch_publisher.pub_now(37) # todo which number??
+    text_to_speech_publisher.pub_now("Please remove the chairs")
+    text_to_speech_publisher.pub_now("between the table and the dishwasher")
     move.pub_now(move_to_living_room)
     move.pub_now(move_in_the_middle_of_living_room)
     move.pub_now(move_to_kitchen)
@@ -429,10 +432,11 @@ with real_robot:
     OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
 
     text_to_speech_publisher.pub_now("Please pull out the lower rack")
-    image_switch_publisher.pub_now(0)
+    image_switch_publisher.pub_now(0) #todo: which number
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion("open", "left").resolve().perform()
 
+    image_switch_publisher.pub_now(0)
     # todo add this, when it is working
     # ----------------------------------
     # sorted_obj = segmentation_detection()
