@@ -45,7 +45,7 @@ run_command(f'gnome-terminal -- bash -c "tmux new-session -d -s {session_name}; 
             f'tmux send-keys -t {session_name}:0.2 \'robokudo_venv; rosrun robokudo main.py _ae=receptionist _ros_pkg=milestone1\' C-m; '
            
             # Terminal1 3: HSR Display launch
-            f'tmux send-keys -t {session_name}:0.3 \'sshpass -p hsrhmi ssh -t hsr-hmi@192.168.0.102\' C-m; '
+            f'tmux send-keys -t {session_name}:0.3 \'sshpass -p hsrhmi ssh -t hsr-hmi@169.254.6.219\' C-m; '
             f'tmux send-keys -t {session_name}:0.3 \'wait && ./launch_display.sh\' C-m; '
             
             # Terminal 4: Rasa start and Audio topic check
@@ -61,7 +61,7 @@ run_command(f'gnome-terminal -- bash -c "tmux new-session -d -s {session_name}; 
             f'tmux send-keys -t {session_name}:0.6 \'nlp_venv; cd /home/suturo/suturo23_24/nlp_ws/src/suturo_nlp/activate_language_processing/scripts ; python3 nlp_receptionist.py -hsr\' C-m; '
             
             # Terminal1 7: HSR Audio topic  start
-            f'tmux send-keys -t {session_name}:0.7 \'sshpass -p password ssh -t administrator@192.168.0.102\' C-m; '
+            f'tmux send-keys -t {session_name}:0.7 \'sshpass -p password ssh -t administrator@169.254.6.219\' C-m; '
             f'tmux send-keys -t {session_name}:0.7 \'wait && roslaunch audio_capture capture_wave.launch\' C-m; '
 
             f'tmux attach-session -t {session_name}"')

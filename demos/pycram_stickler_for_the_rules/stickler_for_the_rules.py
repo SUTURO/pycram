@@ -14,7 +14,7 @@ import pycram.external_interfaces.giskard_new as giskardpy
 
 human_pose = None
 
-rooms_list = ["office", "kitchen", "living room", "hallway"]
+rooms_list = ["hallway", "office", "kitchen", "living room"]
 
 # An instance of the TextToSpeechPublisher
 text_to_speech_publisher = TextToSpeechPublisher()
@@ -49,6 +49,13 @@ apartment = Object("kitchen", ObjectType.ENVIRONMENT, "pre_robocup_sg.urdf")
 giskardpy.init_giskard_interface()
 giskardpy.clear()
 giskardpy.sync_worlds()
+
+living_kitchen_pass = Pose([10.4, 1.8, 0], [0, 0, 0.7, 0.7])
+kitchen_office_pass = Pose([6, 3.5, 0], [0, 0, 1, 0])
+office_hallway_pass = Pose([4.8, 3.5, 0], [0, 0, -0.7, 0.7])
+hallway_office_pass = Pose([4.8, 0.15, 0], [0, 0, 0.7, 0.7])
+hallway_perceive = Pose([4.8, 0.15, 0], [0, 0, 1, 0])
+hallway_living_pass = Pose([4.7, 0.15, 0], [0, 0, 0, 1])
 
 
 def try_detect():
@@ -211,4 +218,5 @@ with real_robot:
     navigate_to(4.86, 0.23, "left")
 
     for room in rooms_list:
+
         drink_rule(room)

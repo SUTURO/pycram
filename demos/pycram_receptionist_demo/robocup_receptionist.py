@@ -14,6 +14,14 @@ from pycram.enums import ImageEnum as ImageEnum
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, \
     HSRBMoveGripperReal, StartSignalWaiter
 
+def monitor_func():
+    der = fts.get_last_value()
+    if abs(der.wrench.force.x) > 10.30:
+        return SensorMonitoringCondition
+    return False
+
+
+
 world = BulletWorld("DIRECT")
 gripper = HSRBMoveGripperReal()
 robot = Object("hsrb", "robot", "../../resources/" + robot_description.name + ".urdf")
@@ -38,7 +46,7 @@ response = ""
 wait_bool = False
 callback = False
 doorbell = False
-timeout = 17  # 12 seconds timeout
+timeout = 15  # 12 seconds timeout
 laser = StartSignalWaiter()
 
 # Declare variables for humans
@@ -59,9 +67,8 @@ convo_pose = Pose([4.2, 0.15, 0], [0, 0, 1, 0])
 convo_pose_to_couch = Pose([4.2, 0.15, 0], [0, 0, 0, 1])
 couch_pose = Pose([8.5, 0, 0], [0, 0, 0, 1])
 couch_pose_to_door = Pose([8.6, 0, 0], [0, 0, 1, 0])
-start_pose = Pose([3.9, 0.2, 0], [0, 0, 1, 0])
+start_pose = Pose([3.7, 0.19, 0], [0, 0, 1, 0])
 
-# TODO: read from semantic map?
 couch_pose_semantik = PoseStamped()
 couch_pose_semantik.pose.position.x = 10.8
 couch_pose_semantik.pose.position.y = -0.27
@@ -86,7 +93,7 @@ def data_cb(data):
     for ele in response:
         ele.strip()
     response.append("None")
-    print(response)
+    print("\033[36m" +str(response))
     callback = True
 
 
@@ -109,7 +116,7 @@ def pakerino(torso_z=0.05, config=None):
 
     giskardpy.avoid_all_collisions()
     giskardpy.achieve_joint_goal(config)
-    print("Parking done")
+    print("\033[32mParking done")
 
 
 def door_opening():
@@ -171,9 +178,12 @@ def name_repeat():
     callback = False
     got_name = False
 
+    counter = 0
     while not got_name:
         talk.pub_now("i am sorry, please repeat your name", wait_bool=wait_bool)
         rospy.sleep(1.2)
+        talk.pub_now("talk after the beep", wait_bool=wait_bool)
+        rospy.sleep(1)
         pub_nlp.publish("start")
 
         # sound/picture
@@ -184,7 +194,7 @@ def name_repeat():
         while not callback:
             # signal repeat to human
             if time.time() - start_time == timeout:
-                print("guest needs to repeat")
+                print("\033[33mguest needs to repeat")
                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
 
         image_switch_publisher.pub_now(ImageEnum.HI.value)
@@ -192,7 +202,10 @@ def name_repeat():
 
         if response[0] == "<GUEST>" and response[1].strip() != "None":
             return response[1]
-
+        if counter == 1:
+            break
+        else:
+            counter = 1
 
 def drink_repeat():
     """
@@ -204,11 +217,14 @@ def drink_repeat():
     callback = False
     got_name = False
 
+    counter = 0
     while not got_name:
         talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
         rospy.sleep(3.5)
         talk.pub_now("and use the sentence: my favorite drink is", wait_bool=wait_bool)
         rospy.sleep(3.3)
+        talk.pub_now("talk after the beep", wait_bool=wait_bool)
+        rospy.sleep(1)
         pub_nlp.publish("start")
 
         # sound/picture
@@ -219,7 +235,7 @@ def drink_repeat():
         while not callback:
             # signal repeat to human
             if time.time() - start_time == timeout:
-                print("guest needs to repeat")
+                print("\033[33mguest needs to repeat")
                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
 
         image_switch_publisher.pub_now(ImageEnum.HI.value)
@@ -227,6 +243,10 @@ def drink_repeat():
 
         if response[0] == "<GUEST>" and response[2].strip() != "None":
             return response[2]
+        if counter == 1:
+            break
+        else:
+            counter = 1
 
 
 def welcome_guest(num, guest: HumanDescription):
@@ -240,7 +260,8 @@ def welcome_guest(num, guest: HumanDescription):
     global wait_bool
 
     talk.pub_now("Welcome, please step in front of me and come close", wait_bool=wait_bool)
-    rospy.sleep(1.5)
+    rospy.sleep(1.8)
+    talk.pub_now("come closer and lean forward", wait_bool=wait_bool)
 
     # look for human
     DetectAction(technique='human').resolve().perform()
@@ -271,14 +292,14 @@ def welcome_guest(num, guest: HumanDescription):
         rospy.sleep(1)
 
         if int(time.time() - start_time) == timeout:
-            print("guest needs to repeat")
+            print("\033[33mguest needs to repeat")
             image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
     callback = False
 
     if response[0] == "<GUEST>":
         # success a name and intent was understood
         if response[1].strip() != "None" and response[2].strip() != "None":
-            print("in success")
+            print("\033[32min success name, drink")
             # understood both
             guest.set_drink(response[2])
             guest.set_name(response[1])
@@ -318,14 +339,14 @@ def welcome_guest(num, guest: HumanDescription):
             while not callback:
                 rospy.sleep(1)
                 if int(time.time() - start_time) == timeout:
-                    print("guest needs to repeat")
+                    print("\033[33mguest needs to repeat")
                     image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
             callback = False
 
             if response[0] == "<GUEST>":
                 # success a name and intent was understood
                 if response[1].strip() != "None" and response[2].strip() != "None":
-                    print("in success")
+                    print("\033[32min success name drink")
                     # understood both
                     guest.set_drink(response[2])
                     guest.set_name(response[1])
@@ -356,6 +377,8 @@ def welcome_guest(num, guest: HumanDescription):
     # get attributes and face if first guest
     if num == 1:
         try:
+            image_switch_publisher.pub_now(ImageEnum.SELFIE.value)
+
             talk.pub_now("i will take a picture of you to recognize you later", wait_bool=wait_bool)
             pakerino()
             rospy.sleep(1.4)
@@ -371,7 +394,7 @@ def welcome_guest(num, guest: HumanDescription):
                 get_attributes(guest)
 
             except PerceptionObjectNotFound:
-                print("continue without attributes")
+                rospy.logerr("continue without attributes")
 
     rospy.sleep(1.2)
     return guest
@@ -397,14 +420,13 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
 
                 lt = LocalTransformer()
                 pose_in_robot_frame = lt.transform_pose(not_point_pose, robot.get_link_tf_frame("base_link"))
-                print("in robot: " + str(pose_in_robot_frame))
                 if pose_in_robot_frame.pose.position.y > 0.15:
                     talk.pub_now("please take a seat to the left from me")
                     pose_in_robot_frame.pose.position.y += 0.2
 
                 elif pose_in_robot_frame.pose.position.y < -0.45:
                     talk.pub_now("please take a seat to the Right from me")
-                    pose_in_robot_frame.pose.position.y -= 0.55
+                    pose_in_robot_frame.pose.position.y -= 0.35
 
                 else:
                     talk.pub_now("please take a seat in front of me")
@@ -413,7 +435,7 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
                 free_seat = True
                 break
     else:
-        print("only chairs")
+        print("\033[33monly chairs")
         for place in seat[1]:
             if place[0] == 'chair':
                 if place[1] == 'False':
@@ -427,12 +449,11 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
         pose_guest.point.x = pose_in_map.pose.position.x
         pose_guest.point.y = pose_in_map.pose.position.y
         pose_guest.point.z = 0.85
-        print(pose_guest)
 
+        print("\033[32mfound free seat")
         giskardpy.move_arm_to_point(pose_guest)
-
-        print("found seat")
         return pose_guest
+
     return free_seat
 
 
@@ -445,6 +466,8 @@ def demo(step):
         global guest2
 
         # signal start
+        # move away from door
+        #kmove.pub_now(convo_pose)
         pakerino()
 
         talk.pub_now("waiting for guests", wait_bool=wait_bool)
@@ -452,33 +475,17 @@ def demo(step):
 
         # receive data from nlp via topic
         rospy.Subscriber("nlp_out", String, data_cb)
-        rospy.Subscriber("nlp_out2", String, doorbell_cb)
+        #rospy.Subscriber("nlp_out2", String, doorbell_cb)
 
         if step <= 0:
-            # door opening sequence
-            pub_bell.publish("start bell detection")
-
-            # wait 15 seconds for sound
-            start_time = time.time()
-            while not doorbell:
-                # continue challenge to not waste time
-                if time.time() - start_time > timeout:
-                    print("Timeout reached, no bell")
-                    break
-
-                time.sleep(0.5)
-
-            # set it back to false for second guest
-            doorbell = False
-
             # door_opening()
+            print("door open")
 
         if step <= 1:
             # reception/talking sequence
             pakerino()
 
-            # move away from door
-            move.pub_now(convo_pose)
+
 
             # HRI sequence
             guest1 = welcome_guest(1, guest1)
@@ -494,10 +501,15 @@ def demo(step):
             talk.pub_now("please step out of my way and stay behind me", wait_bool=wait_bool)
 
             # head straight
+            # TODO: head straight
             pakerino()
             rospy.sleep(0.5)
 
             # lead human to living room
+            config = {'head_tilt_joint': -0.4}
+            pakerino(config=config)
+            image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)  # hi im toya
+
             move.pub_now(convo_pose_to_couch, interrupt_bool=False)
             move.pub_now(couch_pose)
 
@@ -516,7 +528,6 @@ def demo(step):
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
                     id_humans = human_dict["keys"]
-                    print("id humans: " + str(id_humans))
                     host_pose = human_dict[id_humans[0]]
                     host.set_id(id_humans[0])
                     host.set_pose(PoseStamped_to_Point(host_pose))
@@ -526,19 +537,21 @@ def demo(step):
                 except:
                     print("i am a failure and i hate my life")
                     if counter == 1:
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        image_switch_publisher.pub_now(ImageEnum.SITTINGLOOK.value)
+
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(1.5)
 
                     elif counter == 3:
                         config = {'head_pan_joint': -0.8}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(1.5)
 
                     elif counter == 5:
                         config = {'head_pan_joint': 0.4}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(1.5)
 
                     counter += 1
@@ -595,6 +608,10 @@ def demo(step):
             rospy.sleep(0.5)
 
             # drive back to hallway
+            config = {'head_tilt_joint': -0.4}
+            pakerino(config=config)
+            image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)  # hi im toya
+
             move.pub_now(couch_pose_to_door, interrupt_bool=False)
             move.pub_now(start_pose)
 
@@ -602,24 +619,17 @@ def demo(step):
             talk.pub_now("waiting for new guests", wait_bool=wait_bool)
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
-            # wait 12 seconds for sound
-            pub_bell.publish("start bell detection")
-            start_time = time.time()
-            while not doorbell:
-                # continue challenge to not waste time
-                if time.time() - start_time > timeout:
-                    print("Timeout reached, no bell")
-                    break
-
-                time.sleep(0.5)
-
             # door_opening()
             pakerino()
             rospy.sleep(1)
 
         if step <= 6:
 
-            move.pub_now(convo_pose)
+            # move.pub_now(convo_pose)
+            talk.pub_now("Please step in front of me", wait_bool=wait_bool)
+
+            rospy.sleep(5)
+
             guest2 = welcome_guest(2, guest2)
 
         if step <= 7:
@@ -635,7 +645,10 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # lead human to living room
-            # TODO: change according to arena
+            config = {'head_tilt_joint': -0.4}
+            pakerino(config=config)
+            image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)  # hi im toya
+
             move.pub_now(convo_pose_to_couch, interrupt_bool=False)
             move.pub_now(couch_pose)
 
@@ -665,7 +678,7 @@ def demo(step):
                         # found guest
                         if key == guest1.id:
                             # update pose
-                            print("found guest")
+                            print("\033[32mfound guest")
                             found_guest = True
                             guest1_pose = human_dict[guest1.id]
                             guest1.set_pose(PoseStamped_to_Point(guest1_pose))
@@ -673,31 +686,32 @@ def demo(step):
                         # found host
                         elif key == host.id:
                             # update pose
-                            print("found host")
+                            print("\033[32mfound host")
                             found_host = True
                             host_pose = human_dict[host.id]
                             host.set_pose(PoseStamped_to_Point(host_pose))
                         else:
                             # store unknown ids for failure handling
                             unknown.append(key)
-                            print("unknown person")
+                            print("\033[33munknown person")
 
                     if counter > 6 or (found_guest and found_host):
                         break
 
                     elif counter == 2:
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        image_switch_publisher.pub_now(ImageEnum.SITTINGLOOK.value)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
                     # move head to side to detect faces that were not in vision before
                     elif counter == 3:
                         config = {'head_pan_joint': -0.8}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
                     elif counter == 5:
                         config = {'head_pan_joint': 0.4}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
 
                 except PerceptionObjectNotFound:
@@ -706,12 +720,12 @@ def demo(step):
                     if counter == 4:
                         config = {'head_pan_joint': -0.8}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
                     elif counter == 6:
                         config = {'head_pan_joint': 0.4}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
                     if counter > 8 or (found_guest and found_host):
                         break
@@ -769,11 +783,29 @@ def demo(step):
                 rospy.sleep(1.5)
                 introduce(host, guest2)
                 rospy.sleep(3)
-                introduce(guest1, guest2)
+                introduce(guest2, guest1)
+                rospy.sleep(3)
+                talk.pub_now(f" Hello {guest2.name} i remember {guest1.name}")
                 rospy.sleep(3)
                 describe(guest1)
-                talk.pub_now("have a nice evening")
+                rospy.sleep(2)
+                talk.pub_now("have a nice party")
 
-# door_opening()
-demo(1)
 
+
+def first_part(talk_bool):
+    try:
+        pakerino()
+        talk.pub_now("Starting Receptionist demo.", talk_bool, False)
+        image_switch_publisher.pub_now(ImageEnum.HI.value)  # hi im toya
+        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
+        image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
+        plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func)
+        plan.perform()
+    except SensorMonitoringCondition:
+        #image_switch_publisher.pub_now(ImageEnum.HI.value)  # hi im toya
+        rospy.sleep(4)
+        demo(0)
+
+
+first_part(True)

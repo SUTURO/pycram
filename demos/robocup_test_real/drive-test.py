@@ -30,9 +30,11 @@ import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 start_pose = Pose([1.5, 0.5, 0])
-convo_pose = Pose([4.8, 0.49, 0],[0, 0, 1, 0])
-convo_pose_to_couch = Pose([4.8, 0.49, 0],[0, 0, 0, 1])
-couch_pose = Pose([8.6, 0, 0],[0, 0, 0, 1])
+
+door_pose = Pose([3, 1.0, 0],[0, 0, 1, 0])
+convo_pose = Pose([4.2, 0.15, 0],[0, 0, 1, 0])
+convo_pose_to_couch = Pose([4.2, 0.15, 0],[0, 0, 0, 1])
+couch_pose = Pose([8.5, 0, 0],[0, 0, 0, 1])
 couch_pose_to_door = Pose([8.6, 0, 0],[0, 0, 1, 0])
 diswasher = Pose([9, 3, 0],[0, 0, 0.7, 0.7])  # ori
 schreibtisch = Pose([8.6, 0, 0],[0, 0, 1, 0])
@@ -41,14 +43,15 @@ if __name__ == '__main__':
     move = navi.PoseNavigator()
     rospy.sleep(1)
     rospy.loginfo("navi")
-    move.pub_now(convo_pose_to_couch)
-    move.pub_now(convo_pose)
-    move.pub_now(convo_pose_to_couch)
-
+    #move.pub_now(convo_pose_to_couch)
+    #move.pub_now(door_pose, interrupt_bool=False)
+    #move.pub_now(convo_pose)
+    #move.pub_now(convo_pose_to_couch, interrupt_bool=False)
+    #
     move.pub_now(couch_pose)
-    move.pub_now(couch_pose_to_door)
-    move.pub_now(couch_pose)
-
-    move.pub_now(diswasher)
-    move.pub_now(schreibtisch)
-    move.pub_now(schreibtisch_to_eingang)
+    # move.pub_now(couch_pose_to_door)
+    # move.pub_now(couch_pose)
+    #
+    # move.pub_now(diswasher)
+    # move.pub_now(schreibtisch)
+    # move.pub_now(schreibtisch_to_eingang)

@@ -775,7 +775,7 @@ def grasp_handle(handle_name: str):
 
 #
 def open_doorhandle(handle_name: str):
-    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name)
+    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
     giskard_wrapper.motion_goals.allow_all_collisions()
     #giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
