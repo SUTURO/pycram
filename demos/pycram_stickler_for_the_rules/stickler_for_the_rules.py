@@ -14,7 +14,7 @@ import pycram.external_interfaces.giskard_new as giskardpy
 
 human_pose = None
 
-rooms_list = ["hallway", "office", "kitchen", "living room"]
+rooms_list = ["office", "kitchen", "living room", "hallway"]
 
 # An instance of the TextToSpeechPublisher
 text_to_speech_publisher = TextToSpeechPublisher()
@@ -116,17 +116,22 @@ def drink_rule(room):
         target_orientation = axis_angle_to_quaternion([0, 0, 1], 45)
         move.pub_now(Pose([2.53, 0.55, 0], [target_orientation[0], target_orientation[1],
                                             target_orientation[2], target_orientation[3]]))
-    elif room == "hallway":
+    elif room == "office":
+        room_rule()
+        navigate_to(4.66, 3.65, "left")
+        config = {'head_pan_joint': 0.2}
+        pakerino(config=config)
+        room_rule()
+        config = {'head_pan_joint': 0.4}
+        pakerino(config=config)
+        room_rule()
+
+    elif room == "kitchen":
         target_orientation = axis_angle_to_quaternion([0, 0, 1], 45)
         move.pub_now(Pose([2.53, 0.55, 0], [target_orientation[0], target_orientation[1],
                                             target_orientation[2], target_orientation[3]]))
 
-    elif room == "hallway":
-        target_orientation = axis_angle_to_quaternion([0, 0, 1], 45)
-        move.pub_now(Pose([2.53, 0.55, 0], [target_orientation[0], target_orientation[1],
-                                            target_orientation[2], target_orientation[3]]))
-
-    elif room == "hallway":
+    elif room == "living room":
         target_orientation = axis_angle_to_quaternion([0, 0, 1], 45)
         move.pub_now(Pose([2.53, 0.55, 0], [target_orientation[0], target_orientation[1],
                                             target_orientation[2], target_orientation[3]]))
@@ -139,23 +144,7 @@ def drink_rule(room):
     for human in humans_list:
         holding_drink = eval(human.attribute[0])
         if not holding_drink:
-            #### MOVING ####
-            human_poseTm = transform_pose(human.pose, "head_rgbd_sensor_rgb_frame", "map")
-            human_p = human_poseTm
-            human_p.pose.position.z = 0
-            human_p.pose.orientation.x = 0
-            human_p.pose.orientation.y = 0
-            human_p.pose.orientation.z = 0
-            human_p.pose.orientation.w = 1
-
-            human_pose = human_p
-        try:
-            plan = Code(lambda: move.pub_now(human_p)) >> Monitor(monitor_func)
-            plan.perform()
-        except SensorMonitoringCondition:
-            print("ABBRUCH")
-            move.interrupt()
-            #### MOVING ####
+            move_to_human(human)
 
         # TODO: Orientation anpassen
         LookAtAction([Pose([human_pose.pose.position.x, human_pose.pose.position.y, 0.12])]).resolve().perform()
@@ -166,10 +155,60 @@ def drink_rule(room):
         text_to_speech_publisher.pub_now("and take a drink")
 
 
+def move_to_human(human):
+    #### MOVING ####
+    human_poseTm = transform_pose(human.pose, "head_rgbd_sensor_rgb_frame", "map")
+    human_p = human_poseTm
+    human_p.pose.position.z = 0
+    human_p.pose.orientation.x = 0
+    human_p.pose.orientation.y = 0
+    human_p.pose.orientation.z = 0
+    human_p.pose.orientation.w = 1
+
+    human_pose = human_p
+
+    try:
+        plan = Code(lambda: move.pub_now(human_p)) >> Monitor(monitor_func)
+        plan.perform()
+    except SensorMonitoringCondition:
+        print("ABBRUCH")
+        move.interrupt()
+        #### MOVING ####
+
+
+def room_rule():
+    humans_list = try_detect()
+    for human in humans_list:
+        if 1.74 <= human.pose.position.x <= 5.22 and 1.6 <= human.pose.position.y <= 6.6:
+            move_to_human(human)
+            text_to_speech_publisher.pub_now("you are not allowed to be in this room")
+            text_to_speech_publisher.pub_now("can you please move to another room")
+
+
+def navigate_to(x: float, y: float, table_name: str):
+    """
+    Navigates to popcorn table, long table or shelf.
+
+    :param x: x pose to navigate to
+    :param y: y pose to navigate to
+    :param table_name: defines the name of the table to move to
+    """
+    if table_name == "front":
+        move.pub_now(Pose([x, y, 0], [0, 0, 0, 1]))
+    elif table_name == "left":
+        move.pub_now(Pose([x, y, 0], [0, 0, 0.7, 0.7]))
+    elif table_name == "right":
+        move.pub_now(Pose([x, y, 0], [0, 0, -0.7, -0.7]))
+    elif table_name == "behind":
+        move.pub_now(Pose([x, y, 0], [0, 0, 1, 0]))
+
+
 with real_robot:
     rospy.loginfo("Starting demo")
     text_to_speech_publisher.pub_now("Starting demo")
     image_switch_publisher.pub_now(0)
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
+    navigate_to(4.86, 0.23, "left")
+
     for room in rooms_list:
         drink_rule(room)
