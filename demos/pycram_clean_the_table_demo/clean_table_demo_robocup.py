@@ -384,14 +384,14 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
 
             placing_pose = get_placing_pos(sorted_obj[val].type)
             move.pub_now(move_to_the_middle_dishwasher_pose)
-            if wished_sorted_obj_list[val] == "Metalplate" or wished_sorted_obj_list[val] == "Metalbowl":
-                MoveJointsMotion(["arm_roll_joint"], [-1.5]).resolve().perform()
+            # if wished_sorted_obj_list[val] == "Metalplate" or wished_sorted_obj_list[val] == "Metalbowl":
+            #     MoveJointsMotion(["arm_roll_joint"], [-1.5]).resolve().perform()
 
-                # todo: silverware tray must be on the right side of the dishwasher
-                if sorted_obj[val].type in ["Metalbowl", "Metalmug"]:
-                    navigate_to(placing_location_name_right)
-                else:
-                    navigate_to(dishwasher_placing_pos)
+            # todo: silverware tray must be on the right side of the dishwasher
+            if sorted_obj[val].type in ["Metalbowl", "Metalmug"]:
+                navigate_to(placing_location_name_right)
+            else:
+                navigate_to(dishwasher_placing_pos)
 
             text_to_speech_publisher.pub_now("Placing")
             image_switch_publisher.pub_now(8)

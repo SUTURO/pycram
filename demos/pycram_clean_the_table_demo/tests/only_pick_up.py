@@ -66,7 +66,7 @@ def navigate_and_detect():
 
     text_to_speech_publisher.pub_now("Perceiving")
     try:
-        object_desig = DetectAction(technique='all').resolve().perform()
+        object_desig = DetectAction(technique='all').resolve().perform() # todo use technique = "region", state = "dinner_table"?
         giskardpy.sync_worlds()
     except PerceptionObjectNotFound:
         object_desig = {}
@@ -91,6 +91,15 @@ with real_robot:
         else:
             if sorted_obj[0].type in CUTLERY or sorted_obj[0].type == "Metalbowl":
                 grasps = "top"
+            if grasps == "front":
+                config_for_placing = {'arm_flex_joint': -0.16, 'arm_lift_joint': 0.50, 'arm_roll_joint': -0.0145,
+                                        'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
+            else:
+                config_for_placing = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.67, 'arm_roll_joint': 0,
+                                        'wrist_flex_joint': -1.4, 'wrist_roll_joint': 0}
+
+            giskardpy.avoid_all_collisions()
+            giskardpy.achieve_joint_goal(config_for_placing)
             PickUpAction(sorted_obj[0], ["left"], [grasps]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             text_to_speech_publisher.pub_now("Dropping object")

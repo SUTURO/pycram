@@ -100,7 +100,6 @@ with real_robot:
     MoveJointsMotion(["wrist_roll_joint"], [-1.5]).resolve().perform()
     navigate_to(dishwasher_placing_pos)
 
-
     OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
 
     text_to_speech_publisher.pub_now("Please pull out the lower rack")
