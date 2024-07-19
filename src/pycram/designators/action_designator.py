@@ -327,46 +327,41 @@ class PickUpAction(ActionDesignatorDescription):
             #     print("heheheheh")
             # # Adjust object pose for top-grasping, if applicable
             if self.grasp == "top":
-                # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
-                # Note: This includes hardcoded adjustments and should ideally be generalized
-                # if self.object_designator.type == "Cutlery":
-                # todo: this z is the popcorn-table height, we need to define location to get that z otherwise it
-                #  is hardcoded
-                # oTm.pose.position.z = 0.71
                 oTm.pose.position.z += 0.035
                 # if object.type == "Cutlery":
                 #     cutlery_pose = lt.transform_pose(oTm, object.tf_frame)
                 #     cutlery_pose.pose.position.x -= 0.3
 
             pose_in_table = lt.transform_pose(oTm,
-                                    BulletWorld.current_bullet_world.environment.get_link_tf_frame("couch_table:couch_table:table_center"))
+                                    BulletWorld.current_bullet_world.environment.get_link_tf_frame("dinner_table:dinner_table:table_center"))
             print(pose_in_table.pose.orientation)
             # Determine the grasp orientation and transform the pose to the base link frame
             grasp_rotation = robot_description.grasps.get_orientation_for_grasp(self.grasp)
             # oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
             # Set pose to the grasp rotation
-            if self.grasp == "front":
+
+            if self.grasp == "front" or self.object_designator.type == "Metalbowl":
                 pose_in_table.pose.orientation.x = grasp_rotation[0]
                 pose_in_table.pose.orientation.y = grasp_rotation[1]
                 pose_in_table.pose.orientation.z = grasp_rotation[2]
                 pose_in_table.pose.orientation.w = grasp_rotation[3]
-            elif self.grasp == "top":
+            # todo removed rotation for bowl?
+            elif self.grasp == "top" and self.object_designator.type != "Metalbowl":
                 angle = helper.quaternion_to_angle(
                     (pose_in_table.pose.orientation.x, pose_in_table.pose.orientation.y, pose_in_table.pose.orientation.z,
                      pose_in_table.pose.orientation.w))
                 print("angle: " + str(angle))
                 grasp_q = Quaternion(grasp_rotation[0], grasp_rotation[1], grasp_rotation[2], grasp_rotation[3])
                 if angle > 110:
-                    print("größer: " + str(angle))
+                    print("greater: " + str(angle))
                     pose_in_table.pose.orientation.x = grasp_rotation[0]
                     pose_in_table.pose.orientation.y = grasp_rotation[1]
                     pose_in_table.pose.orientation.z = grasp_rotation[2]
                     pose_in_table.pose.orientation.w = grasp_rotation[3]
 
                 else:
-                    print("kleiner: " + str(angle))
-                    new_q = multiply_quaternions_by_vanessa(pose_in_table.pose.orientation,
-                                                                                     grasp_q)
+                    print("smaller: " + str(angle))
+                    new_q = multiply_quaternions_by_vanessa(pose_in_table.pose.orientation, grasp_q)
                     pose_in_table.pose.orientation.x = new_q[0]
                     pose_in_table.pose.orientation.y = new_q[1]
                     pose_in_table.pose.orientation.z = new_q[2]
@@ -389,9 +384,7 @@ class PickUpAction(ActionDesignatorDescription):
             # Note: This currently includes robot-specific logic that should be generalized
             tool_frame = robot_description.get_tool_frame(self.arm)
             special_knowledge_offset = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
-
-            # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
-            #  depending on robot
+            # hsrb specific
             if robot.name == "hsrb":
                 if self.grasp == "top":
                     if self.object_designator.type == "Metalbowl":
@@ -399,8 +392,7 @@ class PickUpAction(ActionDesignatorDescription):
                         special_knowledge_offset.pose.position.x -= 0.03
 
             push_base = special_knowledge_offset
-            # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
-            #  depending on robot if we dont generlize this we will have a big list in the end of all robots
+            # hsrb specific
             if robot.name == "hsrb":
                 z = 0.04
                 if self.grasp == "top":
@@ -783,7 +775,7 @@ class PlaceGivenObjAction(ActionDesignatorDescription):
                     rospy.logwarn("sidepush monitoring")
                     TalkingMotion("sidepush.").resolve().perform()
                     side_push = Pose(
-                        [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.125, loweringTm.pose.position.z],
+                        [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.08, loweringTm.pose.position.z],
                         [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
                          push_baseTm.orientation.w])
                     try:

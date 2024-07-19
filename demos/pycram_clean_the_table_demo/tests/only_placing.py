@@ -1,9 +1,14 @@
+import time
+from enum import Enum
+import rospy.core
 from demos.pycram_clean_the_table_demo.utils.misc import *
 from pycram.external_interfaces.navigate import PoseNavigator
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.robot_state_updater import RobotStateUpdater
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
-from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher
+# from pycram.external_interfaces.knowrob import get_table_pose
+from pycram.utilities.robocup_utils import StartSignalWaiter
+from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, SoundRequestPublisher
 
 text_to_speech_publisher = TextToSpeechPublisher()
 image_switch_publisher = ImageSwitchPublisher()
@@ -18,19 +23,17 @@ wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
 
-# x pose of the end of the couch table
-table_pose = 4.84
-
+move_to_the_middle_dishwasher_pose = Pose([8.9, 4.72, 0], [0, 0, 0, 1])
 # name of the dishwasher handle and dishwasher door
 handle_name = "sink_area_dish_washer_door_handle"
 door_name = "sink_area_dish_washer_door"
-
-# Intermediate positions for a safer navigation
-move_to_the_middle_table_pose = [2.2, 1.98, 0]
-move_to_the_middle_dishwasher_pose = [2.2, -0.1, 0]
-
+dishwasher_main_name = "sink_area_dish_washer_main"
+placing_location_name_left = "dishwasher_left"
+placing_location_name_right = "dishwasher_right"
+dishwasher_pose = "dishwasher_front"
+pickup_location_name = "dinner_table"
 # Initialize the Bullet world for simulation
-world = BulletWorld()
+world = BulletWorld("DIRECT")
 
 # Visualization Marker Publisher for ROS
 v = VizMarkerPublisher()
@@ -39,7 +42,7 @@ v = VizMarkerPublisher()
 robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
 
 # Update robot state
-RobotStateUpdater("/tf", "/hsrb/robot_state/joint_states")
+RobotStateUpdater("/tf", "/giskard_joint_states")
 giskardpy.init_giskard_interface()
 
 robot.set_color([0.5, 0.5, 0.9, 1])
@@ -50,11 +53,6 @@ apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
 giskardpy.sync_worlds()
-
-# Once the start signal is received, continue with the rest of the script
-rospy.loginfo("Start signal received, now proceeding with tasks.")
-
-dishwasher_main_name = "sink_area_dish_washer_main"
 
 
 def get_placing_pos(obj):
@@ -91,83 +89,73 @@ def get_placing_pos(obj):
     return res
 
 
-def calculate_placing_pos(x_pos, y_pos, z_pos):
-    lt = LocalTransformer()
+def check_position():
+    global goal_pose
+    current_pose = robot.get_pose().pose.position
+    euclidean_dist = math.sqrt(pow((goal_pose.pose.position.x - current_pose.x), 2) +
+                               pow((goal_pose.pose.position.y - current_pose.y), 2))
+    if euclidean_dist < 0.08:
+        print("return true")
+        return True
+    print("return false")
+    return False
 
-    link = apartment.get_link_tf_frame(dishwasher_main_name)
 
-    world.current_bullet_world.add_vis_axis(apartment.get_link_pose(dishwasher_main_name))
-    dishwasher = Pose([x_pos, y_pos, z_pos], [0, 0, 0, 1])
-    newp = lt.transform_pose(dishwasher, link)  # link statt map wenn 1) verwendet. map wenn 2) verwendet
-    print(newp)
-    world.current_bullet_world.add_vis_axis(newp)
-    return newp.pose
+def navigate_to(location_name: str, y: Optional[float] = None):
+    """
+    Navigates to the couch table or to the dishwasher on different sides.
+
+    :param y: y pose to navigate to the couch table for picking up objects
+    :param location_name: defines the name of the location to move to
+    """
+    global goal_pose
+    if location_name == placing_location_name_left:
+        print("left")
+        goal_pose = Pose([9.8, 4.3, 0], [0, 0, -0.7, 0.7])
+
+        move.pub_now(move_to_the_middle_dishwasher_pose)
+        while not check_position():
+            move.pub_now(goal_pose)
+
+    elif location_name == dishwasher_pose:
+        goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
+
+        move.pub_now(move_to_the_middle_dishwasher_pose)
+        while not check_position():
+            move.pub_now(goal_pose)
+    else:
+        rospy.logerr(f"Failure. Y-Value must be set for the navigateAction to the {pickup_location_name}")
 
 
-with semi_real_robot:
-
-    # calculate_placing_pos(9.78,4.7, 0.48) # cutlery
-    # calculate_placing_pos(10, 4.64, 0.48) # metalmug
-    # calculate_placing_pos(10, 4.59, 0.48) # metalmug or bowl
-    # calculate_placing_pos(9.87, 4.9, 0.55) # plate
-    # calculate_placing_pos(9.9, 4.78, 0.48) # dishwashertab
+with real_robot:
     rospy.loginfo("Starting demo")
+    text_to_speech_publisher.pub_now("Starting demo")
 
     obj = "Metalmug"
-    pos = get_placing_pos(obj)
-    print(f"Metalmug: {pos}")
+   # obj = "Metalbowl"
+   # obj = "Metalplate"
+   # obj = "Fork"
 
-    pos = get_placing_pos("Metalplate")
-    print(f"Metalplate: {pos}")
+    grasp = "front"
 
-    pos = get_placing_pos("Metalbowl")
-    print(f"Metalbowl: {pos}")
+    # if obj == "Metalplate" or obj == "Metalbowl":
+    #     MoveJointsMotion(["arm_roll_joint"], [-1.5]).resolve().perform()
+
+    placing_pose = get_placing_pos(obj)
+    # todo: silverware tray must be on the right side of the dishwasher
     if obj in ["Metalbowl", "Metalmug"]:
-        print("right")
+        navigate_to(placing_location_name_right)
     else:
-        print("front")
-    pos = get_placing_pos("Cutlery")
-    print(f"Cutlery: {pos}")
-    if obj in ["Metalbowl", "Metalmug"]:
-        print("right")
-    else:
-        print("front")
+        navigate_to(dishwasher_pose)
 
-    text_to_speech_publisher.pub_now("living room")
-    goal_pose = Pose([5.8, 0.2, 0], [0, 0, 0, 1])
-    move.pub_now(goal_pose)
-    time.sleep(1)
-
-    text_to_speech_publisher.pub_now("middle living room")
-    goal_pose = Pose([5.8, 0.2, 0], [0, 0, 0, 1])
-    move.pub_now(goal_pose)
-    time.sleep(1)
-
-    text_to_speech_publisher.pub_now("kitchen")
-    goal_pose = Pose([9.2, 3.08, 0], [0, 0, 0.7, 0.7])
-    move.pub_now(goal_pose)
-    time.sleep(1)
-
-    text_to_speech_publisher.pub_now("Dishwasher")
-    goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
-    move.pub_now(goal_pose)
-    time.sleep(4)
-
-    text_to_speech_publisher.pub_now("Table")
-    goal_pose = Pose([8.8, 4.76, 0], [0, 0, 1, 0])
-    move.pub_now(goal_pose)
-    MoveTorsoAction([0.2]).resolve().perform()
-    LookAtAction(targets=[Pose([7.8, 4.76, 0.25])]).resolve().perform()
+    MoveGripperMotion("open", "left").resolve().perform()
     time.sleep(2)
+    text_to_speech_publisher.pub_now("Grasping")
+    MoveGripperMotion("close", "left").resolve().perform()
 
-    text_to_speech_publisher.pub_now("Dishwasher")
-    goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
-    move.pub_now(goal_pose)
-    time.sleep(4)
+    PlaceGivenObjAction([obj], ["left"], [placing_pose], [grasp]).resolve().perform()
+    image_switch_publisher.pub_now(0)
+    # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen drawer when moving to parkArms arm config
+    MoveGripperMotion("open", "left").resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
 
-    text_to_speech_publisher.pub_now("Dishwasher right")
-    goal_pose = Pose([9.8, 4.3, 0], [0, 0, 0.7, 0.7])
-    move.pub_now(goal_pose)
-    time.sleep(4)
-
-    text_to_speech_publisher.pub_now("Done")
