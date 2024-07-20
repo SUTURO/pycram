@@ -1,0 +1,2 @@
+1.  giskard Funktion, die den Roboter auf der Stelle im Kreis dreht,
+    bis auf /human_pose msgs ankommen

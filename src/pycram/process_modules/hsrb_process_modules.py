@@ -376,7 +376,17 @@ class HSRBDetectingReal(ProcessModule):
                 return id_dict
             else:
                 return []
-            return res
+
+        elif desig.technique == 'holding_drink':
+            print("searching for human and drink")
+            return_list = []
+            human_pose_drink = queryDrinkingHuman()
+            if human_pose_drink.res:
+                for human in human_pose_drink.res:
+                    return_list.append((human.attribute[0], human.pose[0]))
+
+            return return_list
+
         elif desig.state == "stop":
             stop_queryHuman()
             return "stopped"
