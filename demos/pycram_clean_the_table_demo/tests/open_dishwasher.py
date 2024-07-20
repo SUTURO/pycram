@@ -39,7 +39,7 @@ giskardpy.init_giskard_interface()
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v1.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v8.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
@@ -70,7 +70,7 @@ def navigate_to(location_name: str, y: Optional[float] = None):
     """
     global goal_pose
     if location_name == dishwasher_placing_pos:
-        goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
+        goal_pose = Pose([9.3, 4.72, 0], [0, 0, 0, 1])
         move.pub_now(move_to_the_middle_dishwasher_pose)
         while not check_position():
             move.pub_now(goal_pose)
@@ -93,9 +93,9 @@ with real_robot:
     rospy.loginfo("Starting demo")
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     # navigate to dishwasher
-    move.pub_now(move_to_living_room)
-    move.pub_now(move_in_the_middle_of_living_room)
-    move.pub_now(move_to_kitchen)
+    # move.pub_now(move_to_living_room)
+    # move.pub_now(move_in_the_middle_of_living_room)
+    # move.pub_now(move_to_kitchen)
 
     MoveJointsMotion(["wrist_roll_joint"], [-1.5]).resolve().perform()
     navigate_to(dishwasher_placing_pos)

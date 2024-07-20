@@ -1,7 +1,13 @@
 import time
 from enum import Enum
 import rospy.core
+from dynamic_reconfigure.srv import Reconfigure
+from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
+from dynamic_reconfigure.msg import Config, BoolParameter, IntParameter, StrParameter, DoubleParameter, GroupState
+from dynamic_reconfigure.srv import Reconfigure, ReconfigureRequest
+
 from demos.pycram_clean_the_table_demo.utils.misc import *
+from pycram.enums import ImageEnum
 from pycram.external_interfaces.navigate import PoseNavigator
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.robot_state_updater import RobotStateUpdater
@@ -14,8 +20,37 @@ from pycram.language import Monitor, Code
 # Create an instance of the StartSignalWaiter
 start_signal_waiter = StartSignalWaiter()
 text_to_speech_publisher = TextToSpeechPublisher()
-image_switch_publisher = ImageSwitchPublisher()
+# image_switch_publisher = ImageSwitchPublisher()
 move = PoseNavigator()
+
+
+def set_parameters(new_parameters):
+    rospy.wait_for_service('/tmc_map_merger/inputs/base_scan/obstacle_circle/set_parameters')
+    try:
+        reconfigure_service = rospy.ServiceProxy('/tmc_map_merger/inputs/base_scan/obstacle_circle/set_parameters',
+                                                 Reconfigure)
+        config = Config()
+
+        # Set the new parameters
+        if 'forbid_radius' in new_parameters:
+            config.doubles.append(DoubleParameter(name='forbid_radius', value=new_parameters['forbid_radius']))
+        if 'obstacle_occupancy' in new_parameters:
+            config.ints.append(IntParameter(name='obstacle_occupancy', value=new_parameters['obstacle_occupancy']))
+        if 'obstacle_radius' in new_parameters:
+            config.doubles.append(DoubleParameter(name='obstacle_radius', value=new_parameters['obstacle_radius']))
+
+        # Empty parameters that are not being set
+        config.bools.append(BoolParameter(name='', value=False))
+        config.strs.append(StrParameter(name='', value=''))
+        config.groups.append(GroupState(name='', state=False, id=0, parent=0))
+
+        req = ReconfigureRequest(config=config)
+        reconfigure_service(req)
+        rospy.loginfo("Parameters updated successfully")
+
+    except rospy.ServiceException as e:
+        rospy.logerr("Service call failed: %s" % e)
+
 
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
@@ -51,15 +86,15 @@ door_name = "sink_area_dish_washer_door"
 
 # Intermediate positions for a safer navigation
 move_to_the_middle_dishwasher_pose = Pose([8.9, 4.72, 0], [0, 0, 0, 1])
-move_to_middle_table_pose = Pose([9.1, 4.72, 0], [0,0,1,0])
+move_to_middle_table_pose = Pose([9.1, 4.72, 0], [0, 0, 1, 0])
 # navigating position to the correct room
 move_to_living_room = Pose([5.8, 0.26, 0], [0, 0, 0, 1])
 move_in_the_middle_of_living_room = Pose([8.4, 0.86, 0], [0, 0, 0, 1])
 move_to_kitchen = Pose([9.2, 3.08, 0], [0, 0, 0.7, 0.7])
 
-perceiving_y_pos = 4.76
-look_at_pose = Pose([8, 4.76, 0.25])
-
+perceiving_y_pos = 4.24
+look_at_pose = Pose([7.8, 4.76, 0.25])
+safe_metalplate = None
 goal_pose = None
 
 # ForceTorqueSensor for recognizing push on the hand
@@ -81,7 +116,7 @@ giskardpy.init_giskard_interface()
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v1.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v8.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
@@ -120,20 +155,21 @@ def pickup_and_place_objects(sorted_obj: list):
 
         if sorted_obj[value].type == "Metalplate":
             text_to_speech_publisher.pub_now("Can you please give me the plate on the table.")
-            image_switch_publisher.pub_now(5)
+            # image_switch_publisher.pub_now(5)
             MoveGripperMotion("open", "left").resolve().perform()
-            text_to_speech_publisher.pub_now("Push down my hand, when I should grasp")
-            try:
-                plan = Code(lambda: rospy.sleep(1)) * 99999 >> Monitor(monitor_func)
-                plan.perform()
-            except SensorMonitoringCondition:
-                rospy.logwarn("Close Gripper")
-                text_to_speech_publisher.pub_now("Grasping.")  # Todo could be deleted if demo to long
-                MoveGripperMotion(motion="close", gripper="left").resolve().perform()
+            text_to_speech_publisher.pub_now("I close my hand now")
+            time.sleep(4)
+            # try:
+            #     plan = Code(lambda: rospy.sleep(1)) * 99999 >> Monitor(monitor_func)
+            #     plan.perform()
+            # except SensorMonitoringCondition:
+            rospy.logwarn("Close Gripper")
+            #text_to_speech_publisher.pub_now("Grasping.")  # Todo could be deleted if demo to long
+            MoveGripperMotion(motion="close", gripper="left").resolve().perform()
 
         else:
             text_to_speech_publisher.pub_now("Picking up with: " + sorted_obj[value].type)
-            image_switch_publisher.pub_now(7)
+            # image_switch_publisher.pub_now(7)
             if grasp == "front":
                 config_for_placing = {'arm_flex_joint': -0.16, 'arm_lift_joint': 0.50, 'arm_roll_joint': -0.0145,
                                       'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
@@ -145,7 +181,7 @@ def pickup_and_place_objects(sorted_obj: list):
             giskardpy.achieve_joint_goal(config_for_placing)
 
             try_pick_up(robot, sorted_obj[value], grasp)
-            image_switch_publisher.pub_now(0)
+            # image_switch_publisher.pub_now(0)
 
         # placing the object
         ParkArmsAction([Arms.LEFT]).resolve().perform()
@@ -162,11 +198,11 @@ def pickup_and_place_objects(sorted_obj: list):
             navigate_to(dishwasher_placing_pos)
 
         text_to_speech_publisher.pub_now("Placing")
-        image_switch_publisher.pub_now(8)
+        # image_switch_publisher.pub_now(8)
         grasp = "front"
 
         PlaceAction(sorted_obj[value], ["left"], [grasp], [placing_pose]).resolve().perform()
-        image_switch_publisher.pub_now(0)
+        # image_switch_publisher.pub_now(0)
         # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen drawer when moving to parkArms arm config
         MoveGripperMotion("open", "left").resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
@@ -245,32 +281,35 @@ def navigate_to(location_name: str, y: Optional[float] = None):
     global goal_pose
     if location_name == pickup_location_name and y is not None:
         goal_pose = Pose([8.8, y, 0], [0, 0, 1, 0])
+        move.pub_now(Pose([8.96, 4.24, 0], [0, 0, 1, 0]))
         if sorted_obj_len == 1:
             goal_pose = Pose([8.9, y, 0], [0, 0, 1, 0])
-            #move.pub_now(Pose([8.9, y, 0], [0, 0, 1, 0]))
+            # move.pub_now(Pose([8.9, y, 0], [0, 0, 1, 0]))
 
-        move.pub_now(move_to_middle_table_pose)
-        while not check_position():
-            move.pub_now(goal_pose)
+        #move.pub_now(move_to_middle_table_pose)
+        move.pub_now(goal_pose)
     # todo left is not needed right now
     elif location_name == placing_location_name_left:
         print("left")
         goal_pose = Pose([9.8, 5.1, 0], [0, 0, -0.7, 0.7])
+
         move.pub_now(move_to_the_middle_dishwasher_pose)
         while not check_position():
             move.pub_now(goal_pose)
 
     elif location_name == placing_location_name_right:
-        goal_pose = Pose([9.75, 4.18, 0], [0, 0, 0.7, 0.7])
-        move.pub_now(move_to_the_middle_dishwasher_pose)
-        while not check_position():
-            move.pub_now(goal_pose)
+        goal_pose = Pose([9.92, 3.99, 0], [0, 0, 0.7, 0.7])
+        move.pub_now(Pose([8.96, 4.76, 0], [0, 0, 0, 1]))
+       # move.pub_now(move_to_the_middle_dishwasher_pose)
+        #while not check_position():
+        move.pub_now(goal_pose)
 
     elif location_name == dishwasher_placing_pos:
         goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
-        move.pub_now(move_to_the_middle_dishwasher_pose)
-        while not check_position():
-            move.pub_now(goal_pose)
+        move.pub_now(Pose([8.96, 4.76, 0], [0, 0, 0, 1]))
+        #move.pub_now(move_to_the_middle_dishwasher_pose)
+        #while not check_position():
+        move.pub_now(goal_pose)
     else:
         rospy.logerr(f"Failure. Y-Value must be set for the navigateAction to the {pickup_location_name}")
 
@@ -285,12 +324,12 @@ def navigate_and_detect():
     text_to_speech_publisher.pub_now("Navigating")
 
     navigate_to(pickup_location_name, perceiving_y_pos)
-    MoveTorsoAction([0.2]).resolve().perform()
+    MoveTorsoAction([0.25]).resolve().perform()
     MoveJointsMotion(["arm_roll_joint"], [1.5]).resolve().perform()
     LookAtAction(targets=[look_at_pose]).resolve().perform()
 
     text_to_speech_publisher.pub_now("Perceiving")
-    image_switch_publisher.pub_now(10)
+    # image_switch_publisher.pub_now(10)
     try:
         object_desig = DetectAction(technique='all').resolve().perform()
         giskardpy.sync_worlds()
@@ -358,7 +397,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
         navigate_to(pickup_location_name, perceiving_y_pos)
         print("second Check")
 
-        for value in new_sorted_obj: # todo changed from final_sorted_obj to new_sorted_obj
+        for value in new_sorted_obj:  # todo changed from final_sorted_obj to new_sorted_obj
             # remove all objects that were seen and transported so far
             if value.type in wished_sorted_obj_list:
                 wished_sorted_obj_list.remove(value.type)
@@ -368,7 +407,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
 
             print(f"next object is: {wished_sorted_obj_list[val]}")
             text_to_speech_publisher.pub_now(f"Can you please give me the {wished_sorted_obj_list[val]} on the table?")
-            image_switch_publisher.pub_now(5)
+            # image_switch_publisher.pub_now(5)
             text_to_speech_publisher.pub_now("Push down my hand, when I should grasp")
             try:
                 plan = Code(lambda: rospy.sleep(1)) * 99999 >> Monitor(monitor_func)
@@ -378,7 +417,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
                 text_to_speech_publisher.pub_now("Grasping.")  # Todo could be deleted if demo to long
                 MoveGripperMotion(motion="close", gripper="left").resolve().perform()
 
-            image_switch_publisher.pub_now(0)
+            # image_switch_publisher.pub_now(0)
 
             ParkArmsAction([Arms.LEFT]).resolve().perform()
 
@@ -394,7 +433,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
                 navigate_to(dishwasher_placing_pos)
 
             text_to_speech_publisher.pub_now("Placing")
-            image_switch_publisher.pub_now(8)
+            # image_switch_publisher.pub_now(8)
             if wished_sorted_obj_list[val] == "Metalplate":
                 PlaceGivenObjAction([wished_sorted_obj_list[val]], ["left"],
                                     [placing_pose], [grasp], False).resolve().perform()
@@ -403,226 +442,162 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
                 PlaceGivenObjAction([wished_sorted_obj_list[val]], ["left"],
                                     [placing_pose], [grasp]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
-            image_switch_publisher.pub_now(0)
+            # image_switch_publisher.pub_now(0)
             # navigates back if a next object exists
             if val + 1 < len(wished_sorted_obj_list):
                 navigate_to(pickup_location_name, perceiving_y_pos)
 
 
-# Main interaction sequence with real robot
-with real_robot:
-    rospy.loginfo("Starting demo")
-    text_to_speech_publisher.pub_now("Starting demo Clean The Table")
-    sorted_obj_len = 0
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    # navigate to dishwasher
-    # todo: add functionality to drive into the room
-    image_switch_publisher.pub_now(37) # todo which number??
-    text_to_speech_publisher.pub_now("Please remove the chairs")
-    text_to_speech_publisher.pub_now("between the table and the dishwasher")
-    move.pub_now(move_to_living_room)
-    move.pub_now(move_in_the_middle_of_living_room)
-    move.pub_now(move_to_kitchen)
-
-    MoveJointsMotion(["wrist_roll_joint"], [-1.5]).resolve().perform()
-    navigate_to(dishwasher_placing_pos)
-
-    image_switch_publisher.pub_now(2)
-    text_to_speech_publisher.pub_now("Opening")
-    OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
-
-    text_to_speech_publisher.pub_now("Please pull out the lower rack")
-    image_switch_publisher.pub_now(0) #todo: which number
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    MoveGripperMotion("open", "left").resolve().perform()
-
-    image_switch_publisher.pub_now(0)
-    # todo add this, when it is working
-    # ----------------------------------
-    # sorted_obj = segmentation_detection()
-    # ----------------------------------
-    # detect objects
-    object_desig = navigate_and_detect()
-    image_switch_publisher.pub_now(0)
-
-    # sort objects based on distance and which we like to keep
-    sorted_obj = sort_objects(robot, object_desig, wished_sorted_obj_list)
-    safe_metalplate = None
-    if len(sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-        for obj in sorted_obj:
-            if obj.type == "Metalplate":
-                safe_metalplate = obj
-                sorted_obj.remove(obj)
+def pub_fake_pose(self, fake_pose: PoseStamped):
+    msg = PoseWithCovarianceStamped()
+    msg.pose.pose.position = fake_pose.pose.position
+    msg.pose.pose.orientation = fake_pose.pose.orientation
+    msg.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.06853892326654787]
+    self.toya_pose_pub.publish(msg)
+    self.toya_pose_pub = rospy.Publisher("/initialpose", PoseWithCovarianceStamped, queue_size=100)
 
 
-    # picking up and placing objects
-    pickup_and_place_objects(sorted_obj)
+def move_vel(speed, distance, isForward, angle=0):
+    # Starts a new node
+    velocity_publisher = rospy.Publisher('/hsrb/command_velocity', Twist, queue_size=10)
+    vel_msg = Twist()
 
-    new_obj_desig = failure_handling1(sorted_obj)
-    failure_handling2(sorted_obj, new_obj_desig)
+    # Checking if the movement is forward or backwards
+    if isForward:
+        vel_msg.linear.x = abs(speed)
+    else:
+        vel_msg.linear.x = 0
+    if angle > 0:
+        vel_msg.angular.z = angle
+    else:
+        vel_msg.angular.z = 0
+    # Since we are moving just in x-axis
+    vel_msg.linear.y = 0
+    vel_msg.linear.z = 0
+    vel_msg.angular.x = 0
+    vel_msg.angular.y = 0
 
-    move.pub_now(Pose([8.9, 4.72, 0], [0, 0, 0, 1]))
-    MoveGripperMotion("close", "left").resolve().perform()
-    config_for_pushing_rack = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.05, 'arm_roll_joint': 0,
-                               'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4}
-    giskardpy.avoid_all_collisions()
-    giskardpy.achieve_joint_goal(config_for_pushing_rack)
+    # Setting the current time for distance calculation
+    t0 = rospy.Time.now().to_sec()
+    current_distance = 0
 
-    MoveJointsMotion(["wrist_flex_joint"], [0.0]).resolve().perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    # Loop to move the turtle a specified distance
+    while not rospy.is_shutdown() and current_distance < distance:
+        # Publish the velocity
+        velocity_publisher.publish(vel_msg)
+        # Take actual time to velocity calculation
+        t1 = rospy.Time.now().to_sec()
+        # Calculate distance
+        current_distance = speed * (t1 - t0)
 
-    rospy.loginfo("Done!")
-    text_to_speech_publisher.pub_now("Done")
-    image_switch_publisher.pub_now(3)
-
-
-
-
-
-# todo new functionalities for segmentation perceiving
-# --------------------------------------------------------------------------------------------
-def sort_objects_new(robot: BulletWorldObject, obj_dict: dict, wished_sorted_obj_list: list):
-    """
-    Transforms the given object dictionary to a distance sorted list.
-    The Metalplate, if seen, is arranged as the last object in the list.
-
-    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
-    :param wished_sorted_obj_list: list of object types we like to keep
-    :param robot: the robot
-    :return: distance sorted list of seen and wished to keep objects
-    """
-    sorted_objects = []
-    object_dict = {}
-    containsPlate = False
-    metalplate = None
-
-    if len(obj_dict) == 0:
-        return sorted_objects
-
-    # cut of the given State and keep the dictionary
-    robot_pose = robot.get_pose()
-    # calculate euclidian distance for all found object in a dictionary
-    for value in obj_dict.values():
-        distance = math.sqrt(pow((value.pose.position.x - robot_pose.pose.position.x), 2) +
-                             pow((value.pose.position.y - robot_pose.pose.position.y), 2) +
-                             pow((value.pose.position.z - robot_pose.pose.position.z), 2))
-
-        # fill dict with objects and their distance.
-        # Add seen objects only once, if seen multiple times
-        if value.type not in object_dict:
-            object_dict[value.type] = (value, distance)
-
-    # sort all objects that where in the obj_dict
-    sorted_object_list = sorted(object_dict.items(), key=lambda distance: distance[1][1])
-    sorted_object_dict = dict(sorted_object_list)
-
-    # keep only objects that are in the wished list and put Metalplate last
-    for (object, distance) in sorted_object_dict.values():
-        if object.type in wished_sorted_obj_list:
-            if object.type == "Metalplate":
-                containsPlate = True
-                metalplate = object
-            else:
-                sorted_objects.append(object)
-
-    # when all objects are sorted in the list add the plate at last
-    if containsPlate:
-        # or making Metalplate to the first object in list: sorted_objects.insert(0, metalplate)
-        sorted_objects.append(metalplate)
-
-    # print which objects are in the final list
-    test_list = []
-    for test_object in sorted_objects:
-        test_list.append(test_object.type)
-    print(test_list)
-
-    return sorted_objects
+    # After the loop, stop the robot
+    vel_msg.linear.x = 0
+    # Force the robot to stop
+    velocity_publisher.publish(vel_msg)
 
 
-def new_nav_and_detect(segment: float):
-    """
-    Navigates to the couch table and perceives.
-
-    :return: tupel of State and dictionary of found objects in the FOV
-    """
-    global sorted_obj_len
-    text_to_speech_publisher.pub_now("Navigating")
-
-    look_at_pose = Pose([7.9, segment, 0.25])
-    goal_pose = Pose([8.8, segment, 0], [0, 0, 1, 0])
-
-    move.pub_now(goal_pose)
-    MoveTorsoAction([0.4]).resolve().perform()
-    MoveJointsMotion(["arm_roll_joint"], [1.5]).resolve().perform()
-    LookAtAction(targets=[look_at_pose]).resolve().perform()
-
-    text_to_speech_publisher.pub_now("Perceiving")
-    image_switch_publisher.pub_now(10)
-    try:
-        object_desig = DetectAction(technique='all').resolve().perform()
-        # object_desig = DetectAction(technique='region', state = pickup_location_name).resolve().perform()
-        giskardpy.sync_worlds()
-    except PerceptionObjectNotFound:
-        object_desig = {}
-    return object_desig
+def pub_fake_pose(fake_pose: PoseStamped):
+    toya_pose_pub = rospy.Publisher("/initialpose", PoseWithCovarianceStamped, queue_size=100)
+    msg = PoseWithCovarianceStamped()
+    msg.pose.pose.position = fake_pose.pose.position
+    msg.pose.pose.orientation = fake_pose.pose.orientation
+    msg.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.06853892326654787]
+    toya_pose_pub.publish(msg)
 
 
-def segmentation_detection():
-    global objects_on_left_side, objects_on_right_side
-    object_desig = new_nav_and_detect(center_segment)
-    image_switch_publisher.pub_now(0)
-    first, *remaining_center = object_desig
+def start_now():
+    # start_signal_waiter.wait_for_startsignal()
+    #
+    # # Once the start signal is received, continue with the rest of the script
+    # rospy.loginfo("Start signal received, now proceeding with tasks.")
+    # move_vel(speed=2, distance=4, isForward=True)
+    # rospy.sleep(2)
+    # new_parameters = {'forbid_radius': 0.2, 'obstacle_occupancy': 5, 'obstacle_radius': 0.2}
+    # rospy.sleep(1)
+    # new_parameters = {
+    #     'forbid_radius': 0.35,
+    #     'obstacle_occupancy': 10,
+    #     'obstacle_radius': 0.35
+    # }
+    #
+    # set_parameters(new_parameters)
+    # fake_pose_2 = Pose([3, 0.3, 0])
+    # pub_fake_pose(fake_pose_2)
+    # move_vel(0.2, 2, False, 0.02)
+    # text_to_speech_publisher.pub_now(
+    #     "Lets Go, Driving to Kitchen. Mister Human pls remove all chairs out of the kitchen area")
+    # # image_switch_publisher.pub_now(ImageEnum.CHAIR.value)
+    # move_123 = Pose([4, -0.2, 0], [0, 0, 0, 1])
+    # move.pub_now(move_123)
 
-    # normal sort_objects needed
-    sorted_obj = sort_objects(robot, object_desig, wished_sorted_obj_list)
-    for obj in sorted_obj:
-        if obj.pose.position.y > right_segment:
-            objects_on_right_side.append(obj.type)
+    # Main interaction sequence with real robot
+    with real_robot:
+        rospy.loginfo("Starting demo")
+        text_to_speech_publisher.pub_now("Starting demo Clean The Table")
+        sorted_obj_len = 0
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        # navigate to dishwasher
+        # todo: add functionality to drive into the room
+        # image_switch_publisher.pub_now(37)  # todo which number??
+        text_to_speech_publisher.pub_now("Please remove the chairs")
+        text_to_speech_publisher.pub_now("between the table and the dishwasher")
+        move.pub_now(move_to_living_room)
+        move.pub_now(move_in_the_middle_of_living_room)
+        move.pub_now(move_to_kitchen)
 
-        elif obj.pose.position.y < left_segment:
-            objects_on_left_side.append(obj.type)
+        MoveJointsMotion(["wrist_roll_joint"], [-1.5]).resolve().perform()
+        navigate_to(dishwasher_placing_pos)
 
-    if objects_on_right_side:
-        text_to_speech_publisher.pub_now("Perceive again on the right side")
-        object_desig = new_nav_and_detect(right_segment + 0.2)
-        first, *remaining_right = object_desig
+        # image_switch_publisher.pub_now(2)
+        text_to_speech_publisher.pub_now("Opening")
+        OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, ["left"]).resolve().perform()
 
-    if objects_on_left_side:
-        text_to_speech_publisher.pub_now("Perceive again on the left side")
-        object_desig = new_nav_and_detect(left_segment)
-        first, *remaining_left = object_desig
+        text_to_speech_publisher.pub_now("Please pull out the lower rack")
+        # image_switch_publisher.pub_now(0)  # todo: which number
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        MoveGripperMotion("open", "left").resolve().perform()
 
-    combined_center = {}
-    for dictionary_list in remaining_center:
-        for val in dictionary_list:
-            combined_center.update(val)
+        # image_switch_publisher.pub_now(0)
+        # todo add this, when it is working
+        # ----------------------------------
+        # sorted_obj = segmentation_detection()
+        # ----------------------------------
+        # detect objects
+        object_desig = navigate_and_detect()
+        # image_switch_publisher.pub_now(0)
 
-    if objects_on_right_side:
-        for dictionary_list in remaining_right:
-            for val in dictionary_list:
-                combined_center.update(val)
+        # sort objects based on distance and which we like to keep
+        sorted_obj = sort_objects(robot, object_desig, wished_sorted_obj_list)
+        safe_metalplate = None
+        if len(sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
+            for obj in sorted_obj:
+                if obj.type == "Metalplate":
+                    safe_metalplate = obj
+                    sorted_obj.remove(obj)
 
-    if objects_on_left_side:
-        for dictionary_list in remaining_left:
-            for val in dictionary_list:
-                combined_center.update(val)
+        # picking up and placing objects
+        pickup_and_place_objects(sorted_obj)
 
-    sorted_obj = sort_objects_new(robot, remaining_center, wished_sorted_obj_list)
-    return sorted_obj
+        new_obj_desig = failure_handling1(sorted_obj)
+        failure_handling2(sorted_obj, new_obj_desig)
+
+        move.pub_now(Pose([8.9, 4.72, 0], [0, 0, 0, 1]))
+        MoveGripperMotion("close", "left").resolve().perform()
+        config_for_pushing_rack = {'arm_flex_joint': -1.6, 'arm_lift_joint': 0.05, 'arm_roll_joint': 0,
+                                   'wrist_flex_joint': -1.4, 'wrist_roll_joint': -0.4}
+        giskardpy.avoid_all_collisions()
+        giskardpy.achieve_joint_goal(config_for_pushing_rack)
+
+        MoveJointsMotion(["wrist_flex_joint"], [0.0]).resolve().perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+
+        rospy.loginfo("Done!")
+        text_to_speech_publisher.pub_now("Done")
 
 
-# --------------------------------------------------------------------------------------------
+start_now()
 
-def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
-    """
-    Transforms a PyCRAM pose to a PoseStamped message, this is necessary since Giskard NEEDS a PoseStamped message
-    otherwise it will crash.
-
-    :param pose: PyCRAM pose that should be converted
-    :return: An equivalent PoseStamped message
-    """
-    ps = PoseStamped()
-    ps.pose = pose.pose
-    ps.header = pose.header
-
-    return ps

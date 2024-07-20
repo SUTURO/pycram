@@ -48,7 +48,7 @@ giskardpy.init_giskard_interface()
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v1.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v8.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
@@ -109,20 +109,22 @@ def navigate_to(location_name: str, y: Optional[float] = None):
     :param location_name: defines the name of the location to move to
     """
     global goal_pose
-    if location_name == placing_location_name_left:
-        print("left")
-        goal_pose = Pose([9.8, 4.3, 0], [0, 0, -0.7, 0.7])
 
-        move.pub_now(move_to_the_middle_dishwasher_pose)
-        while not check_position():
-            move.pub_now(goal_pose)
+    if location_name == placing_location_name_right:
+        goal_pose = Pose([9.92, 3.99, 0], [0, 0, 0.7, 0.7])
+        move.pub_now(Pose([8.96, 4.76, 0], [0, 0, 0, 1]))
+        move.pub_now(goal_pose)
+      #  move.pub_now(move_to_the_middle_dishwasher_pose)
+      #   while not check_position():
+      #       move.pub_now(goal_pose)
 
     elif location_name == dishwasher_pose:
-        goal_pose = Pose([9.18, 4.72, 0], [0, 0, 0, 1])
-
-        move.pub_now(move_to_the_middle_dishwasher_pose)
-        while not check_position():
-            move.pub_now(goal_pose)
+        goal_pose = Pose([9.18, 4.11, 0], [0, 0, 0, 1])
+        move.pub_now(Pose([8.96, 4.76, 0], [0, 0, 0, 1]))
+        move.pub_now(goal_pose)
+       # move.pub_now(move_to_the_middle_dishwasher_pose)
+       #  while not check_position():
+       #      move.pub_now(goal_pose)
     else:
         rospy.logerr(f"Failure. Y-Value must be set for the navigateAction to the {pickup_location_name}")
 
@@ -130,6 +132,8 @@ def navigate_to(location_name: str, y: Optional[float] = None):
 with real_robot:
     rospy.loginfo("Starting demo")
     text_to_speech_publisher.pub_now("Starting demo")
+    MoveGripperMotion("open","left").resolve().perform()
+    #MoveGripperMotion("close", "left").resolve().perform()
 
     obj = "Metalmug"
    # obj = "Metalbowl"
@@ -147,7 +151,7 @@ with real_robot:
         navigate_to(placing_location_name_right)
     else:
         navigate_to(dishwasher_pose)
-
+    time.sleep(2)
     MoveGripperMotion("open", "left").resolve().perform()
     time.sleep(2)
     text_to_speech_publisher.pub_now("Grasping")

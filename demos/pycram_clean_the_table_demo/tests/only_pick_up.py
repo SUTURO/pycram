@@ -43,11 +43,13 @@ giskardpy.init_giskard_interface()
 robot.set_color([0.5, 0.5, 0.9, 1])
 
 # Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v1.urdf")
+apartment = Object("kitchen", ObjectType.ENVIRONMENT, "robocup_clean_v8.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 giskardpy.initial_adding_objects()
 giskardpy.sync_worlds()
+perceiving_y_pos = 4.76
+goal_pose = Pose([8.95, perceiving_y_pos, 0], [0, 0, 1, 0])
 
 
 def navigate_and_detect():
@@ -75,9 +77,9 @@ def navigate_and_detect():
 
 with real_robot:
     rospy.loginfo("Starting demo")
-    perceiving_y_pos = 4.76
+
     look_at_pose = Pose([7.8, perceiving_y_pos, 0.25])
-    goal_pose = Pose([8.8, perceiving_y_pos, 0], [0, 0, 1, 0])
+
     MoveGripperMotion("open", "left").resolve().perform()
 
     while True:
