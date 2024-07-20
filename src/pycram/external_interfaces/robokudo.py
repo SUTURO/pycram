@@ -379,3 +379,35 @@ def query_waving_human() -> ObjectDesignatorDescription.Object:
     except IndexError:
         pass
     return pose_candidate
+
+
+def queryDrinkingHuman() -> ObjectDesignatorDescription:
+    """
+    Sends a query to RoboKudo to look for a human. returns list with all detected humans
+    and fpr each human if they are holding a drink
+    """
+    print("robokudo query call")
+
+    init_robokudo_interface()
+    from robokudo_msgs.msg import QueryAction, QueryGoal, QueryResult
+
+    global query_result
+
+    def active_callback():
+        rospy.loginfo("Send query to Robokudo for drinking human recognition")
+
+    def done_callback(state, result: QueryResult):
+        rospy.loginfo("Finished perceiving")
+        global query_result
+        query_result = result
+
+    object_goal = QueryGoal()
+    object_goal.obj.type = "drink"
+
+    client = actionlib.SimpleActionClient('robokudo/query', QueryAction)
+    rospy.loginfo("Waiting for action server")
+    client.wait_for_server()
+    client.send_goal(object_goal, active_cb=active_callback, done_cb=done_callback)
+    client.wait_for_result()
+
+    return query_result

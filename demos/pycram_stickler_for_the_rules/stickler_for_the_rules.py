@@ -1,5 +1,7 @@
 from enum import Enum
 
+import rospy
+
 from demos.pycram_hsrb_real_test_demos.restaurant import transform_pose
 from pycram.external_interfaces import robokudo
 from pycram.external_interfaces.navigate import PoseNavigator
@@ -16,16 +18,9 @@ human_pose = None
 
 rooms_list = ["hallway", "office", "kitchen", "living room"]
 
-# An instance of the TextToSpeechPublisher
-text_to_speech_publisher = TextToSpeechPublisher()
-
-# An instance of the ImageSwitchPublisher
+talk = TextToSpeechPublisher()
 image_switch_publisher = ImageSwitchPublisher()
-
-# An instance of the StartSignalWaiter
 start_signal_waiter = StartSignalWaiter()
-
-# An instance of the PoseNavigator
 move = PoseNavigator()
 
 # Initialize the Bullet world for simulation
@@ -67,14 +62,20 @@ def try_detect():
     :return: tupel of State and dictionary of found objects in the FOV
     """
     image_switch_publisher.pub_now(10)
-    text_to_speech_publisher.pub_now("Perceiving")
-    try:
-        object_desig = DetectAction(technique='holding_drink').resolve().perform()
-        giskardpy.sync_worlds()
-    except PerceptionObjectNotFound:
-        object_desig = {}
+    talk.pub_now("Perceiving")
+    counter = 0
+    while counter < 2:
+        try:
+            human_list = DetectAction(technique='holding_drink').resolve().perform()
+            giskardpy.sync_worlds()
+            return human_list
+        except PerceptionObjectNotFound:
+            print("nothing to see")
+
     image_switch_publisher.pub_now(0)
-    return object_desig
+    return []
+
+
 
 
 def filter_humans(obj_dict: dict):
@@ -157,14 +158,14 @@ def drink_rule(room):
         LookAtAction([Pose([human_pose.pose.position.x, human_pose.pose.position.y, 0.12])]).resolve().perform()
         # LookAtAction([Pose([human_pose.pose.position.x, human_pose.pose.position.y, 0.12],
         # robot.get_pose().pose.orientation)]).resolve().perform()
-        text_to_speech_publisher.pub_now("you should have a drink in your hand")
-        text_to_speech_publisher.pub_now("please go to the kitchen")
-        text_to_speech_publisher.pub_now("and take a drink")
+        talk.pub_now("you should have a drink in your hand")
+        talk.pub_now("please go to the kitchen")
+        talk.pub_now("and take a drink")
 
 
-def move_to_human(human):
+def move_to_human(human_pose):
     #### MOVING ####
-    human_poseTm = transform_pose(human.pose, "head_rgbd_sensor_rgb_frame", "map")
+    human_poseTm = transform_pose(human_pose, "head_rgbd_sensor_rgb_frame", "map")
     human_p = human_poseTm
     human_p.pose.position.z = 0
     human_p.pose.orientation.x = 0
@@ -172,7 +173,7 @@ def move_to_human(human):
     human_p.pose.orientation.z = 0
     human_p.pose.orientation.w = 1
 
-    human_pose = human_p
+    drive_pose = human_p
 
     try:
         plan = Code(lambda: move.pub_now(human_p)) >> Monitor(monitor_func)
@@ -188,8 +189,8 @@ def room_rule():
     for human in humans_list:
         if 1.74 <= human.pose.position.x <= 5.22 and 1.6 <= human.pose.position.y <= 6.6:
             move_to_human(human)
-            text_to_speech_publisher.pub_now("you are not allowed to be in this room")
-            text_to_speech_publisher.pub_now("can you please move to another room")
+            talk.pub_now("you are not allowed to be in this room")
+            talk.pub_now("can you please move to another room")
 
 
 def navigate_to(x: float, y: float, table_name: str):
@@ -209,14 +210,70 @@ def navigate_to(x: float, y: float, table_name: str):
     elif table_name == "behind":
         move.pub_now(Pose([x, y, 0], [0, 0, 1, 0]))
 
+def human_check():
+    # look for humans, drive closer and detect again
+    closer = 0
+    while closer < 2:
+        human_list = try_detect()
+        if human_list:
+            talk.pub_now("Attention please don't move for a little bit")
+            for human in human_list:
+                (drink, pose) = human
+
+                if closer == 0:
+                    move_to_human(pose)
+                else:
+                    if not drink:
+                        talk.pub_now("Hello, i noticed that you don't have a drink")
+                        rospy.sleep(2.2)
+                        talk.pub_now("please get yourself one from the kitchen")
+                    else:
+                        talk.pub_now("Hello, nice to see you here")
+
+def office_check():
+    # look for humans, drive closer and detect again
+    human_pose = DetectAction(technique='human').resolve().perform()
+    giskardpy.move_head_to_human()
+    
+
+
+
 
 with real_robot:
     rospy.loginfo("Starting demo")
-    text_to_speech_publisher.pub_now("Starting demo")
+    talk.pub_now("Starting demo")
     image_switch_publisher.pub_now(0)
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
     navigate_to(4.86, 0.23, "left")
 
     for room in rooms_list:
+
+        if room == "hallway":
+            talk.pub_now("i am driving in the corner")
+            rospy.sleep(1.5)
+
+            move.pub_now(hallway_perceive)
+            config = {'head_pan_joint': 0.4}
+            pakerino(config=config)
+
+            human_check()
+
+            config = {'head_pan_joint': 0.9}
+            pakerino(config=config)
+
+            human_check()
+
+            move.pub_now(hallway_office_pass)
+
+            entry_check = try_detect()
+
+            if entry_check:
+
+
+
+
+
+
+
 
         drink_rule(room)
