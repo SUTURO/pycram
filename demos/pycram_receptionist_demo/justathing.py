@@ -19,7 +19,7 @@ from pycram.enums import ImageEnum as ImageEnum
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, SoundRequestPublisher, \
     HSRBMoveGripperReal, StartSignalWaiter
 
-
+# test
 world = BulletWorld()
 # v = VizMarkerPublisher()
 gripper = HSRBMoveGripperReal()
