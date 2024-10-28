@@ -7,7 +7,7 @@ import pybullet as pb
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.datastructures.world import Object
 from pycram.datastructures.pose import Pose
-from pycram.ros_utils.force_torque_sensor import ForceTorqueSensor
+from pycram.ros_utils.force_torque_sensor import ForceTorqueSensorSimulated
 from pycram.ros_utils.joint_state_publisher import JointStatePublisher
 from pycram.ros_utils.tf_broadcaster import TFBroadcaster
 
@@ -42,6 +42,6 @@ if __name__ == '__main__':
 
     tf_broadcaster = TFBroadcaster("projection", "odom", 1.0)
     jsp = JointStatePublisher()
-    fts = ForceTorqueSensor("ee_fixed_joint")
+    fts = ForceTorqueSensorSimulated("ee_fixed_joint")
 
     world.simulate(60)
