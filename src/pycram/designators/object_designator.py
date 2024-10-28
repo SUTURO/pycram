@@ -11,6 +11,8 @@ from ..orm.base import ProcessMetaData
 from ..orm.object_designator import (BelieveObject as ORMBelieveObject, ObjectPart as ORMObjectPart)
 from ..datastructures.pose import Pose
 from ..external_interfaces.robokudo import *
+from std_msgs.msg import String
+from ..external_interfaces.robokudo import send_query
 
 if TYPE_CHECKING:
     import owlready2
@@ -141,7 +143,7 @@ class LocatedObject(ObjectDesignatorDescription):
 
 
 @DeprecationWarning
-# Depricated class this will be done differently
+# Depricated class, this will be done differently
 class RealObject(ObjectDesignatorDescription):
     """
     Object designator representing an object in the real world, when resolving this object designator description ]
@@ -177,8 +179,74 @@ class RealObject(ObjectDesignatorDescription):
 
         :yield: A resolved object designator with reference world object
         """
-        object_candidates = query(self)
+        object_candidates = query_object(self)
         for obj_desig in object_candidates:
             for world_obj in World.get_object_by_type(obj_desig.obj_type):
                 obj_desig.world_object = world_obj
                 yield obj_desig
+                # if bullet_obj.get_pose().dist(obj_deisg.pose) < 0.05:
+                #     obj_deisg.bullet_world_object = bullet_obj
+                #     yield obj_deisg
+
+
+class HumanDescription:
+    """
+    Class that represents humans. this class does not spawn a human in a simulation.
+    """
+
+    def __init__(self, name: String, fav_drink: Optional = None,
+                 pose: Optional = None, attributes: Optional = None):
+        """
+        :param name: name of human
+        :param fav_drink: favorite drink of human
+        :param pose: last known pose of human
+        """
+
+        # TODO: coordinate with Perception on what is easy to implement
+        # characteristics to consider: height, hair color, and age.
+        # self.human_pose = Fluent()
+        self.name = name
+        self.fav_drink = fav_drink
+        self.pose = pose
+        self.attributes = attributes
+        self.id = -1
+
+
+    def set_id(self, new_id: int):
+        """
+        function for changing id of human
+        is given by perception with face recognition
+        :param new_id: new id of human
+        """
+        self.id = new_id
+
+    def set_name(self, new_name):
+        """
+        function for changing name of human
+        :param new_name: new name of human
+        """
+        self.name = new_name
+
+    def set_drink(self, new_drink):
+        """
+        function for changing/setting favorite drink of human
+        :param new_drink: name of drink
+        """
+        self.fav_drink = new_drink
+
+    def set_pose(self, new_pose):
+        """
+        function for changing pose of human
+        :param new_pose: new pose of human
+        """
+        print("in set pose")
+        self.pose = new_pose
+
+    def set_attributes(self, attribute_list):
+        """
+        function for setting attributes
+        :param attribute_list: list with attributes: gender, headgear, kind of clothes, bright/dark clothes
+        """
+        self.attributes = attribute_list[1]
+
+
