@@ -241,7 +241,7 @@ class PlaceAction(ActionDesignatorDescription):
 
     def __init__(self,
                  object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
-                 target_locations: List[Pose],
+                 target_locations: List[Pose], grasps: Optional[Grasp],
                  arms: List[Arms], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Create an Action Description to place an object
@@ -256,6 +256,8 @@ class PlaceAction(ActionDesignatorDescription):
         self.object_designator_description: Union[
             ObjectDesignatorDescription, ObjectDesignatorDescription.Object] = object_designator_description
         self.target_locations: List[Pose] = target_locations
+        if grasps:
+            self.grasps: List[Grasp] = grasps
         self.arms: List[Arms] = arms
 
         if self.soma:
@@ -270,7 +272,7 @@ class PlaceAction(ActionDesignatorDescription):
         obj_desig = self.object_designator_description if isinstance(self.object_designator_description,
                                                                      ObjectDesignatorDescription.Object) else self.object_designator_description.resolve()
 
-        return PlaceActionPerformable(obj_desig, self.arms[0], self.target_locations[0])
+        return PlaceActionPerformable(obj_desig, self.arms[0], self.grasps[0], self.target_locations[0])
 
 
 class NavigateAction(ActionDesignatorDescription):
@@ -377,7 +379,7 @@ class DetectAction(ActionDesignatorDescription):
     Detects an object that fits the object description and returns an object designator describing the object.
     """
 
-    def __init__(self, object_designator_description: ObjectDesignatorDescription, resolver=None,
+    def __init__(self, object_designator_description: ObjectDesignatorDescription, technique: str, resolver=None,
                  ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Tries to detect an object in the field of view (FOV) of the robot.
@@ -388,6 +390,7 @@ class DetectAction(ActionDesignatorDescription):
         """
         super().__init__(resolver, ontology_concept_holders)
         self.object_designator_description: ObjectDesignatorDescription = object_designator_description
+        self.technique: str = technique
 
         if self.soma:
             self.init_ontology_concepts({"looking_for": self.soma.LookingFor,
@@ -801,6 +804,10 @@ class PlaceActionPerformable(ActionAbstract):
     """
     Arm that is currently holding the object
     """
+    grasp: Grasp
+    """
+    Grasp that was used to pick up the object
+    """
     target_location: Pose
     """
     Pose in the world at which the object should be placed
@@ -922,11 +929,16 @@ class DetectActionPerformable(ActionAbstract):
     """
     Object designator loosely describing the object, e.g. only type. 
     """
+    technique: str
+    """
+    Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
+    Or 'all' if all objects should be detected
+    """
     orm_class: Type[ActionAbstract] = field(init=False, default=ORMDetectAction)
 
     @with_tree
     def perform(self) -> None:
-        return DetectingMotion(object_type=self.object_designator.obj_type).perform()
+        return DetectingMotion(object_type=self.object_designator.obj_type, technique=self.technique).perform()
 
 
 @dataclass
