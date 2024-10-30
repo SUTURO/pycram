@@ -30,8 +30,8 @@ def get_parameter(name: str) -> Any:
     return rospy.get_param(name)
 
 
-def wait_for_message(topic_name: str):
-    return rospy.wait_for_message(topic_name)
+def wait_for_message(topic_name: str, topic_type):
+    return rospy.wait_for_message(topic_name, topic_type=topic_type)
 
 
 def is_master_online():
