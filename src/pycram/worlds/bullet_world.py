@@ -311,6 +311,27 @@ class BulletWorld(World):
     def remove_physics_simulator_state(self, state_id: int):
         p.removeState(state_id, physicsClientId=self.id)
 
+    def add_rigid_box(self, pose, half_extents, color):
+        """
+        Creates a visual and collision box in the simulation.
+        :param pose: Pose object with position and orientation where the box should be spawned.
+        :param half_extents: A tuple of three floats representing half the size of the box in each dimension.
+        :param color: A tuple of four floats representing the RGBA color of the box.
+        """
+
+        # Create visual shape
+        vis_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=half_extents, rgbaColor=color)
+
+        # Create collision shape
+        col_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=half_extents)
+
+        # Create MultiBody with both visual and collision shapes
+        obj = p.createMultiBody(baseMass=1.0, baseCollisionShapeIndex=col_shape, baseVisualShapeIndex=vis_shape,
+                                basePosition=pose.position, baseOrientation=pose.orientation)
+
+        # Assuming you have a list to keep track of created objects
+        return obj
+
     def _add_vis_axis(self, pose: Pose,
                       length: Optional[float] = 0.2) -> int:
         """
