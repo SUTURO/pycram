@@ -506,6 +506,63 @@ class GraspingAction(ActionDesignatorDescription):
         return GraspingActionPerformable(self.arms[0], self.object_description.resolve())
 
 
+class HeadFollowAction(ActionDesignatorDescription):
+    """
+    Continuously move head to human closest to robot
+    """
+
+    def __init__(self, state: Optional[str], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
+        """
+        :param state: defines if the robot should start/stop looking at human
+        :param resolver: An optional resolver that returns a performable designator from the designator description
+        :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
+        """
+        super().__init__(resolver, ontology_concept_holders)
+        self.state: Optional[str] = state
+
+        if self.soma:
+            self.init_ontology_concepts({"headfollow": self.soma.Headfollow})
+
+    def ground(self) -> HeadFollowActionPerformable:
+        """
+        Default specialized_designators that returns a performable designator with the first entry
+        in the list of possible targets
+
+        :return: A performable designator
+        """
+        return HeadFollowActionPerformable(self.state)
+
+
+class PointingAction(ActionDesignatorDescription):
+    """
+    Point to Pose
+    """
+    def __init__(self, x_coordinate: float, y_coordinate: float, z_coordinate: float, resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
+        """
+        Lets the robot pour based on the given parameter.
+        :param x_coordinate: x coordinate where the robot points to (in map frame)
+        :param y_coordinate: y coordinate where the robot points to (in map frame)
+        :param z_coordinate: z coordinate where the robot points to (in map frame)
+        :param resolver: An alternative resolver
+        """
+        super().__init__(resolver, ontology_concept_holders)
+        self.x_coordinate = x_coordinate
+        self.y_coordinate = y_coordinate
+        self.z_coordinate = z_coordinate
+
+        if self.soma:
+            self.init_ontology_concepts({"pointing": self.soma.Headfollow})
+
+    def ground(self) -> PointingActionPerformable:
+        """
+        Default specialized_designators that returns a performable designator with the first entry
+        in the list of possible targets
+
+        :return: A performable designator
+        """
+        return PointingActionPerformable(self.x_coordinate, self.y_coordinate, self.z_coordinate)
+
+
 # ----------------------------------------------------------------------------
 # ---------------- Performables ----------------------------------------------
 # ----------------------------------------------------------------------------
@@ -1089,3 +1146,40 @@ class MoveAndPickUpPerformable(ActionAbstract):
         NavigateActionPerformable(self.standing_position).perform()
         FaceAtPerformable(self.object_designator.pose).perform()
         PickUpActionPerformable(self.object_designator, self.arm, self.grasp).perform()
+
+@dataclass
+class HeadFollowActionPerformable(ActionAbstract):
+    """
+    Continuously move head to human closest to robot
+    """
+
+    state: Optional[str]
+    """
+    defines if the robot should start/stop looking at human
+    """
+
+    orm_class: Type[ActionAbstract] = field(init=False, default=ORMLookAtAction)
+
+    @with_tree
+    def perform(self) -> None:
+        HeadFollowMotion(self.state).perform()
+
+
+@dataclass
+class PointingActionPerformable(ActionAbstract):
+    x_coordinate: float
+    """
+    x coordinate where the robot points to (in map frame)
+    """
+    y_coordinate: float
+    """
+    y coordinate where the robot points to (in map frame)
+    """
+    z_coordinate: float
+    """
+    z coordinate where the robot points to (in map frame)
+    """
+
+    @with_tree
+    def perform(self) -> None:
+        PointingMotion(self.x_coordinate, self.y_coordinate, self.z_coordinate).perform()
