@@ -10,7 +10,8 @@ from ..designator import ResolutionError
 from ..orm.base import ProcessMetaData
 from ..failures import PerceptionObjectNotFound
 from ..process_module import ProcessModuleManager
-from ..orm.motion_designator import (MoveMotion as ORMMoveMotion,
+from ..robot_descriptions import robot_description
+from ..orm.motion_designator import (MoveMotion as ORMMoveMotion, AccessingMotion as ORMAccessingMotion,
                                      MoveTCPMotion as ORMMoveTCPMotion, LookingMotion as ORMLookingMotion,
                                      MoveGripperMotion as ORMMoveGripperMotion, DetectingMotion as ORMDetectingMotion,
                                      OpeningMotion as ORMOpeningMotion, ClosingMotion as ORMClosingMotion,
@@ -150,6 +151,10 @@ class MoveGripperMotion(BaseMotion):
 class DetectingMotion(BaseMotion):
     """
     Tries to detect an object in the FOV of the robot
+    """
+    technique: str
+    """
+    Technique means how the object should be detected, e.g. 'color', 'shape', 'all', etc. 
     """
 
     object_type: ObjectType
@@ -353,6 +358,36 @@ class TalkingMotion(BaseMotion):
     def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
         pass
 
+
+@dataclass
+class PouringMotion(BaseMotion):
+    """
+    Designator for pouring
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.pour().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+
 @dataclass
 class HeadFollowMotion(BaseMotion):
     """
@@ -361,6 +396,7 @@ class HeadFollowMotion(BaseMotion):
     state: Optional[str]
     """
     Whether to start or stop motion
+
     """
 
     @with_tree
@@ -397,6 +433,51 @@ class PointingMotion(BaseMotion):
     def perform(self):
         pm_manager = ProcessModuleManager.get_manager()
         return pm_manager.pointing().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class DoorOpenMotion(BaseMotion):
+    """
+    Designator for opening a door
+    """
+
+    handle: str
+    """
+    name of the handle joint so that giskard knows how to open the door
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.door_opening().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+@dataclass
+class GraspHandleMotion(BaseMotion):
+    """
+    Designator for grasping a (door-)handle
+    """
+
+    handle: str
+    """
+    name of the handle joint so that giskard knows how to open the door
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.grasp_door_handle().execute(self)
 
     def to_sql(self) -> ORMMotionDesignator:
         pass
