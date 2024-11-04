@@ -486,15 +486,15 @@ class Gui(threading.Thread):
             self.world.id = p.connect(p.GUI)
 
             # DISCLAIMER
-            # This camera control only works if the WorldMooe.GUI BulletWorld is the first one to be created. This is
+            # This camera control only works if the WorldMode.GUI BulletWorld is the first one to be created. This is
             # due to a bug in the function pybullet.getDebugVisualizerCamera() which only returns the information of
             # the first created simulation.
 
             # Disable the side windows of the GUI
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.world.id)
             # Change the init camera pose
-            p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=270.0, cameraPitch=-50,
-                                         cameraTargetPosition=[-2, 0, 1], physicsClientId=self.world.id)
+            p.resetDebugVisualizerCamera(cameraDistance=1.40, cameraYaw=180, cameraPitch=-40,
+                                         cameraTargetPosition=[5.3, 4.8, 0.74], physicsClientId=self.world.id)
 
             # Get the initial camera target location
             camera_target_position = p.getDebugVisualizerCamera(physicsClientId=self.world.id)[11]
@@ -513,8 +513,8 @@ class Gui(threading.Thread):
             max_speed = 16
 
             # Set initial Camera Rotation
-            camera_yaw = 50
-            camera_pitch = -35
+            camera_yaw = 90
+            camera_pitch = -45
 
             # Keep track of the mouse state
             mouse_state = [0, 0, 0]
