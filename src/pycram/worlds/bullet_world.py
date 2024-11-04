@@ -107,6 +107,11 @@ class BulletWorld(World):
         self._remove_body(obj.id)
         return True
 
+    def remove_objects_by_ids(self, ids: List[int]) -> bool:
+        for obj_id in ids:
+            self._remove_body(obj_id)
+        return True
+
     def _remove_body(self, body_id: int) -> Any:
         """
         Remove a body from PyBullet using the body id.
