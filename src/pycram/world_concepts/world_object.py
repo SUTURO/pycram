@@ -22,6 +22,7 @@ from ..failures import ObjectAlreadyExists, WorldMismatchErrorBetweenObjects, Un
 from ..local_transformer import LocalTransformer
 from ..object_descriptors.generic import ObjectDescription as GenericObjectDescription
 from ..object_descriptors.urdf import ObjectDescription as URDF
+from ..ros.data_types import Time
 from ..ros.logging import logwarn
 
 try:
@@ -55,7 +56,9 @@ class Object(WorldEntity):
                  world: Optional[World] = None,
                  color: Color = Color(),
                  ignore_cached_files: bool = False,
-                 scale_mesh: Optional[float] = None):
+                 scale_mesh: Optional[float] = None,
+                 custom_id: Optional[int] = None,
+                 custom_geom: Optional[Dict[str, List[float]]] = None):
         """
         The constructor loads the description file into the given World, if no World is specified the
         :py:attr:`~World.current_world` will be used. It is also possible to load .obj and .stl file into the World.
@@ -89,6 +92,12 @@ class Object(WorldEntity):
         self.local_transformer = LocalTransformer()
         self.original_pose = self.local_transformer.transform_pose(pose, "map")
         self._current_pose = self.original_pose
+        self.customGeom = custom_geom
+
+        if not path and custom_id:
+            self.id = custom_id
+            self.links: Dict[str, int] = {'new_link': -1}
+            self.link_to_geometry = {'new_link': self.customGeom}
 
         if path is not None:
             self.path = self.world.preprocess_object_file_and_get_its_cache_path(path, ignore_cached_files,
