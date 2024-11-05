@@ -107,6 +107,11 @@ class BulletWorld(World):
         self._remove_body(obj.id)
         return True
 
+    def remove_objects_by_ids(self, ids: List[int]) -> bool:
+        for obj_id in ids:
+            self._remove_body(obj_id)
+        return True
+
     def _remove_body(self, body_id: int) -> Any:
         """
         Remove a body from PyBullet using the body id.
@@ -311,6 +316,27 @@ class BulletWorld(World):
     def remove_physics_simulator_state(self, state_id: int):
         p.removeState(state_id, physicsClientId=self.id)
 
+    def add_rigid_box(self, pose, half_extents, color):
+        """
+        Creates a visual and collision box in the simulation.
+        :param pose: Pose object with position and orientation where the box should be spawned.
+        :param half_extents: A tuple of three floats representing half the size of the box in each dimension.
+        :param color: A tuple of four floats representing the RGBA color of the box.
+        """
+
+        # Create visual shape
+        vis_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=half_extents, rgbaColor=color)
+
+        # Create collision shape
+        col_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=half_extents)
+
+        # Create MultiBody with both visual and collision shapes
+        obj = p.createMultiBody(baseMass=1.0, baseCollisionShapeIndex=col_shape, baseVisualShapeIndex=vis_shape,
+                                basePosition=pose.position, baseOrientation=pose.orientation)
+
+        # Assuming you have a list to keep track of created objects
+        return obj
+
     def _add_vis_axis(self, pose: Pose,
                       length: Optional[float] = 0.2) -> int:
         """
@@ -460,15 +486,15 @@ class Gui(threading.Thread):
             self.world.id = p.connect(p.GUI)
 
             # DISCLAIMER
-            # This camera control only works if the WorldMooe.GUI BulletWorld is the first one to be created. This is
+            # This camera control only works if the WorldMode.GUI BulletWorld is the first one to be created. This is
             # due to a bug in the function pybullet.getDebugVisualizerCamera() which only returns the information of
             # the first created simulation.
 
             # Disable the side windows of the GUI
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.world.id)
             # Change the init camera pose
-            p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=270.0, cameraPitch=-50,
-                                         cameraTargetPosition=[-2, 0, 1], physicsClientId=self.world.id)
+            p.resetDebugVisualizerCamera(cameraDistance=1.40, cameraYaw=180, cameraPitch=-40,
+                                         cameraTargetPosition=[5.3, 4.8, 0.74], physicsClientId=self.world.id)
 
             # Get the initial camera target location
             camera_target_position = p.getDebugVisualizerCamera(physicsClientId=self.world.id)[11]
@@ -487,8 +513,8 @@ class Gui(threading.Thread):
             max_speed = 16
 
             # Set initial Camera Rotation
-            camera_yaw = 50
-            camera_pitch = -35
+            camera_yaw = 90
+            camera_pitch = -45
 
             # Keep track of the mouse state
             mouse_state = [0, 0, 0]
