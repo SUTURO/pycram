@@ -67,6 +67,11 @@ class World(StateEntity, ABC):
      the URDF with the name of the URDF on the parameter server. 
     """
 
+    environment: Object = None
+    """
+    Global reference to the spawned Object that represents the environment. 
+    """
+
     cache_manager: CacheManager = CacheManager(conf.cache_dir, [conf.resources_path], False)
     """
     Global reference for the cache manager, this is used to cache the description files of the robot and the objects.
@@ -331,6 +336,14 @@ class World(StateEntity, ABC):
         :return: A list of all Objects that have the type 'obj_type'.
         """
         return list(filter(lambda obj: obj.obj_type == obj_type, self.objects))
+
+    def get_all_objects_not_robot(self) -> List[Object]:
+        """
+        Returns a list of all Objects except robot and environment.
+        :return: A list of all Objects except robot and environment.
+        """
+        return list(filter
+                    (lambda obj: (obj.type != ObjectType.ROBOT and obj.type != ObjectType.ENVIRONMENT), self.objects))
 
     def get_object_by_id(self, obj_id: int) -> Object:
         """
