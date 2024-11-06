@@ -344,3 +344,41 @@ class SemanticCostmapLocation(LocationDesignatorDescription):
         for maybe_pose in PoseGenerator(sem_costmap):
             maybe_pose.position.z += height_offset
             yield self.Location(maybe_pose)
+
+
+def find_placeable_pose(enviroment_link, enviroment_desig, robot_desig, arm, world,
+                        margin_cm=0.2, inner_margin_cm=0.2, object_desig=None):
+    # rospy.loginfo("Create a SemanticCostmapLocation instance")
+    location_desig = SemanticCostmapLocation(urdf_link_name=enviroment_link,
+                                             part_of=enviroment_desig,
+                                             for_object=object_desig, margin_cm=margin_cm,
+                                             inner_margin_cm=inner_margin_cm)
+
+    # rospy.loginfo("Iterate through the locations in the location designator")
+    empty_loc = []
+    for location in location_desig:
+
+        # Check if the location is clear of objects
+        if not is_location_clear(location.pose, world):
+            continue  # Skip this location if it's not clear
+
+        empty_loc.append(location.pose)
+
+    return empty_loc
+
+
+def is_location_clear(location_pose, world, clearance_radius=0.25):
+    """
+    Check if the specified location is clear of objects within the given clearance radius.
+    Implement the logic to check for nearby objects in the environment.
+    """
+    for obj in world.current_world.objects:
+        if obj.type != ObjectType.ENVIRONMENT and obj.type != ObjectType.ROBOT:
+            # Calculate the Euclidean distance between the object and the location
+            obj_position = obj.pose.position  # Assuming 'pose' attribute with 'position'
+            distance = ((obj_position.x - location_pose.position.x) ** 2 +
+                        (obj_position.y - location_pose.position.y) ** 2 +
+                        (obj_position.z - location_pose.position.z) ** 2) ** 0.6
+            if distance < clearance_radius:
+                return False  # An object is within the clearance radius
+    return True  # No objects are within the clearance radius
