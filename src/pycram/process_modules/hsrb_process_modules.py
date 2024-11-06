@@ -101,6 +101,15 @@ class HSRBMoveJoints(ProcessModule):
         robot.set_multiple_joint_positions(dict(zip(desig.names, desig.positions)))
 
 
+class HSRBWorldStateDetecting(ProcessModule):
+    """
+    This process module detectes an object even if it is not in the field of view of the robot.
+    """
+
+    def _execute(self, desig: WorldStateDetectingMotion):
+        obj_type = desig.object_type
+        return list(filter(lambda obj: obj.type == obj_type, World.current_world.objects))[0]
+
 ###########################################################
 ########## Process Modules for the Real HSRB ###############
 ###########################################################
