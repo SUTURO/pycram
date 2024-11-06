@@ -17,10 +17,10 @@ from gtts import gTTS
 
 import io
 
-from ..ros.logging import logdebug
+from ..ros.logging import logdebug, loginfo
 from ..utils import _apply_ik
 from ..world_concepts.world_object import Object
-from ..world_reasoning import link_pose_for_joint_config
+from ..world_reasoning import link_pose_for_joint_config, visible
 
 
 def _park_arms(arm):
@@ -60,9 +60,46 @@ class HSRBDetecting(ProcessModule):
     This process module tries to detect an object with the given type. To be detected the object has to be in
     the field of view of the robot.
     """
-   # pass
-    def _execute(self, desig: DetectingMotion) -> Any:
-        pass
+
+
+    def _execute(self, desig: DetectingMotion):
+        loginfo("Detecting technique: {}".format(desig.technique))
+        robot = World.robot
+        object_type = desig.object_type
+        # Should be "wide_stereo_optical_frame"
+        cam_frame_name = robot_description.get_camera_frame()
+        # should be [0, 0, 1]
+        front_facing_axis = robot_description.front_facing_axis
+        if desig.technique == 'all':
+            loginfo("Fake detecting all generic objects")
+            objects = World.current_world.get_all_objects_not_robot()
+        elif desig.technique == 'human':
+            loginfo("Fake detecting human -> spawn 0,0,0")
+            human = []
+            human.append(Object("human", ObjectType.HUMAN, "human_male.stl", pose=Pose([0, 0, 0])))
+            object_dict = {}
+
+            # Iterate over the list of objects and store each one in the dictionary
+            for i, obj in enumerate(human):
+                object_dict[obj.name] = obj
+            return object_dict
+
+        else:
+            loginfo("Fake -> Detecting specific object type")
+            objects = World.current_world.get_object_by_type(object_type)
+
+        object_dict = {}
+
+        perceived_objects = []
+        for obj in objects:
+            if visible(obj, robot.get_link_pose(cam_frame_name), front_facing_axis):
+                perceived_objects.append(ObjectDesignatorDescription.Object(obj.name, obj.obj_type, obj))
+        # Iterate over the list of objects and store each one in the dictionary
+        for i, obj in enumerate(perceived_objects):
+            object_dict[obj.name] = obj
+
+        loginfo("returning dict objects")
+        return object_dict
 
 
 class HSRBMoveTCP(ProcessModule):
