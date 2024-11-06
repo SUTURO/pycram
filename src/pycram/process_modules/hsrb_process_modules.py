@@ -3,6 +3,7 @@ from threading import Lock
 from typing_extensions import Any
 
 from ..datastructures.enums import ExecutionType
+from ..external_interfaces.ik import request_ik
 from ..external_interfaces.tmc import tmc_gripper_control, tmc_talk
 from ..robot_description import RobotDescription
 from ..process_module import ProcessModule
@@ -17,6 +18,8 @@ from gtts import gTTS
 import io
 
 from ..ros.logging import logdebug
+from ..utils import _apply_ik
+from ..world_concepts.world_object import Object
 
 
 def _park_arms(arm):
@@ -30,6 +33,15 @@ def _park_arms(arm):
     if arm == "left":
         for joint, pose in robot_description.get_static_joint_chain("left", "park").items():
             robot.set_joint_position(joint, pose)
+
+
+def _move_arm_tcp(target: Pose, robot: Object, arm: Arms) -> None:
+    gripper = robot_description.get_tool_frame(arm)
+
+    joints = robot_description.chains[arm].joints
+
+    inv = request_ik(target, robot, joints, gripper)
+    _apply_ik(robot, inv)
 
 
 class HSRBNavigation(ProcessModule):
@@ -51,6 +63,17 @@ class HSRBDetecting(ProcessModule):
     def _execute(self, desig: DetectingMotion) -> Any:
         pass
 
+
+class HSRBMoveTCP(ProcessModule):
+    """
+    This process moves the tool center point of either the right or the left arm.
+    """
+
+    def _execute(self, desig: MoveTCPMotion):
+        target = desig.target
+        robot = World.robot
+
+        _move_arm_tcp(target, robot, desig.arm)
 
 ###########################################################
 ########## Process Modules for the Real HSRB ###############
