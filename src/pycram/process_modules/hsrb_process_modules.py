@@ -453,6 +453,11 @@ class HSRBManager(ProcessModuleManager):
         self._open_lock = Lock()
         self._close_lock = Lock()
         self._talk_lock = Lock()
+        self._pour_lock = Lock()
+        self._head_follow_lock = Lock()
+        self._pointing_lock = Lock()
+        self._open_door_lock = Lock()
+        self._grasp_handle_lock = Lock()
 
     def navigate(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
@@ -463,7 +468,9 @@ class HSRBManager(ProcessModuleManager):
             return HSRBNavigationSemiReal(self._navigate_lock)
 
     def looking(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveHead(self._looking_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveHeadReal(self._looking_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveHeadReal(self._looking_lock)
@@ -477,19 +484,31 @@ class HSRBManager(ProcessModuleManager):
             return HSRBDetecting(self._detecting_lock)
 
     def move_tcp(self):
-        if  ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveTCP(self._move_tcp_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveTCPReal(self._move_tcp_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveTCPReal(self._move_tcp_lock)
 
     def move_arm_joints(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveArmJoints(self._move_arm_joints_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveArmJointsReal(self._move_arm_joints_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveArmJointsReal(self._move_arm_joints_lock)
 
+    def world_state_detecting(self):
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED or ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBWorldStateDetecting(self._world_state_detecting_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBWorldStateDetecting(self._world_state_detecting_lock)
+
     def move_joints(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveJoints(self._move_joints_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveJointsReal(self._move_joints_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveJointsReal(self._move_joints_lock)
@@ -501,13 +520,17 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveGripperReal(self._move_gripper_lock)
 
     def open(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBOpen(self._open_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBOpenReal(self._open_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBOpenReal(self._open_lock)
 
     def close(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBClose(self._close_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBCloseReal(self._close_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBCloseReal(self._close_lock)
@@ -516,4 +539,34 @@ class HSRBManager(ProcessModuleManager):
         if ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBTalkReal(self._talk_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
-            return HSRBTalkSemiReal(self._talk_lock)
+            return HSRBTalkReal(self._talk_lock)
+
+    def pour(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBPourReal(self._pour_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBPourReal(self._pour_lock)
+
+    def head_follow(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBHeadFollowReal(self._head_follow_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBHeadFollowReal(self._head_follow_lock)
+
+    def pointing(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBPointingReal(self._pointing_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBPointingReal(self._pointing_lock)
+
+    def door_opening(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBOpenDoorReal(self._open_door_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBOpenDoorReal(self._open_door_lock)
+
+    def grasp_door_handle(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBGraspHandleReal(self._grasp_handle_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBGraspHandleReal(self._grasp_handle_lock)
