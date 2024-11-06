@@ -80,7 +80,7 @@ def init_giskard_interface(func: Callable) -> Callable:
 
         if "/giskard" in get_node_names():
             giskard_wrapper = GiskardWrapper()
-            giskard_update_service = get_service_proxy("/giskard/update_world", UpdateWorld)
+            # giskard_update_service = get_service_proxy("/giskard/update_world", UpdateWorld)
             loginfo_once("Successfully initialized Giskard interface")
             is_init = True
         else:
@@ -100,8 +100,8 @@ def initial_adding_objects() -> None:
     """
     groups = giskard_wrapper.get_group_names()
     for obj in World.current_world.objects:
-        if obj is World.robot or obj is World.current_world.get_prospection_object_for_object(World.robot):
-            continue
+        # if obj is World.robot or obj is World.current_world.get_prospection_object_for_object(World.robot):
+        #   continue
         name = obj.name
         if name not in groups:
             spawn_object(obj)
@@ -135,10 +135,11 @@ def sync_worlds() -> None:
         if obj.name == RobotDescription.current_robot_description.name or obj.obj_type == ObjectType.ROBOT:
             joint_config = obj.get_positions_of_all_joints()
             non_fixed_joints = list(filter(lambda joint: joint.type != JointType.FIXED, obj.joints.values()))
-            joint_config_filtered = {joint.name: joint_config[joint.name] for joint in non_fixed_joints}
+            # todo: fix for hsrb
+            # joint_config_filtered = {joint.name: joint_config[joint.name] for joint in non_fixed_joints}
 
-            giskard_wrapper.monitors.add_set_seed_configuration(joint_config_filtered,
-                                                                RobotDescription.current_robot_description.name)
+            #giskard_wrapper.monitors.add_set_seed_configuration(joint_config_filtered,
+                                                               # RobotDescription.current_robot_description.name)
             giskard_wrapper.monitors.add_set_seed_odometry(_pose_to_pose_stamped(obj.get_pose()),
                                                            RobotDescription.current_robot_description.name)
     giskard_object_names = set(giskard_wrapper.get_group_names())
