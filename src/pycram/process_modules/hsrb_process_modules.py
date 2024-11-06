@@ -148,6 +148,45 @@ class HSRBClose(ProcessModule):
 
         desig.object_part.world_object.set_joint_position(container_joint,
                                                           part_of_object.get_joint_limits(container_joint)[0])
+
+
+class HSRBMoveHead(ProcessModule):
+    """
+    This process module moves the head to look at a specific point in the world coordinate frame.
+    This point can either be a position or an object.
+    """
+
+    def _execute(self, desig: LookingMotion):
+        target = desig.target
+        robot = World.robot
+
+        local_transformer = LocalTransformer()
+        pose_in_pan = local_transformer.transform_pose(target, robot.get_link_tf_frame("head_pan_link"))
+        pose_in_tilt = local_transformer.transform_pose(target, robot.get_link_tf_frame("head_tilt_link"))
+
+        new_pan = np.arctan2(pose_in_pan.position.y, pose_in_pan.position.x)
+        new_tilt = np.arctan2(pose_in_tilt.position.z, pose_in_tilt.position.x ** 2 + pose_in_tilt.position.y ** 2) * -1
+
+        current_pan = robot.get_joint_position("head_pan_joint")
+        current_tilt = robot.get_joint_position("head_tilt_joint")
+
+        robot.set_joint_position("head_pan_joint", new_pan + current_pan)
+        robot.set_joint_position("head_tilt_joint", new_tilt + current_tilt)
+
+
+class HSRBMoveGripper(ProcessModule):
+    """
+    This process module controls the gripper of the robot. They can either be opened or closed.
+    Furthermore, it can only moved one gripper at a time.
+    """
+
+    def _execute(self, desig: MoveGripperMotion):
+        robot = World.robot
+        gripper = desig.gripper
+        motion = desig.motion
+        for joint, state in robot_description.get_static_gripper_chain(gripper, motion).items():
+            robot.set_joint_position(joint, state)
+
 ###########################################################
 ########## Process Modules for the Real HSRB ###############
 ###########################################################
