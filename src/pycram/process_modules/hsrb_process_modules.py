@@ -19,6 +19,19 @@ import io
 from ..ros.logging import logdebug
 
 
+def _park_arms(arm):
+    """
+    Defines the joint poses for the parking positions of the arms of HSRB and applies them to the
+    in the BulletWorld defined robot.
+    :return: None
+    """
+
+    robot = World.robot
+    if arm == "left":
+        for joint, pose in robot_description.get_static_joint_chain("left", "park").items():
+            robot.set_joint_position(joint, pose)
+
+
 class HSRBNavigation(ProcessModule):
     """
     The process module to move the robot from one position to another.
