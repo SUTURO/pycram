@@ -740,7 +740,8 @@ class SemanticCostmap(Costmap):
     table surface.
     """
 
-    def __init__(self, object, urdf_link_name, size=100, resolution=0.02, world=None):
+    def __init__(self, object, urdf_link_name, size=100, resolution=0.02, world=None, margin_cm=0.2,
+                 inner_margin_cm=0.1):
         """
         Creates a semantic costmap for the given parameter. The semantic costmap will be on top of the link of the given
         Object.
