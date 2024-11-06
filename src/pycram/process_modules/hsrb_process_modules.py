@@ -75,6 +75,32 @@ class HSRBMoveTCP(ProcessModule):
 
         _move_arm_tcp(target, robot, desig.arm)
 
+
+class HSRBMoveArmJoints(ProcessModule):
+    """
+    This process modules moves the joints of either the right or the left arm. The joint states can be given as
+    list that should be applied or a pre-defined position can be used, such as "parking"
+    """
+
+    def _execute(self, desig: MoveArmJointsMotion):
+
+        robot = World.robot
+        if desig.right_arm_poses:
+            robot.set_multiple_joint_positions(desig.right_arm_poses)
+        if desig.left_arm_poses:
+            robot.set_multiple_joint_positions(desig.left_arm_poses)
+
+
+class HSRBMoveJoints(ProcessModule):
+    """
+    Process Module for generic joint movements, is not confined to the arms but can move any joint of the robot
+    """
+
+    def _execute(self, desig: MoveJointsMotion):
+        robot = World.robot
+        robot.set_multiple_joint_positions(dict(zip(desig.names, desig.positions)))
+
+
 ###########################################################
 ########## Process Modules for the Real HSRB ###############
 ###########################################################
