@@ -20,6 +20,7 @@ import io
 from ..ros.logging import logdebug
 from ..utils import _apply_ik
 from ..world_concepts.world_object import Object
+from ..world_reasoning import link_pose_for_joint_config
 
 
 def _park_arms(arm):
@@ -110,6 +111,43 @@ class HSRBWorldStateDetecting(ProcessModule):
         obj_type = desig.object_type
         return list(filter(lambda obj: obj.type == obj_type, World.current_world.objects))[0]
 
+
+class HSRBOpen(ProcessModule):
+    """
+    Low-level implementation of opening a container in the simulation. Assumes the handle is already grasped.
+    """
+
+    def _execute(self, desig: OpeningMotion):
+        part_of_object = desig.object_part.world_object
+
+        container_joint = part_of_object.find_joint_above_link(desig.object_part.name, JointType.PRISMATIC)
+
+        goal_pose = link_pose_for_joint_config(part_of_object, {
+            container_joint: part_of_object.get_joint_limits(container_joint)[1] - 0.05}, desig.object_part.name)
+
+        _move_arm_tcp(goal_pose, World.robot, desig.arm)
+
+        desig.object_part.world_object.set_joint_position(container_joint,
+                                                          part_of_object.get_joint_limits(container_joint)[1])
+
+
+class HSRBClose(ProcessModule):
+    """
+    Low-level implementation that lets the robot close a grasped container, in simulation
+    """
+
+    def _execute(self, desig: ClosingMotion):
+        part_of_object = desig.object_part.world_object
+
+        container_joint = part_of_object.find_joint_above_link(desig.object_part.name, JointType.PRISMATIC)
+
+        goal_pose = link_pose_for_joint_config(part_of_object, {
+            container_joint: part_of_object.get_joint_limits(container_joint)[0]}, desig.object_part.name)
+
+        _move_arm_tcp(goal_pose, World.robot, desig.arm)
+
+        desig.object_part.world_object.set_joint_position(container_joint,
+                                                          part_of_object.get_joint_limits(container_joint)[0])
 ###########################################################
 ########## Process Modules for the Real HSRB ###############
 ###########################################################
