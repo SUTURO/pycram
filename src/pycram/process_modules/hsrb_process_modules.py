@@ -380,6 +380,58 @@ class HSRBTalkSemiReal(ProcessModule):
         # Play the modified audio
         play(faster_audio)
 
+class HSRBPourReal(ProcessModule):
+    """
+    Tries to achieve the pouring motion
+    """
+
+    def _execute(self, designator: PouringMotion) -> Any:
+        giskard.achieve_tilting_goal(designator.direction, designator.angle)
+
+
+class HSRBHeadFollowReal(ProcessModule):
+    """
+    HSR will move head to pose that is published on topic /human_pose
+    """
+
+    def _execute(self, designator: HeadFollowMotion) -> Any:
+        if designator.state == 'stop':
+            giskard.stop_looking()
+        else:
+            giskard.move_head_to_human()
+
+
+class HSRBPointingReal(ProcessModule):
+    """
+    HSR will move head to pose that is published on topic /human_pose
+    """
+
+    def _execute(self, designator: PointingMotion) -> Any:
+        pointing_pose = PointStamped()
+        pointing_pose.header.frame_id = "map"
+        pointing_pose.point.x = designator.x_coordinate
+        pointing_pose.point.y = designator.y_coordinate
+        pointing_pose.point.z = designator.z_coordinate
+        giskard.move_arm_to_pose(pointing_pose)
+
+
+class HSRBOpenDoorReal(ProcessModule):
+    """
+    HSR will perform open action on grasped handel for a door
+    """
+
+    def _execute(self, designator: DoorOpenMotion) -> Any:
+        giskard.open_doorhandle(designator.handle)
+
+
+class HSRBGraspHandleReal(ProcessModule):
+    """
+    HSR will grasp given (door-)handle
+    """
+
+    def _execute(self, designator: GraspHandleMotion) -> Any:
+        giskard.grasp_doorhandle(designator.handle)
+
 
 ###########################################################
 ########## HSRB MANAGER ###############
