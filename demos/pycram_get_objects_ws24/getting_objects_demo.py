@@ -58,8 +58,9 @@ def demo(step):
             #while not callback:
             #    rospy.sleep(1)
 
-            #name = response[1]
-            talk.pub_now("I will bring you the Muesli Box.")
+            name = response[1]
+            #obj = response[2]
+            TalkingMotion(f"I will bring you the Muesli Box, {name}.").resolve().perform()
         # Moves to place
         if step <= 1:
 
@@ -84,6 +85,8 @@ def demo(step):
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             # NavigateAction([Pose([], [])]).resolve().perform()
             move.pub_now(Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y, 0], [0, 0, 1, 0]))
+            TalkingMotion(f"Here is your Mueslibox {name}").resolve().perform()
+
 
 
 
