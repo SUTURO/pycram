@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from geometry_msgs.msg import Vector3
 from std_msgs.msg import ColorRGBA
+from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import Marker, MarkerArray
 
 from ..datastructures.dataclasses import BoxVisualShape, CylinderVisualShape, MeshVisualShape, SphereVisualShape
@@ -77,14 +78,37 @@ class VizMarkerPublisher:
                 msg.type = Marker.MESH_RESOURCE
                 msg.action = Marker.ADD
                 link_pose = obj.get_link_transform(link)
-                if obj.get_link_origin(link) is not None:
-                    link_origin = obj.get_link_origin_transform(link)
+                if hasattr(obj, "urdf_object"):
+                    if obj.urdf_object.link_map[link].collision.origin:
+                        link_origin = Transform(obj.urdf_object.link_map[link].collision.origin.xyz,
+                                                list(quaternion_from_euler(
+                                                    *obj.urdf_object.link_map[link].collision.origin.rpy)))
+                    else:
+                        link_origin = Transform()
                 else:
                     link_origin = Transform()
                 link_pose_with_origin = link_pose * link_origin
                 msg.pose = link_pose_with_origin.to_pose().pose
 
-                color = obj.get_link_color(link).get_rgba()
+                if obj.name == "board":
+                    color = [0.4, 0.2, 0.06, 1]
+                elif obj.obj_type == "object_to_be_cut":
+                    colors = {
+                        "orange": (1, 0.75, 0, 1),
+                        "cucumber": (0, 1, 0, 1),
+                        "banana": (1, 1, 0, 1),
+                        "lemon": (1, 1, 0, 1),
+                        "citron": (1, 1, 0, 1),
+                        "lime": (0.75, 1.0, 0.0, 1),
+                        "apple": (1, 0, 0, 1),
+                        "tomato": (1, 0, 0, 1),
+                        "peach": (1.0, 0.8, 0.64, 1),
+                        "kiwi": (0.76, 0.88, 0.52, 1),
+                        "avocado": (0.0, 0.5, 0.0, 1),
+                    }
+                    color = colors[obj.name]
+                else:
+                    color = obj.get_link_color(link).get_rgba()
 
                 msg.color = ColorRGBA(*color)
                 msg.lifetime = Duration(1)
@@ -104,6 +128,12 @@ class VizMarkerPublisher:
                 elif isinstance(geom, SphereVisualShape):
                     msg.type = Marker.SPHERE
                     msg.scale = Vector3(geom.radius * 2, geom.radius * 2, geom.radius * 2)
+                elif obj.customGeom:
+                    msg.type = Marker.CUBE
+                    x = geom["size"][0]
+                    y = geom["size"][1]
+                    z = geom["size"][2]
+                    msg.scale = Vector3(x, y, z)
 
                 marker_array.markers.append(msg)
         return marker_array
