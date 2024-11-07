@@ -213,15 +213,11 @@ class DetectingMotion(BaseMotion):
     Technique means how the object should be detected, e.g. 'color', 'shape', 'all', etc. 
     """
 
-    object_type: ObjectType
+    object_type: Optional[ObjectDesignatorDescription]
     """
     Type of the object that should be detected
     """
-    technique: str
-    """
-    Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
-    Or 'all' if all objects should be detected
-    """
+
     state: Optional[str] = None
     """
     The state instructs our perception system to either start or stop the search for an object or human.
@@ -235,7 +231,7 @@ class DetectingMotion(BaseMotion):
         if not world_object:
             raise PerceptionObjectNotFound(
                 f"Could not find an object with the type {self.object_type} in the FOV of the robot")
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             try:
                 return RealObject.Object(world_object.name, world_object.obj_type,
                                         world_object, world_object.get_pose())

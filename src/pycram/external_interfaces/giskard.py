@@ -8,7 +8,7 @@ from ..ros.data_types import Time
 from ..ros.logging import logwarn, loginfo_once
 from ..ros.ros_tools import get_node_names
 
-from ..datastructures.enums import JointType, ObjectType
+from ..datastructures.enums import JointType, ObjectType, Arms
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..datastructures.dataclasses import MeshVisualShape
@@ -253,7 +253,7 @@ def _manage_par_motion_goals(goal_func, *args) -> Optional['MoveResult']:
             for cmd in giskard_wrapper.motion_goals.get_goals():
                 par_value_pair = json.loads(cmd.kwargs)
                 if "tip_link" in par_value_pair.keys() and "root_link" in par_value_pair.keys():
-                    if par_value_pair["tip_link"] == robot_description.base_link:
+                    if par_value_pair["tip_link"] == RobotDescription.current_robot_description.base_link:
                         continue
                     chain = World.robot.description.get_chain(par_value_pair["root_link"],
                                                               par_value_pair["tip_link"])
@@ -307,12 +307,9 @@ def achieve_joint_goal(goal_poses: Dict[str, float]) -> 'MoveResult':
     :return: MoveResult message for this goal
     """
     sync_worlds()
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_joint_goal, goal_poses)
-    if par_return:
-        return par_return
-
-    giskard_wrapper.set_joint_goal(goal_poses)
-    # giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.motion_goals.add_joint_position(goal_poses)
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.motion_goals.avoid_all_collisions()
     return giskard_wrapper.execute()
 
 
@@ -576,12 +573,15 @@ def projection_joint_goal(goal_poses: Dict[str, float], allow_collisions: bool =
 # Managing collisions
 
 @init_giskard_interface
-def allow_gripper_collision(gripper: str) -> None:
+def allow_gripper_collision(gripper: Arms) -> None:
     """
     Allows the specified gripper to collide with anything.
 
     :param gripper: The gripper which can collide, either 'right', 'left' or 'all'
     """
+    if gripper == Arms.LEFT:
+        gripper = "all"  # "left" Arms.LEFT bcs hsrb (might need revision for pr2)
+
     add_gripper_groups()
     for gripper_group in get_gripper_group_names():
         if gripper in gripper_group or gripper == "all":

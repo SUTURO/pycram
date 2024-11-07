@@ -1,9 +1,14 @@
 import numpy as np
 from threading import Lock
+
+import rospy
 from typing_extensions import Any
 
+from ..datastructures.dataclasses import Color
 from ..datastructures.enums import ExecutionType
 from ..external_interfaces.ik import request_ik
+from ..external_interfaces.navigate import PoseNavigator
+from ..external_interfaces.robokudo import *
 from ..external_interfaces.tmc import tmc_gripper_control, tmc_talk
 from ..robot_description import RobotDescription
 from ..process_module import ProcessModule
@@ -18,6 +23,7 @@ from gtts import gTTS
 import io
 
 from ..ros.logging import logdebug, loginfo
+from ..utilities.robokudo_obj_translator import translate_obj
 from ..utils import _apply_ik
 from ..world_concepts.world_object import Object
 from ..world_reasoning import link_pose_for_joint_config, visible
@@ -235,10 +241,13 @@ class HSRBNavigationReal(ProcessModule):
     """
 
     def _execute(self, designator: MoveMotion) -> Any:
+        use_giskard = True
         logdebug(f"Sending goal to giskard to Move the robot")
-        # giskard.achieve_cartesian_goal(designator.target, robot_description.base_link, "map")
-        # todome fix this
-        # queryPoseNav(designator.target)
+        if use_giskard:
+            giskard.achieve_cartesian_goal(designator.target, RobotDescription.current_robot_description.base_link, "map")
+        else:
+            nav = PoseNavigator()
+            nav.pub_now(designator.target)
 
 
 class HSRBMoveHeadReal(ProcessModule):
@@ -248,7 +257,22 @@ class HSRBMoveHeadReal(ProcessModule):
 
     def _execute(self, desig: LookingMotion):
         target = desig.target
-        giskard.move_head_to_pose(target)
+        robot = World.robot
+
+        local_transformer = LocalTransformer()
+        pose_in_pan = local_transformer.transform_pose(target, robot.get_link_tf_frame("head_pan_link"))
+        pose_in_tilt = local_transformer.transform_pose(target, robot.get_link_tf_frame("head_tilt_link"))
+
+        new_pan = np.arctan2(pose_in_pan.position.y, pose_in_pan.position.x)
+        new_tilt = np.arctan2(pose_in_tilt.position.z, np.sqrt(pose_in_tilt.position.x ** 2 + pose_in_tilt.position.y ** 2))
+
+        current_pan = robot.get_joint_position("head_pan_joint")
+        current_tilt = robot.get_joint_position("head_tilt_joint")
+
+        giskard.avoid_all_collisions()
+        giskard.achieve_joint_goal(
+            {"head_pan_joint": new_pan + current_pan, "head_tilt_joint": new_tilt + current_tilt})
+
 
 
 class HSRBDetectingReal(ProcessModule):
@@ -258,7 +282,232 @@ class HSRBDetectingReal(ProcessModule):
     """
 
     def _execute(self, desig: DetectingMotion) -> Any:
-        pass
+        """
+                specifies the query send to robokudo
+                :param desig.technique: if this is set to human the hsr searches for human and publishes the pose
+                to /human_pose. returns PoseStamped of Human.
+                this value can also be set to 'attributes', 'location' or 'region' to get the attributes and pose of a human, a bool
+                if a seat specified in the sematic map is taken or to describe where objects should be perceived.
+
+                """
+
+        # todo at the moment perception ignores searching for a specific object type so we do as well on real
+        if desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
+            human_pose = query_human()
+            return human_pose
+        elif desig.state == "face":
+
+            res = query_faces_human()
+            id_dict = {}
+            keys = []
+            if res.res:
+                for ele in res.res:
+                    id_dict[int(ele.type)] = ele.pose[0]
+                    keys.append(int(ele.type))
+                id_dict["keys"] = keys
+                return id_dict
+            else:
+                return []
+
+        elif desig.technique == 'holding_drink':
+            print("not implemented yet")
+            return_list = []
+            # human_pose_drink = queryDrinkingHuman()
+            # if human_pose_drink.res:
+            #     for human in human_pose_drink.res:
+            #         return_list.append((human.attribute[0], human.pose[0]))
+
+            return return_list
+
+        elif desig.state == "stop":
+            stop_query()
+            return "stopped"
+
+        elif desig.technique == 'location':
+            seat = desig.state
+            seat_human_pose = query_specific_region(seat)
+
+            if seat == "long_table" or seat == "popcorn_table":
+                loc_list = []
+                for loc in seat_human_pose[0].attribute:
+                    print(f"location: {loc}, type: {type(loc)}")
+                    loc_list.append(loc)
+                print(loc_list)
+                return loc_list
+                # return seat_human_pose[0].attribute
+            # if only one seat is checked
+            if seat != "sofa":
+                return seat_human_pose[0].attribute[0][9:].split(',')
+            # when whole sofa gets checked, a list of lists is returned
+            res = []
+            for i in seat_human_pose[0].attribute:
+                res.append(i.split(','))
+
+            print(res)
+            return res
+
+        elif desig.technique == 'attributes':
+            human_pose_attr = query_human_attributes()
+            counter = 0
+            # wait for human to come
+            # TODO: try catch block
+            while not human_pose_attr.res and counter < 6:
+                human_pose_attr = query_human_attributes()
+                counter += 1
+                if counter > 3:
+                    TalkingMotion("please step in front of me").perform()
+                    rospy.sleep(2)
+
+            if counter >= 3:
+                return "False"
+
+            # extract information from query
+            gender = human_pose_attr.res[0].attribute[3][13:19]
+            if gender[0] != 'f':
+                gender = gender[:4]
+            clothes = human_pose_attr.res[0].attribute[1][20:]
+            brightness_clothes = human_pose_attr.res[0].attribute[0][5:]
+            hat = human_pose_attr.res[0].attribute[2][20:]
+            attr_list = [gender, hat, clothes, brightness_clothes]
+            return attr_list
+
+        # detect objects in a certain area
+        elif desig.technique == "region":
+            query_result = query_specific_region()
+            perceived_objects = []
+            if query_result:
+                for key,obj in query_result.items():
+                    # this has to be pose from pose stamped since we spawn the object with given header
+                    list = obj.pose
+                    if len(list) == 0:
+                        continue
+                    obj_pose = Pose.from_pose_stamped(list[0])
+                    # obj_pose.orientation = [0, 0, 0, 1]
+                    # obj_pose_tmp = query_result.res[i].pose[0]
+                    obj_type = obj.type
+                    obj_size = obj.size
+                    # obj_color = query_result.res[i].color[0]
+                    color_switch = {
+                        "red": [1, 0, 0, 1],
+                        "green": [0, 1, 0, 1],
+                        "blue": [0, 0, 1, 1],
+                        "black": [0, 0, 0, 1],
+                        "white": [1, 1, 1, 1],
+                        # add more colors if needed
+                    }
+
+                    # color = color_switch.get(obj_color)
+                    # if color is None:
+                    # color = [0, 0, 0, 1]
+
+                    # atm this is the string size that describes the object but it is not the shape size thats why string
+                    def extract_xyz_values(input_string):
+                        # Split the input string by commas and colon to separate key-value pairs
+                        # key_value_pairs = input_string.split(', ')
+
+                        # Initialize variables to store the X, Y, and Z values
+                        x_value = None
+                        y_value = None
+                        z_value = None
+
+                        # todo: for now it is a string again, might be changed back. In this case we need the lower commented out code
+                        xvalue = input_string[(input_string.find("x") + 2): input_string.find("y")]
+                        y_value = input_string[(input_string.find("y") + 2): input_string.find("z")]
+                        z_value = input_string[(input_string.find("z") + 2):]
+
+                        # Iterate through the key-value pairs to extract the values
+                        # for pair in key_value_pairs:
+                        #     key, value = pair.split(': ')
+                        #     if key == 'x':
+                        #         x_value = float(value)
+                        #     elif key == 'y':
+                        #         y_value = float(value)
+                        #     elif key == 'z':
+                        #         z_value = float(value)
+
+                        return x_value, y_value, z_value
+
+                    x, y, z = extract_xyz_values(obj_size)
+                    # size = (x, z / 2, y)
+                    # size_box = (x / 2, z / 2, y / 2)
+                    hard_size = (0.02, 0.02, 0.03)
+                    id = World.current_world.add_rigid_box(obj_pose, hard_size, [0, 0, 0, 1])
+                    box_object = Object(obj_type + "" + str(rospy.get_time()), obj_type, pose=obj_pose,
+                                        color=Color(0, 0, 0, 1),
+                                        custom_id=id,
+                                        custom_geom={"size": [hard_size[0], hard_size[1], hard_size[2]]})
+                    box_object.set_pose(obj_pose)
+                    box_desig = ObjectDesignatorDescription.Object(box_object.name, box_object.type, box_object)
+
+                    perceived_objects.append(box_desig)
+
+                object_dict = {}
+
+                # Iterate over the list of objects and store each one in the dictionary
+                for i, obj in enumerate(perceived_objects):
+                    object_dict[obj.name] = obj
+                return object_dict
+
+        # technique == "all", detects objects
+        else:
+            query_result = send_query()
+            perceived_objects = []
+            for i in range(0, len(query_result.res)):
+                try:
+                    obj_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                except IndexError:
+                    obj_pose = Pose.from_pose_stamped(query_result.res[i].pose)
+                    pass
+                obj_type = query_result.res[i].type
+                obj_size = None
+                try:
+                    obj_size = query_result.res[i].shape_size[0].dimensions
+                except IndexError:
+                    pass
+                obj_color = None
+                try:
+                    obj_color = query_result.res[i].color[0]
+                except IndexError:
+                    pass
+
+                #if desig.object_type:
+                   # desig.object_type.
+                    #if not desig.object_type.lower() in obj_type.lower():
+                     #   pass
+                color_switch = {
+                    "red": [1, 0, 0, 1],
+                    "yellow": [1, 1, 0, 1],
+                    "green": [0, 1, 0, 1],
+                    "cyan": [0, 1, 1, 1],
+                    "blue": [0, 0, 1, 1],
+                    "magenta": [1, 0, 1, 1],
+                    "white": [1, 1, 1, 1],
+                    "black": [0, 0, 0, 1],
+                    "grey": [0.5, 0.5, 0.5, 1],
+                    # add more colors if needed
+                }
+
+                color = color_switch.get(obj_color)
+                if color is None:
+                    color = Color(0, 0, 0, 1)
+
+                hsize = [obj_size.x / 2, obj_size.y / 2, obj_size.z / 2]
+                osize = [obj_size.x, obj_size.y, obj_size.z]
+                id = World.current_world.add_rigid_box(obj_pose, hsize, color)
+                path = translate_obj(obj_type)
+                box_object = Object(obj_type + "_" + str(rospy.get_time()), obj_type, pose=obj_pose, color=color,
+                                    custom_id=id,
+                                    custom_geom={"size": osize}, path=path)
+                box_object.set_pose(obj_pose)
+                box_desig = ObjectDesignatorDescription.Object(box_object.name, box_object.obj_type, box_object)
+
+                perceived_objects.append(box_desig)
+
+            object_dict = {}
+
+            for i, obj in enumerate(perceived_objects):
+                object_dict[obj.name] = obj
+            return object_dict
 
 
 class HSRBMoveTCPReal(ProcessModule):

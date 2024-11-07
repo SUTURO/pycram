@@ -1,11 +1,12 @@
 import rospy
 from actionlib_msgs.msg import GoalStatusArray
+from tmc_control_msgs.msg import GripperApplyEffortActionGoal
 from tmc_msgs.msg import Voice, TalkRequestActionGoal
 from typing_extensions import Optional
 
 from ..datastructures.enums import GripperState
 from ..designators.motion_designator import MoveGripperMotion, TalkingMotion
-from ..ros.logging import loginfo
+from ..ros.logging import loginfo, logwarn
 from ..ros.publisher import create_publisher
 from ..ros.data_types import Rate
 
@@ -47,7 +48,7 @@ def tmc_gripper_control(designator: MoveGripperMotion, topic_name: Optional[str]
         pub_gripper.publish(msg)
 
 
-class TextToSpeechPublisher():
+class TextToSpeechPublisher:
 
     def __init__(self):
         self.pub = rospy.Publisher('/talk_request_action/goal', TalkRequestActionGoal, queue_size=10)
