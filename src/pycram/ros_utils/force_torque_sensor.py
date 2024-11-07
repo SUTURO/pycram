@@ -7,6 +7,7 @@ from std_msgs.msg import Header
 
 from ..datastructures.enums import FilterConfig
 from ..datastructures.world import World
+from ..failures import SensorMonitoringCondition
 from ..ros.custom_filter import Butterworth
 from ..ros.data_types import Time
 from ..ros.logging import logerr
@@ -235,3 +236,12 @@ class ForceTorqueSensor:
         derivative.wrench.torque.z = before.wrench.torque.z - after.wrench.torque.z
 
         return derivative
+
+    def monitor_func(self):
+        der: WrenchStamped() = self.get_last_value()
+        print(abs(der.wrench.force.y))
+        if abs(der.wrench.force.y) > 1.4:
+            print(abs(der.wrench.force.y))
+            print(abs(der.wrench.torque.y))
+            return SensorMonitoringCondition
+        return False
