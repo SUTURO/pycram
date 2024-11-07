@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import inspect
 import itertools
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
+import sqlalchemy
 from geometry_msgs.msg import WrenchStamped
 from owlready2 import Thing
 from sqlalchemy.orm import Session
@@ -626,6 +629,73 @@ class PouringAction(ActionDesignatorDescription):
         :return: A performable designator
         """
         return PouringActionPerformable(self.target_locations[0], self.arms[0], self.directions[0], self.angels[0])
+
+
+class MixingAction(ActionDesignatorDescription):
+    """
+    Designator to let the robot perform a mixing action.
+    """
+
+    object_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the object that should be mixed.
+    """
+
+    object_tool_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the mixing tool.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for mixing.
+    """
+
+    grasp: Grasp
+    """
+    The grasp that should be used for mixing. For example, 'left' or 'right'.
+    """
+
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    """
+    The object at the time this Action got created. It is used to be a static, information holding entity. It is
+    not updated when the BulletWorld object is changed.
+    """
+    def insert(self, session: sqlalchemy.orm.session.Session, **kwargs):
+        """
+        Insert the mixing action into the database session.
+        """
+        action = super().insert(session)
+        # Additional logic for inserting mixing action data goes here
+        session.add(action)
+        session.commit()
+
+        return action
+
+    def __init__(self, object_designator_description: ObjectDesignatorDescription,
+                 object_tool_designator_description: ObjectDesignatorDescription, arms: List[Arms], grasps: List[Grasp],
+                 resolver=None):
+        """
+        Initialize the MixingAction with object and tool designators, arms, and grasps.
+        :param object_designator_description: Object designator for the object to be mixed.
+        :param object_tool_designator_description: Object designator for the mixing tool.
+        :param arms: List of possible arms that could be used.
+        :param grasps: List of possible grasps for the mixing action.
+        :param resolver: An optional resolver for dynamic parameter selection.
+        """
+        super(MixingAction, self).__init__(resolver)
+        self.object_designator_description: ObjectDesignatorDescription = object_designator_description
+        self.object_tool_designator_description: ObjectDesignatorDescription = object_tool_designator_description
+        self.arms: List[Arms] = arms
+        self.grasps: List[Grasp] = grasps
+
+    def ground(self) -> MixingActionPerformable:
+        """
+        Default resolver, returns a performable designator with the first entries from the lists of possible parameter.
+        :return: A performable designator
+        """
+        return MixingActionPerformable(self.object_designator_description.ground(),
+                                       self.object_tool_designator_description.ground(), self.arms[0], self.grasps[0])
 
 
 class PlaceGivenObjectAction(ActionDesignatorDescription):
@@ -1401,6 +1471,108 @@ class PouringActionPerformable(ActionAbstract):
             MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
             MoveTCPMotion(oTmsp, self.arm, allow_gripper_collision=False).perform()
             MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
+
+
+@dataclass
+class MixingActionPerformable(ActionAbstract):
+
+    object_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the object that should be mixed.
+    """
+
+    object_tool_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the mixing tool.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for mixing.
+    """
+
+    grasp: Grasp
+    """
+    The grasp that should be used for mixing. For example, 'left' or 'right'.
+    """
+
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    """
+    The object at the time this Action got created. It is used to be a static, information holding entity. It is
+    not updated when the BulletWorld object is changed.
+    """
+
+    @with_tree
+    def perform(self) -> None:
+        """
+        Perform the mixing action using the specified object, tool, arm, and grasp.
+        """
+        # Store the object's data copy at execution
+        self.object_at_execution = self.object_designator.data_copy()
+        # Retrieve object and robot from designators
+        object = self.object_designator.world_object
+
+        obj_dim = object.get_object_dimensions()
+
+        dim = [max(obj_dim[0], obj_dim[1]), min(obj_dim[0], obj_dim[1]), obj_dim[2]]
+        obj_height = dim[2]
+        oTm = object.get_pose()
+        object_pose = object.local_transformer.transform_to_object_frame(oTm, object)
+
+        def generate_spiral(pose, upward_increment, radial_increment, angle_increment, steps):
+            x_start, y_start, z_start = pose.pose.position.x, pose.pose.position.y, pose.pose.position.z
+            spiral_poses = []
+
+            for t in range(2 * steps):
+                tmp_pose = pose.copy()
+
+                r = radial_increment * t
+                a = angle_increment * t
+                h = upward_increment * t
+
+                x = x_start + r * math.cos(a)
+                y = y_start + r * math.sin(a)
+                z = z_start + h
+
+                tmp_pose.pose.position.x += x
+                tmp_pose.pose.position.y += y
+                tmp_pose.pose.position.z += z
+
+                spiralTm = object.local_transformer.transform_pose(tmp_pose, "map")
+                spiral_poses.append(spiralTm)
+                World.current_world.add_vis_axis(spiralTm)
+
+            return spiral_poses
+
+        # this is a very good one but takes ages
+        # spiral_poses = generate_spiral(object_pose, 0.0004, 0.0008, math.radians(10), 100)
+        spiral_poses = generate_spiral(object_pose, 0.001, 0.0035, math.radians(30), 10)
+
+        World.current_world.remove_vis_axis()
+        for spiral_pose in spiral_poses:
+            oriR = axis_angle_to_quaternion([1, 0, 0], 180)
+            ori = multiply_quaternions(
+                [spiral_pose.orientation.x, spiral_pose.orientation.y, spiral_pose.orientation.z,
+                 spiral_pose.orientation.w], oriR)
+            adjusted_slice_pose = spiral_pose.copy()
+            # # Set the orientation of the object pose by grasp in MAP
+            adjusted_slice_pose.orientation.x = ori[0]
+            adjusted_slice_pose.orientation.y = ori[1]
+            adjusted_slice_pose.orientation.z = ori[2]
+            adjusted_slice_pose.orientation.w = ori[3]
+
+            # Adjust the position of the object pose by grasp in MAP
+            lift_pose = adjusted_slice_pose.copy()
+            lift_pose.pose.position.z += (obj_height + 0.08)
+            # Perform the motion for lifting the tool
+            # BulletWorld.current_bullet_world.add_vis_axis(lift_pose)
+            MoveTCPMotion(lift_pose, self.arm).perform()
+
+    # def to_sql(self) -> ORMMixingAction:
+    #     """
+    #     Convert the action to a corresponding SQL representation for storage.
+    #     """
+    #     return ORMMixingAction(self.arm, self.grasp)
 
 
 @dataclass
