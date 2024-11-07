@@ -1,9 +1,14 @@
 import numpy as np
 from threading import Lock
+
+import rospy
 from typing_extensions import Any
 
+from ..datastructures.dataclasses import Color
 from ..datastructures.enums import ExecutionType
 from ..external_interfaces.ik import request_ik
+from ..external_interfaces.navigate import PoseNavigator
+from ..external_interfaces.robokudo import *
 from ..external_interfaces.tmc import tmc_gripper_control, tmc_talk
 from ..robot_description import RobotDescription
 from ..process_module import ProcessModule
@@ -235,10 +240,13 @@ class HSRBNavigationReal(ProcessModule):
     """
 
     def _execute(self, designator: MoveMotion) -> Any:
+        use_giskard = True
         logdebug(f"Sending goal to giskard to Move the robot")
-        # giskard.achieve_cartesian_goal(designator.target, robot_description.base_link, "map")
-        # todome fix this
-        # queryPoseNav(designator.target)
+        if use_giskard:
+            giskard.achieve_cartesian_goal(designator.target, RobotDescription.current_robot_description.base_link, "map")
+        else:
+            nav = PoseNavigator()
+            nav.pub_now(designator.target)
 
 
 class HSRBMoveHeadReal(ProcessModule):
