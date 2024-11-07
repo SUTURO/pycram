@@ -21,6 +21,7 @@ from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..designator import ActionDesignatorDescription
 from ..failures import ObjectUnfetchable, ReachabilityFailure
+from ..helper import multiply_quaternions
 from ..local_transformer import LocalTransformer
 from ..ontology.ontology import OntologyConceptHolder
 from ..orm.action_designator import Action as ORMAction
@@ -35,6 +36,7 @@ from ..orm.base import Pose as ORMPose
 from ..orm.object_designator import Object as ORMObject
 from ..robot_description import RobotDescription
 from ..tasktree import with_tree
+from ..utils import axis_angle_to_quaternion
 
 
 class MoveTorsoAction(ActionDesignatorDescription):
@@ -570,6 +572,56 @@ class PointingAction(ActionDesignatorDescription):
         :return: A performable designator
         """
         return PointingActionPerformable(self.x_coordinate, self.y_coordinate, self.z_coordinate)
+
+
+class PouringAction(ActionDesignatorDescription):
+    """
+    Designator to let the robot perform a pouring action.
+    """
+
+    target_location: Pose
+    """
+    The Pose the robot should pour into.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for pouring.
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'.
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to.
+    """
+
+    def __init__(self, target_locations: List[Pose], arms: List[Arms], directions: List[str], angles: List[float],
+                 resolver=None):
+        """
+        :param target_locations: List of possible target locations to be poured into
+        :param arms: List of possible arms that could be used
+        :param directions: List of possible directions for the pouring direction
+        :param angles: List of possible angles that the gripper tilts to
+        :param resolver: An optional resolver that returns a performable designator with elements from the lists of
+                         possible paramter
+        """
+        super().__init__(resolver)
+        self.target_locations: List[Pose] = target_locations
+        self.arms: List[Arms] = arms
+        self.directions: List[str] = directions
+        self.angels: List[float] = angles
+
+    def ground(self) -> PouringActionPerformable:
+        """
+        Default resolver that returns a performable designator with the first entries from the lists of possible
+        parameter.
+        :return: A performable designator
+        """
+        return PouringActionPerformable(self.target_locations[0], self.arms[0], self.directions[0], self.angels[0])
 
 
 # ----------------------------------------------------------------------------
@@ -1205,3 +1257,79 @@ class PointingActionPerformable(ActionAbstract):
     @with_tree
     def perform(self) -> None:
         PointingMotion(self.x_coordinate, self.y_coordinate, self.z_coordinate).perform()
+
+
+@dataclass
+class PouringActionPerformable(ActionAbstract):
+    """
+    Designator to let the robot perform a pouring action.
+    """
+
+    target_location: Pose
+    """
+    The Pose the robot should pour into.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for pouring.
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'.
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to.
+    """
+
+    @with_tree
+    def perform(self):
+        # Initialize the local transformer and robot reference
+        lt = LocalTransformer()
+        robot = World.robot
+
+        # Calculate the object's pose in the map frame
+        oTm = self.target_location
+        execute = True
+
+        # Determine the grasp orientation and transform the pose to the base link frame
+        grasp_rotation = RobotDescription.current_robot_description.grasps[Grasp.FRONT]
+        oTbs = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+        oTbs.pose.position.x += 0.009  # was 0,009
+        oTbs.pose.position.z += 0.17  # was 0.13
+
+        if self.direction == "right":
+            oTbs.pose.position.y -= 0.125
+        else:
+            oTbs.pose.position.y += 0.125
+
+        oTms = lt.transform_pose(oTbs, "map")
+        World.current_world.add_vis_axis(oTms)
+
+        #
+        oTog = lt.transform_pose(oTms, robot.get_link_tf_frame("base_link"))
+        oTog.orientation = grasp_rotation
+        oTgm = lt.transform_pose(oTog, "map")
+        World.current_world.add_vis_axis(oTgm)
+
+        if self.direction == "right":
+            new_q = axis_angle_to_quaternion([0, 0, 1], -self.angle)
+        else:
+            new_q = axis_angle_to_quaternion([0, 0, 1], self.angle)
+        new_ori = multiply_quaternions(
+            [oTgm.orientation.x, oTgm.orientation.y, oTgm.orientation.z,
+             oTgm.orientation.w], new_q)
+        oTmsp = oTgm.copy()
+        oTmsp.pose.orientation.x = new_ori[0]
+        oTmsp.pose.orientation.y = new_ori[1]
+        oTmsp.pose.orientation.z = new_ori[2]
+        oTmsp.pose.orientation.w = new_ori[3]
+        World.current_world.add_vis_axis(oTmsp)
+
+        if execute:
+            MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
+            MoveTCPMotion(oTmsp, self.arm, allow_gripper_collision=False).perform()
+            MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
