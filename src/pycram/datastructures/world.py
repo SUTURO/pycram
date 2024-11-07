@@ -1563,7 +1563,7 @@ class UseProspectionWorld:
         """
         This method is called when entering the with block, it will set the current world to the prospection world
         """
-        # Please do not edit this function, it works as it is now!
+        # Please do not edit this function, it works as it is now! no it doesn't...;(
         if not World.current_world.is_prospection_world:
             self.prev_world = World.current_world
             World.current_world = World.current_world.prospection_world

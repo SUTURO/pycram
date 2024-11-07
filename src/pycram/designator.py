@@ -465,7 +465,7 @@ class ActionDesignatorDescription(DesignatorDescription, Language):
         super().__init__(resolver, ontology_concept_holders)
         Language.__init__(self)
         from .ontology.ontology import OntologyManager
-        self.soma = OntologyManager().soma
+        self.soma = None #OntologyManager().soma
 
     def ground(self) -> Action:
         """Fill all missing parameters and chose plan to execute. """
