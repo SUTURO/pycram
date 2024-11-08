@@ -714,3 +714,41 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
     ps.header = pose.header
 
     return ps
+
+def move_head_to_human():
+    """
+    continously moves head in direction of perceived human
+    """
+
+    giskard_wrapper.motion_goals.continuous_pointing_head()
+    return giskard_wrapper.execute(wait=False)
+
+
+def allow_all_collisions():
+    giskard_wrapper.motion_goals.allow_all_collisions()
+
+
+def grasp_doorhandle(handle_name: str):
+    print("grasp handle")
+
+    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.add_default_end_motion_conditions()
+    return giskard_wrapper.execute()
+
+
+def grasp_handle(handle_name: str):
+    """
+    grasps the dishwasher handle.
+
+    :param handle_name: name of the dishwasher handle, which should be grasped
+    """
+    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
+
+
+def open_doorhandle(handle_name: str):
+    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    return giskard_wrapper.execute()
