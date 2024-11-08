@@ -4,26 +4,31 @@ from __future__ import annotations
 import abc
 import inspect
 import itertools
-from dataclasses import dataclass, field
 
 import numpy as np
-from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
-from typing_extensions import List, Union, Callable, Optional, Type
+from typing_extensions import Any, List, Union, Callable, Optional, Type
+
+import rospy
 
 from .location_designator import CostmapLocation
-from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
-    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, PointingMotion, HeadFollowMotion
+from .motion_designator import *
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
+from ..local_transformer import LocalTransformer
+from ..plan_failures import ObjectUnfetchable, ReachabilityFailure
+# from ..robot_descriptions import robot_description
+from ..robot_description import RobotDescription
+from ..tasktree import with_tree
+
+from owlready2 import Thing
+
 from ..datastructures.enums import Arms, Grasp, GripperState
+from ..designator import ActionDesignatorDescription
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
-from ..designator import ActionDesignatorDescription
-from ..failures import ObjectUnfetchable, ReachabilityFailure
-from ..local_transformer import LocalTransformer
 from ..ontology.ontology import OntologyConceptHolder
-from ..orm.action_designator import Action as ORMAction
+
 from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, NavigateAction as ORMNavigateAction,
                                      PickUpAction as ORMPickUpAction, PlaceAction as ORMPlaceAction,
                                      MoveTorsoAction as ORMMoveTorsoAction, SetGripperAction as ORMSetGripperAction,
@@ -33,8 +38,10 @@ from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, Naviga
                                      FaceAtAction as ORMFaceAtAction)
 from ..orm.base import Pose as ORMPose
 from ..orm.object_designator import Object as ORMObject
-from ..robot_description import RobotDescription
-from ..tasktree import with_tree
+from ..orm.action_designator import Action as ORMAction
+from dataclasses import dataclass, field
+
+from ..utilities.robocup_utils import multiply_quaternions
 
 
 class MoveTorsoAction(ActionDesignatorDescription):
@@ -91,8 +98,8 @@ class SetGripperAction(ActionDesignatorDescription):
         :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
         """
         super().__init__(resolver, ontology_concept_holders)
-        self.grippers: List[GripperState] = grippers
-        self.motions: List[Arms] = motions
+        self.grippers: List[Arms] = grippers
+        self.motions: List[GripperState] = motions
 
         if self.soma:
             self.init_ontology_concepts({"setting_gripper": self.soma.SettingGripper})
@@ -195,7 +202,7 @@ class PickUpAction(ActionDesignatorDescription):
     """
 
     def __init__(self,
-                 object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
+                 object_designator_description: List[ObjectDesignatorDescription.Object],
                  arms: List[Arms], grasps: List[Grasp], resolver=None,
                  ontology_concept_holders: Optional[List[Thing]] = None):
         """
@@ -209,8 +216,7 @@ class PickUpAction(ActionDesignatorDescription):
         :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
         """
         super().__init__(resolver, ontology_concept_holders)
-        self.object_designator_description: Union[
-            ObjectDesignatorDescription, ObjectDesignatorDescription.Object] = object_designator_description
+        self.object_designator_description: List[ObjectDesignatorDescription.Object] = object_designator_description
         self.arms: List[Arms] = arms
         self.grasps: List[Grasp] = grasps
 
@@ -226,9 +232,12 @@ class PickUpAction(ActionDesignatorDescription):
         if isinstance(self.object_designator_description, ObjectDesignatorDescription.Object):
             obj_desig = self.object_designator_description
         else:
-            obj_desig = self.object_designator_description.resolve()
+            print("##############")
+            print(type(self.object_designator_description[0]))
+            print("##############")
+            obj_desig = self.object_designator_description
 
-        return PickUpActionPerformable(obj_desig, self.arms[0], self.grasps[0])
+        return PickUpActionPerformable(obj_desig[0], self.arms[0], self.grasps[0])
 
 
 class PlaceAction(ActionDesignatorDescription):
@@ -238,7 +247,7 @@ class PlaceAction(ActionDesignatorDescription):
 
     def __init__(self,
                  object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
-                 target_locations: List[Pose], grasps: Optional[Grasp],
+                 target_locations: List[Pose], grasp: Grasp,
                  arms: List[Arms], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Create an Action Description to place an object
@@ -246,6 +255,7 @@ class PlaceAction(ActionDesignatorDescription):
         :param object_designator_description: Description of object to place.
         :param target_locations: List of possible positions/orientations to place the object
         :param arms: List of possible arms to use
+        :param grasp: grasp orientation
         :param resolver: Grounding method to resolve this designator
         :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
         """
@@ -253,9 +263,8 @@ class PlaceAction(ActionDesignatorDescription):
         self.object_designator_description: Union[
             ObjectDesignatorDescription, ObjectDesignatorDescription.Object] = object_designator_description
         self.target_locations: List[Pose] = target_locations
-        if grasps:
-            self.grasps: List[Grasp] = grasps
         self.arms: List[Arms] = arms
+        self.grasp = grasp
 
         if self.soma:
             self.init_ontology_concepts({"placing": self.soma.Placing})
@@ -269,7 +278,7 @@ class PlaceAction(ActionDesignatorDescription):
         obj_desig = self.object_designator_description if isinstance(self.object_designator_description,
                                                                      ObjectDesignatorDescription.Object) else self.object_designator_description.resolve()
 
-        return PlaceActionPerformable(obj_desig, self.arms[0], self.grasps[0], self.target_locations[0])
+        return PlaceActionPerformable(obj_desig, self.arms[0], self.grasp, self.target_locations[0])
 
 
 class NavigateAction(ActionDesignatorDescription):
@@ -376,26 +385,21 @@ class DetectAction(ActionDesignatorDescription):
     Detects an object that fits the object description and returns an object designator describing the object.
     """
 
-    def __init__(self, technique: str, object_designator_description: Optional[ObjectDesignatorDescription] = None,
-                 resolver=None,
-                 ontology_concept_holders: Optional[List[Thing]] = None):
+    def __init__(self, object_designator_description: Optional[ObjectDesignatorDescription] = None, resolver=None,
+                 ontology_concept_holders: Optional[List[Thing]] = None, state: Optional[str] = None, technique: Optional[str] = None):
         """
         Tries to detect an object in the field of view (FOV) of the robot.
 
         :param object_designator_description: Object designator describing the object
         :param resolver: An alternative specialized_designators
         :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
+        :param state: for special instructions e.g. "stop" for stop detecting
+        :param technique: what should be detected e.g. "human", "bowl", "object"
         """
         super().__init__(resolver, ontology_concept_holders)
-        self.object_designator_description: ObjectDesignatorDescription = object_designator_description
-        self.technique: str = technique
-
-
-        if not object_designator_description:
-            obj_des = ObjectDesignatorDescription()
-            self.object_designator_description = obj_des
-
-        print(self.object_designator_description)
+        self.object_designator_description: Optional[ObjectDesignatorDescription] = object_designator_description
+        self.state: Optional[str] = state
+        self.technique: Optional[str] = technique
 
         if self.soma:
             self.init_ontology_concepts({"looking_for": self.soma.LookingFor,
@@ -407,9 +411,14 @@ class DetectAction(ActionDesignatorDescription):
 
         :return: A performable designator
         """
-
-        return DetectActionPerformable(technique=self.technique, object_designator = self.object_designator_description)
-
+        if self.object_designator_description:
+            return DetectActionPerformable(object_designator=self.object_designator_description.resolve(),
+                                           state=self.state, technique=self.technique)
+        else:
+            place_holder = ObjectDesignatorDescription()
+            self.object_designator_description = place_holder
+            return DetectActionPerformable(object_designator=self.object_designator_description.resolve(),
+                                           state=self.state, technique=self.technique)
 
 
 class OpenAction(ActionDesignatorDescription):
@@ -544,9 +553,7 @@ class PointingAction(ActionDesignatorDescription):
     """
     Point to Pose
     """
-
-    def __init__(self, x_coordinate: float, y_coordinate: float, z_coordinate: float, resolver=None,
-                 ontology_concept_holders: Optional[List[Thing]] = None):
+    def __init__(self, x_coordinate: float, y_coordinate: float, z_coordinate: float, resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Lets the robot pour based on the given parameter.
         :param x_coordinate: x coordinate where the robot points to (in map frame)
@@ -603,11 +610,11 @@ class ActionAbstract(ActionDesignatorDescription.Action, abc.ABC):
 
         :return: An instance of the ORM equivalent of the action with the parameters set
         """
-        # get all class parameters
+        # get all class parameters (ignore inherited ones)
         class_variables = {key: value for key, value in vars(self).items()
                            if key in inspect.getfullargspec(self.__init__).args}
 
-        # get all orm class parameters
+        # get all orm class parameters (ignore inherited ones)
         orm_class_variables = inspect.getfullargspec(self.orm_class.__init__).args
 
         # list of parameters that will be passed to the ORM class. If the name does not match the orm_class equivalent
@@ -631,11 +638,11 @@ class ActionAbstract(ActionDesignatorDescription.Action, abc.ABC):
 
         action = super().insert(session)
 
-        # get all class parameters
+        # get all class parameters (ignore inherited ones)
         class_variables = {key: value for key, value in vars(self).items()
                            if key in inspect.getfullargspec(self.__init__).args}
 
-        # get all orm class parameters
+        # get all orm class parameters (ignore inherited ones)
         orm_class_variables = inspect.getfullargspec(self.orm_class.__init__).args
 
         # loop through all class parameters and insert them into the session unless they are already added by the ORM
@@ -694,7 +701,7 @@ class ReleaseActionPerformable(ActionAbstract):
     """
     Releases an Object from the robot.
 
-    Note: This action can not ve used yet.
+    Note: This action can not be used yet.
     """
 
     gripper: Arms
@@ -744,14 +751,12 @@ class ParkArmsActionPerformable(ActionAbstract):
         # add park left arm if wanted
         if self.arm in [Arms.LEFT, Arms.BOTH]:
             kwargs["left_arm_config"] = "park"
-            left_poses = RobotDescription.current_robot_description.get_arm_chain(Arms.LEFT).get_static_joint_states(
-                kwargs["left_arm_config"])
+            left_poses = RobotDescription.current_robot_description.get_arm_chain(Arms.LEFT).get_static_joint_states(kwargs["left_arm_config"])
 
         # add park right arm if wanted
         if self.arm in [Arms.RIGHT, Arms.BOTH]:
             kwargs["right_arm_config"] = "park"
-            right_poses = RobotDescription.current_robot_description.get_arm_chain(Arms.RIGHT).get_static_joint_states(
-                kwargs["right_arm_config"])
+            right_poses = RobotDescription.current_robot_description.get_arm_chain(Arms.RIGHT).get_static_joint_states(kwargs["right_arm_config"])
 
         MoveArmJointsMotion(left_poses, right_poses).perform()
 
@@ -784,79 +789,101 @@ class PickUpActionPerformable(ActionAbstract):
     """
     orm_class: Type[ActionAbstract] = field(init=False, default=ORMPickUpAction)
 
-    def __post_init__(self):
-        super(ActionAbstract, self).__post_init__()
-        # Store the object's data copy at execution
-        self.object_at_execution = self.object_designator.frozen_copy()
-
     @with_tree
     def perform(self) -> None:
+        print("in Performable")
+        # Initialize the local transformer and robot reference
+        lt = LocalTransformer()
         robot = World.robot
         # Retrieve object and robot from designators
         object = self.object_designator.world_object
-        # Get grasp orientation and target pose
-        grasp = RobotDescription.current_robot_description.grasps[self.grasp]
-        # oTm = Object Pose in Frame map
+        # Calculate the object's pose in the map frame
         oTm = object.get_pose()
-        # Transform the object pose to the object frame, basically the origin of the object frame
-        mTo = object.local_transformer.transform_to_object_frame(oTm, object)
-        # Adjust the pose according to the special knowledge of the object designator
-        adjusted_pose = self.object_designator.special_knowledge_adjustment_pose(self.grasp, mTo)
-        # Transform the adjusted pose to the map frame
-        adjusted_oTm = object.local_transformer.transform_pose(adjusted_pose, "map")
-        # multiplying the orientation therefore "rotating" it, to get the correct orientation of the gripper
+        execute = True
 
-        adjusted_oTm.multiply_quaternions(grasp)
+        # Adjust object pose for top-grasping, if applicable
+        if self.grasp == Grasp.TOP:
+            print("Metalbowl from top")
+            # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
+            # Note: This includes hardcoded adjustments and should ideally be generalized
+            # if self.object_designator.type == "Cutlery":
+            # todo: this z is the popcorn-table height, we need to define location to get that z otherwise it
+            #  is hardcoded
+            # oTm.pose.position.z = 0.71
+            # oTm.pose.position.z += 0.035
+            oTm.pose.position.z -= 0.035
 
-        # prepose depending on the gripper (its annoying we have to put pr2_1 here tbh
-        # gripper_frame = "pr2_1/l_gripper_tool_frame" if self.arm == "left" else "pr2_1/r_gripper_tool_frame"
-        gripper_frame = robot.get_link_tf_frame(
-            RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame())
-        # First rotate the gripper, so the further calculations makes sense
-        tmp_for_rotate_pose = object.local_transformer.transform_pose(adjusted_oTm, gripper_frame)
-        tmp_for_rotate_pose.pose.position.x = 0
-        tmp_for_rotate_pose.pose.position.y = 0
-        tmp_for_rotate_pose.pose.position.z = -0.1
-        gripper_rotate_pose = object.local_transformer.transform_pose(tmp_for_rotate_pose, "map")
+        # Determine the grasp orientation and transform the pose to the base link frame
+        grasp_rotation = RobotDescription.current_robot_description.grasps[self.grasp]
+        oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+        # Set pose to the grasp rotation
+        oTb.orientation = multiply_quaternions(oTb.orientation_as_list(), grasp_rotation)  # [0, 0, 0, 1]
+        # Transform the pose to the map frame
+        oTmG = lt.transform_pose(oTb, "map")
 
-        # Perform Gripper Rotate
-        # BulletWorld.current_bullet_world.add_vis_axis(gripper_rotate_pose)
-        # MoveTCPMotion(gripper_rotate_pose, self.arm).resolve().perform()
-
-        oTg = object.local_transformer.transform_pose(adjusted_oTm, gripper_frame)
-        oTg.pose.position.x -= 0.1  # in x since this is how the gripper is oriented
-        prepose = object.local_transformer.transform_pose(oTg, "map")
-
-        # Perform the motion with the prepose and open gripper
-        World.current_world.add_vis_axis(prepose)
-        MoveTCPMotion(prepose, self.arm, allow_gripper_collision=True).perform()
+        # Open the gripper before picking up the object
+        rospy.logwarn("Opening Gripper")
         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
 
-        # Perform the motion with the adjusted pose -> actual grasp and close gripper
-        World.current_world.add_vis_axis(adjusted_oTm)
-        MoveTCPMotion(adjusted_oTm, self.arm, allow_gripper_collision=True).perform()
-        adjusted_oTm.pose.position.z += 0.03
-        MoveGripperMotion(motion=GripperState.CLOSE, gripper=self.arm).perform()
+        # Move to the pre-grasp position and visualize the action
+        rospy.logwarn("Picking up now")
+        # BulletWorld.current_bullet_world.add_vis_axis(oTmG)
+        # Execute Bool, because sometimes u only want to visualize the poses to pp.py things
+        if execute:
+            MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).perform()
+
+        # Calculate and apply any special knowledge offsets based on the robot and object type
+        # Note: This currently includes robot-specific logic that should be generalized
+        tool_frame = RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame()
+        special_knowledge_offset = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
+
+        # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
+        #  depending on robot
+        if robot.name == "hsrb":
+            if self.grasp == "top":
+                if self.object_designator.type == "Metalbowl":
+                    special_knowledge_offset.pose.position.y += 0.085
+                    special_knowledge_offset.pose.position.x -= 0.03
+
+        push_base = special_knowledge_offset
+        # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
+        #  depending on robot if we dont generlize this we will have a big list in the end of all robots
+        if robot.name == "hsrb":
+            z = 0.04
+            if self.grasp == "top":
+                z = 0.025
+                if self.object_designator.type == "Metalbowl":
+                    z = 0.044
+            push_base.pose.position.z += z
+        push_baseTm = lt.transform_pose(push_base, "map")
+        special_knowledge_offsetTm = lt.transform_pose(push_base, "map")
+
+        # Grasping from the top inherently requires calculating an offset, whereas front grasping involves
+        # slightly pushing the object forward.
+        rospy.logwarn("Offset now")
+        # m = ManualMarkerPublisher()
+        # m.create_marker("pose_pickup", special_knowledge_offsetTm)
+        # BulletWorld.current_bullet_world.add_vis_axis(special_knowledge_offsetTm)
+        if execute:
+            MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).perform()
+
+        rospy.logwarn("Pushing now")
+        # BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
+        if execute:
+            MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).perform()
+
+        # Finalize the pick-up by closing the gripper and lifting the object
+        rospy.logwarn("Close Gripper")
+        MoveGripperMotion(motion=GripperState.CLOSE, gripper=self.arm, allow_gripper_collision=True).perform()
+
+        rospy.logwarn("Lifting now")
+        liftingTm = push_baseTm
+        liftingTm.pose.position.z += 0.03
+        # BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
+        if execute:
+            MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
         tool_frame = RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame()
         robot.attach(object, tool_frame)
-
-        # Lift object
-        World.current_world.add_vis_axis(adjusted_oTm)
-        MoveTCPMotion(adjusted_oTm, self.arm, allow_gripper_collision=True).perform()
-
-        # Remove the vis axis from the world
-        World.current_world.remove_vis_axis()
-
-    # TODO find a way to use object_at_execution instead of object_designator in the automatic orm mapping in ActionAbstract
-    def to_sql(self) -> Action:
-        return ORMPickUpAction(arm=self.arm, grasp=self.grasp)
-
-    def insert(self, session: Session, **kwargs) -> Action:
-        action = super(ActionAbstract, self).insert(session)
-        action.object = self.object_at_execution.insert(session)
-
-        session.add(action)
-        return action
 
 
 @dataclass
@@ -885,24 +912,60 @@ class PlaceActionPerformable(ActionAbstract):
 
     @with_tree
     def perform(self) -> None:
-        object_pose = self.object_designator.world_object.get_pose()
-        local_tf = LocalTransformer()
+        lt = LocalTransformer()
+        robot = World.robot
+        execute = True
+        # oTm = Object Pose in Frame map
+        oTm = self.target_location
 
-        # Transformations such that the target position is the position of the object and not the tcp
-        tcp_to_object = local_tf.transform_pose(object_pose,
-                                                World.robot.get_link_tf_frame(
-                                                    RobotDescription.current_robot_description.get_arm_chain(
-                                                        self.arm).get_tool_frame()))
-        target_diff = self.target_location.to_transform("target").inverse_times(
-            tcp_to_object.to_transform("object")).to_pose()
+        if self.grasp == "top":
+            oTm.pose.position.z += 0.05
 
-        MoveTCPMotion(target_diff, self.arm).perform()
-        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
-        World.robot.detach(self.object_designator.world_object)
-        retract_pose = local_tf.transform_pose(target_diff, World.robot.get_link_tf_frame(
-            RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame()))
-        retract_pose.position.x -= 0.07
-        MoveTCPMotion(retract_pose, self.arm).perform()
+        # Determine the grasp orientation and transform the pose to the base link frame
+        grasp_rotation = RobotDescription.current_robot_description.grasps[self.grasp]
+        oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+        # Set pose to the grasp rotation
+        oTb.orientation = multiply_quaternions(oTb.orientation_as_list(), grasp_rotation)
+        # Transform the pose to the map frame
+        oTmG = lt.transform_pose(oTb, "map")
+
+        rospy.logwarn("Placing now")
+        #World.current_world.add_vis_axis(oTmG)
+        if execute:
+            MoveTCPMotion(oTmG, self.arm).perform()
+
+        tool_frame = RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame()
+        push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
+        if robot.name == "hsrb":
+            z = 0.03
+            if self.grasp == Grasp.TOP:
+                z = 0.07
+            push_base.pose.position.z += z
+        # todo: make this for other robots
+        push_baseTm = lt.transform_pose(push_base, "map")
+
+        rospy.logwarn("Pushing now")
+        #BulletWorld.current_bullet_world.add_vis_axis(push_baseTm)
+        if execute:
+            MoveTCPMotion(push_baseTm, self.arm).perform()
+
+            #try:
+            #    plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
+            #    plan.perform()
+            #except (SensorMonitoringCondition):
+            #    rospy.logwarn("Open Gripper")
+            #    MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
+
+        # Finalize the placing by opening the gripper and lifting the arm
+        rospy.logwarn("Open Gripper")
+        MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
+
+        rospy.logwarn("Lifting now")
+        liftingTm = push_baseTm
+        liftingTm.pose.position.z += 0.08
+        #BulletWorld.current_bullet_world.add_vis_axis(liftingTm)
+        if execute:
+            MoveTCPMotion(liftingTm, self.arm).perform()
 
 
 @dataclass
@@ -913,7 +976,7 @@ class NavigateActionPerformable(ActionAbstract):
 
     target_location: Pose
     """
-    Location to which the robot should be navigated
+    Location to which the robot should navigate
     """
     orm_class: Type[ActionAbstract] = field(init=False, default=ORMNavigateAction)
 
@@ -948,7 +1011,7 @@ class TransportActionPerformable(ActionAbstract):
         ParkArmsActionPerformable(Arms.BOTH).perform()
         pickup_loc = CostmapLocation(target=self.object_designator, reachable_for=robot_desig.resolve(),
                                      reachable_arm=self.arm)
-        # Tries to find a pick-up position for the robot that uses the given arm
+        # Tries to find a pick-up posotion for the robot that uses the given arm
         pickup_pose = None
         for pose in pickup_loc:
             if self.arm in pose.reachable_arms:
@@ -994,17 +1057,16 @@ class DetectActionPerformable(ActionAbstract):
     """
     Detects an object that fits the object description and returns an object designator describing the object.
     """
+
     technique: str
     """
     Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
     Or 'all' if all objects should be detected
     """
-
-    object_designator: Optional[ObjectDesignatorDescription] = None
+    object_designator: ObjectDesignatorDescription.Object
     """
     Object designator loosely describing the object, e.g. only type. 
     """
-
     state: Optional[str] = None
     """
     The state instructs our perception system to either start or stop the search for an object or human.
@@ -1014,9 +1076,8 @@ class DetectActionPerformable(ActionAbstract):
 
     @with_tree
     def perform(self) -> None:
-        print("obj des:" + str(self.object_designator))
-        return DetectingMotion(object_type=self.object_designator, technique=self.technique,
-                               state=self.state).perform()
+        return DetectingMotion(object_type=self.object_designator.obj_type,
+                               technique=self.technique, state=self.state).perform()
 
 
 @dataclass
@@ -1167,7 +1228,6 @@ class MoveAndPickUpPerformable(ActionAbstract):
         NavigateActionPerformable(self.standing_position).perform()
         FaceAtPerformable(self.object_designator.pose).perform()
         PickUpActionPerformable(self.object_designator, self.arm, self.grasp).perform()
-
 
 @dataclass
 class HeadFollowActionPerformable(ActionAbstract):

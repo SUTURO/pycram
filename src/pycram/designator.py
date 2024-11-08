@@ -5,6 +5,7 @@ from dataclasses import dataclass, field, fields
 from abc import ABC, abstractmethod
 from inspect import isgenerator, isgeneratorfunction
 
+from .external_interfaces import giskard
 from .ros.logging import logwarn, loginfo
 
 try:
@@ -464,7 +465,7 @@ class ActionDesignatorDescription(DesignatorDescription, Language):
         super().__init__(resolver, ontology_concept_holders)
         Language.__init__(self)
         from .ontology.ontology import OntologyManager
-        self.soma = OntologyManager().soma
+        self.soma = None #OntologyManager().soma
 
     def ground(self) -> Action:
         """Fill all missing parameters and chose plan to execute. """
@@ -526,9 +527,10 @@ SPECIAL_KNOWLEDGE = {
         [("top", [-0.08, 0, 0])],
     'whisk':
         [("top", [-0.08, 0, 0])],
+    'cereal':
+        [("top", [0, 0, 0.08])],
     'bowl':
-        [("front", [1.0, 2.0, 3.0]),
-         ("key2", [4.0, 5.0, 6.0])]
+        [("top", [0, 0.04, 0])]
 }
 
 
@@ -732,6 +734,10 @@ class BaseMotion(ABC):
         motion.process_metadata = metadata
 
         return motion
+
+    def interrupt(self):
+        if giskard.giskard_wrapper:
+            giskard.giskard_wrapper.interrupt()
 
     def __post_init__(self):
         """

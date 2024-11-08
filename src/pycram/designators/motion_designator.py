@@ -1,13 +1,17 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from geometry_msgs.msg import PointStamped
+
+from pycram.datastructures.enums import *
 from sqlalchemy.orm import Session
 from .object_designator import ObjectDesignatorDescription, ObjectPart, RealObject
 from ..designator import ResolutionError
 from ..orm.base import ProcessMetaData
 from ..failures import PerceptionObjectNotFound
 from ..process_module import ProcessModuleManager
-from ..orm.motion_designator import (MoveMotion as ORMMoveMotion,
+from ..robot_descriptions import robot_description
+from ..orm.motion_designator import (MoveMotion as ORMMoveMotion, AccessingMotion as ORMAccessingMotion,
                                      MoveTCPMotion as ORMMoveTCPMotion, LookingMotion as ORMLookingMotion,
                                      MoveGripperMotion as ORMMoveGripperMotion, DetectingMotion as ORMDetectingMotion,
                                      OpeningMotion as ORMOpeningMotion, ClosingMotion as ORMClosingMotion,
@@ -148,22 +152,36 @@ class DetectingMotion(BaseMotion):
     """
     Tries to detect an object in the FOV of the robot
     """
+    technique: str
+    """
+    Technique means how the object should be detected, e.g. 'color', 'shape', 'all', etc. 
+    """
 
-    object_type: ObjectType
+    object_type: Optional[ObjectDesignatorDescription]
     """
     Type of the object that should be detected
     """
 
+    state: Optional[str] = None
+    """
+    The state instructs our perception system to either start or stop the search for an object or human.
+    Can also be used to describe the region or location where objects are perceived.
+    """
     @with_tree
     def perform(self):
         pm_manager = ProcessModuleManager.get_manager()
         world_object = pm_manager.detecting().execute(self)
+
         if not world_object:
             raise PerceptionObjectNotFound(
                 f"Could not find an object with the type {self.object_type} in the FOV of the robot")
         if ProcessModuleManager.execution_type == ExecutionType.REAL:
-            return RealObject.Object(world_object.name, world_object.obj_type,
-                                     world_object, world_object.get_pose())
+            try:
+                return RealObject.Object(world_object.name, world_object.obj_type,
+                                        world_object, world_object.get_pose())
+            except:
+                return world_object
+
 
         return ObjectDesignatorDescription.Object(world_object.name, world_object.obj_type,
                                                   world_object)
@@ -315,22 +333,147 @@ class ClosingMotion(BaseMotion):
 
         return motion
 
-
 @dataclass
 class TalkingMotion(BaseMotion):
     """
-    Talking Motion, lets the robot say a sentence.
+    Talking
     """
-
     cmd: str
     """
-    Talking Motion, let the robot say a sentence.
+    Sentence what the robot should say
     """
 
     @with_tree
     def perform(self):
         pm_manager = ProcessModuleManager.get_manager()
         return pm_manager.talk().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class PouringMotion(BaseMotion):
+    """
+    Designator for pouring
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.pour().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+
+@dataclass
+class HeadFollowMotion(BaseMotion):
+    """
+    continuously look at human
+    """
+    state: Optional[str]
+    """
+    Whether to start or stop motion
+
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.head_follow().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class PointingMotion(BaseMotion):
+    """
+    Point at given Coordinates
+    """
+    x_coordinate: float
+    """
+    x coordinate where the robot points to (in map frame)
+    """
+    y_coordinate: float
+    """
+    y coordinate where the robot points to (in map frame)
+    """
+    z_coordinate: float
+    """
+    z coordinate where the robot points to (in map frame)
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.pointing().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class DoorOpenMotion(BaseMotion):
+    """
+    Designator for opening a door
+    """
+
+    handle: str
+    """
+    name of the handle joint so that giskard knows how to open the door
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.door_opening().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+@dataclass
+class GraspHandleMotion(BaseMotion):
+    """
+    Designator for grasping a (door-)handle
+    """
+
+    handle: str
+    """
+    name of the handle joint so that giskard knows how to open the door
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.grasp_door_handle().execute(self)
 
     def to_sql(self) -> ORMMotionDesignator:
         pass

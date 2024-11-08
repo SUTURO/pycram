@@ -111,7 +111,8 @@ def query_object(obj_desc: ObjectDesignatorDescription) -> dict:
     """Query RoboKudo for an object that fits the description."""
     goal = QueryGoal()
     goal.obj.uid = str(id(obj_desc))
-    goal.obj.type = str(obj_desc.types[0].name)
+    print(obj_desc)
+    # goal.obj.type = str(obj_desc.types[0].name)
 
     result = send_query(obj_type=goal.obj.type)
 
@@ -144,6 +145,14 @@ def stop_query():
 
 
 @init_robokudo_interface
+def query_faces_human() -> Any:
+    """
+    Sends a query to RoboKudo to look for a human. returns ID of the perceived human.
+    """
+    return send_query()
+
+
+@init_robokudo_interface
 def query_specific_region(region: str) -> Any:
     """Query RoboKudo to scan a specific region."""
     return send_query(region=region)
@@ -152,7 +161,11 @@ def query_specific_region(region: str) -> Any:
 @init_robokudo_interface
 def query_human_attributes() -> Any:
     """Query RoboKudo for human attributes like brightness of clothes, headgear, and gender."""
-    return send_query(obj_type='human', attributes=["attributes"])
+    result = send_query(attributes=["attributes"])
+    if result:
+        return result
+    else:
+        return None
 
 
 @init_robokudo_interface

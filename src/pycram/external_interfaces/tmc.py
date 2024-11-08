@@ -1,8 +1,12 @@
+import rospy
+from actionlib_msgs.msg import GoalStatusArray
+from tmc_control_msgs.msg import GripperApplyEffortActionGoal
+from tmc_msgs.msg import Voice, TalkRequestActionGoal
 from typing_extensions import Optional
 
 from ..datastructures.enums import GripperState
 from ..designators.motion_designator import MoveGripperMotion, TalkingMotion
-from ..ros.logging import loginfo
+from ..ros.logging import loginfo, logwarn
 from ..ros.publisher import create_publisher
 from ..ros.data_types import Rate
 
@@ -44,17 +48,39 @@ def tmc_gripper_control(designator: MoveGripperMotion, topic_name: Optional[str]
         pub_gripper.publish(msg)
 
 
-def tmc_talk(designator: TalkingMotion, topic_name: Optional[str] = '/talk_request'):
+class TextToSpeechPublisher:
+
+    def __init__(self):
+        self.pub = rospy.Publisher('/talk_request_action/goal', TalkRequestActionGoal, queue_size=10)
+        self.status_sub = rospy.Subscriber('/talk_request_action/status', GoalStatusArray, self.status_callback)
+        self.status_list = []
+
+    def status_callback(self, msg):
+        self.status_list = msg.status_list
+
+    def pub_now(self, sentence, talk_bool: bool = True, wait_bool: bool = True):
+
+        rospy.logerr("talking sentence: " + str(sentence))
+        if talk_bool:
+            while not rospy.is_shutdown():
+                if not self.status_list or not wait_bool:  # Check if the status list is empty
+                    goal_msg = TalkRequestActionGoal()
+                    goal_msg.header.stamp = rospy.Time.now()
+                    goal_msg.goal.data.language = 1
+                    goal_msg.goal.data.sentence = sentence
+
+                    while self.pub.get_num_connections() == 0:
+                        rospy.sleep(0.1)
+
+                    self.pub.publish(goal_msg)
+                    break
+
+
+def tmc_talk(designator: TalkingMotion):
     """
     Publishes a sentence to the talk_request topic of the HSRB robot
 
     :param designator: The designator containing the sentence to be spoken
-    :param topic_name: The topic name to publish the sentence to
     """
-    pub = create_publisher(topic_name, Voice, 10)
-    texttospeech = Voice()
-    # language 1 = english (0 = japanese)
-    texttospeech.language = 1
-    texttospeech.sentence = designator.cmd
-
-    pub.publish(texttospeech)
+    talk = TextToSpeechPublisher()
+    talk.pub_now(designator.cmd)
