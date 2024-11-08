@@ -1,3 +1,5 @@
+import json
+
 import rospy
 from std_msgs.msg import String
 
@@ -11,9 +13,12 @@ def get_desired_objects(response):
     :param response: The response from NLP.
     :return: The desired object.
     """
+    print(f"response: {response}")
+    print(f"response_type: {type(response)}")
+    tmp_str = str(response).split("{'sentence': ")
+    print(f"tmp_str: {tmp_str}")
+    tmp_str_sen = tmp_str[1].split(',')
+    print(f"tmp_str_sen: {tmp_str_sen}")
+    print(tmp_str_sen[0])
 
-    tmp = response['item']
-    tmp_color = tmp['propertyAttribute']
-    tmp_obj = tmp['value']
-
-    return (tmp_obj, tmp_color)
+    return tmp_str_sen[0].split(" ")

@@ -1,7 +1,7 @@
 import rospy
 
 from demos.pycram_clean_the_table_demo.utils.misc import sort_objects
-from demos.pycram_get_objects_ws34.utils.misc import get_desired_objects
+from demos.pycram_get_objects_ws24.utils.misc import get_desired_objects
 from pycram.designators.action_designator import *
 from pycram.external_interfaces.navigate import PoseNavigator
 from pycram.process_module import real_robot
@@ -41,27 +41,27 @@ def data_cb(data):
     global callback
 
     # image_switch_publisher.pub_now(ImageEnum.HI.value)
-    response = data.data.split(",")
-    response.append("None")
+    response = get_desired_objects(data)
     callback = True
 
 def demo(step):
     with real_robot:
+        global response
         global callback
         callback = False
         # Gets the object that HSR should retrieve
-        if step <= 0:
+        if step <= 5:
             rospy.Subscriber("nlp_out", String, data_cb)
+            pub_nlp = rospy.Publisher("/startListener", String, queue_size=10)
             TalkingMotion("please tell me what i can get you").resolve().perform()
-            #talk.pub_now("please say something")
-            rospy.sleep(6)
-            #pub_nlp.publish("start listening")
-            #while not callback:
-            #    rospy.sleep(1)
-            tmp = get_desired_objects(response)
-            obj = response[1]
+            pub_nlp.publish("")
+            while not callback:
+                rospy.sleep(1)
+
+            color = response[4]
+            obj = response[5]
             #TalkingMotion(f"I will bring you the {obj}, {name}.").resolve().perform()
-            TalkingMotion(f"I will bring you the {obj} object.").resolve().perform()
+            TalkingMotion(f"I will bring you the brown box from the table.").resolve().perform()
         # Moves to place
         if step <= 1:
 
@@ -86,9 +86,9 @@ def demo(step):
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             # NavigateAction([Pose([], [])]).resolve().perform()
             move.pub_now(Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y, 0], [0, 0, 1, 0]))
-            TalkingMotion(f"Here is your {obj} object").resolve().perform()
+            TalkingMotion(f"Here is your brown box from the table").resolve().perform()
 
 
 
 
-demo(0)
+demo(5)

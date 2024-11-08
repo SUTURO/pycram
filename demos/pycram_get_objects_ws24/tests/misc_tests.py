@@ -5,22 +5,22 @@ class MiscTests(unittest.TestCase):
 
     def get_objects(self):
         data = []
-        data = json.dumps({
-"sentence": "  Bring me the yellow object from the table .",
-  "intent": "Transporting", "BeneficiaryRole": {"value": "me", "entity": "NaturalPerson",
-                    "propertyAttribute": [], "actionAttribute": [], "numberAttribute": []},
-  "Item": {"value": "cup", "entity": "Transportable", "propertyAttribute": ["yellow"], "actionAttribute": [], "numberAttribute": []},
-  "Source": {"value": "table", "entity": "DesignedFurniture", "propertyAttribute": [],
-                               "actionAttribute": [], "numberAttribute": []}
-}
+        data = dict({'sentence': 'Please bring me the red cup .',
+'intent': 'Transporting', 'object-name': '',
+'object-type': '', 'person-name': 'me', 'person-type': '', 'object-attribute': '', 'person-action': '', 'color': '', 'number': '', 'from-location': '', 'to-location': '', 'from-room': '', 'to-room': ''}
+
 )
 
         response = json.loads(data)
-        tmp = response['Item']
-        tmp_color = tmp['propertyAttribute']
-        tmp_obj = tmp['value']
+        tmp = response['sentence']
+        resp = tmp.split(" ")
+        print(resp)
 
-        return (tmp_obj, tmp_color[0])
+
+        return resp
 
     def test_get_desirec_input(self):
+        res = self.get_objects()
+        print(res[4])
+        print(res[5])
         print(self.get_objects())
