@@ -48,7 +48,8 @@ delay check:
 rostopic delay /hsrb/base_scan
 
 fixen mit shh auf admin und dann:
-sudo chronyd -q 'server 192.168.0.122 iburst'
+sudo chronyd -q 'server 192.168.0.130 iburst'
+192.168.0.130
 
 -----
 
