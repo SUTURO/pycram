@@ -60,7 +60,7 @@ class TextToSpeechPublisher:
 
     def pub_now(self, sentence, talk_bool: bool = True, wait_bool: bool = True):
 
-        rospy.logerr("talking sentence: " + str(sentence))
+        rospy.loginfo("talking sentence: " + str(sentence))
         if talk_bool:
             while not rospy.is_shutdown():
                 if not self.status_list or not wait_bool:  # Check if the status list is empty
