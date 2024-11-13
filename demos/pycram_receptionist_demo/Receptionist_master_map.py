@@ -15,26 +15,27 @@ from pycram.enums import ImageEnum as ImageEnum
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, \
     HSRBMoveGripperReal, StartSignalWaiter
 
+# create objects etc. in simulation
 world = BulletWorld("DIRECT")
-gripper = HSRBMoveGripperReal()
+# kitchen
+kitchen = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_1.urdf")
+kitchen_desig = ObjectDesignatorDescription(names=["kitchen"])
+# robot
 robot = Object("hsrb", "robot", "../../resources/" + robot_description.name + ".urdf")
 robot_desig = ObjectDesignatorDescription(names=["hsrb"]).resolve()
 robot.set_color([0.5, 0.5, 0.9, 1])
+RobotStateUpdater("/tf", "/hsrb/robot_state/joint_states")
 
-kitchen = Object("kitchen", ObjectType.ENVIRONMENT, "pre_robocup_5.urdf")
-print("before giskard")
 giskardpy.init_giskard_interface()
 
-couch_pose_semantik = Pose([4.29, 1.6, 0.8])
-RobotStateUpdater("/tf", "/hsrb/robot_state/joint_states")
-kitchen_desig = ObjectDesignatorDescription(names=["kitchen"])
-
+# publishers to toya topics
 move = PoseNavigator()
 talk = TextToSpeechPublisher()
+gripper = HSRBMoveGripperReal()
+image_switch_publisher = ImageSwitchPublisher()
 
 # variables for communcation with nlp
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
-pub_bell = rospy.Publisher('/startSoundDetection', String, queue_size=16)
 response = ""
 wait_bool = False
 callback = False
@@ -44,15 +45,20 @@ timeout = 12  # 12 seconds timeout
 host = HumanDescription("Jule", fav_drink="apple juice")
 host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
+
 # for testing, if the first part of the demo is skipped
-guest1.set_attributes(['male', 'without a hat', 'wearing a t-shirt', ' a dark top'])
+guest1.set_attributes(['female', 'without a hat', 'wearing a t-shirt', ' a dark top'])
 guest1.set_id(0)
 
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
 # for testing, if the first part of the demo is skipped
 guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright top'])
 
-image_switch_publisher = ImageSwitchPublisher()
+# important poses
+couch_pose_semantik = Pose(position=[3.8, 1.9, 0], orientation=[0, 0, -0.7, 0.7])
+look_couch = Pose([3.8, 1.9, 0.8])
+nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
+greet_guest_pose = Pose(position=[1.7, 0.86, 0], orientation=[0, 0, 0.8, -0.5])
 
 giskardpy.clear()
 giskardpy.sync_worlds()
@@ -75,14 +81,6 @@ def data_cb(data):
     callback = True
 
 
-def doorbell_cb(data):
-    """
-    function to receive if doorbell was heard from nlp
-    """
-    global doorbell
-    doorbell = True
-
-
 def pakerino(torso_z=0.05, config=None):
     """
     replace function for park arms, robot takes pose of configuration of joint
@@ -90,7 +88,7 @@ def pakerino(torso_z=0.05, config=None):
 
     if not config:
         config = {'arm_lift_joint': torso_z, 'arm_flex_joint': 0, 'arm_roll_joint': -1.2,
-                  'wrist_flex_joint': -1.5, 'wrist_roll_joint': 0, 'head_pan_joint': 0}
+                  'wrist_flex_joint': -1.5, 'wrist_roll_joint': 0, 'head_pan_joint': 0, 'head_tilt_joint': 0}
 
     giskardpy.avoid_all_collisions()
     giskardpy.achieve_joint_goal(config)
@@ -109,6 +107,7 @@ def get_attributes(guest: HumanDescription):
 
     # get clothes and gender
     attr_list = DetectAction(technique='attributes', state='start').resolve().perform()
+    print(attr_list)
     guest1.set_attributes(attr_list)
     rospy.loginfo(attr_list)
 
@@ -164,6 +163,7 @@ def drink_repeat():
     while trys < 2:
         talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
         rospy.sleep(3.5)
+        pub_nlp.publish("start")
 
         # sound/picture
         rospy.sleep(3)
@@ -210,9 +210,8 @@ def welcome_guest(num, guest: HumanDescription):
     rospy.sleep(3)
 
     talk.pub_now("What is your name and favorite drink?", True, wait_bool=wait_bool)
-    rospy.sleep(2)
-
-    talk.pub_now("please answer me after the beep sound", True, wait_bool=wait_bool)
+    rospy.sleep(2.5)
+    talk.pub_now("please answer me when my display changes", True, wait_bool=wait_bool)
     rospy.sleep(2.5)
 
     # signal to start listening
@@ -311,9 +310,14 @@ def welcome_guest(num, guest: HumanDescription):
     if num == 1:
         try:
             talk.pub_now("i will take a picture of you to recognize you later", wait_bool=wait_bool)
-            pakerino()
+            config = {'arm_lift_joint': 0.05, 'arm_flex_joint': 0.0, 'arm_roll_joint': -1.2,
+                      'wrist_flex_joint': -1.5, 'wrist_roll_joint': 0.0, 'head_pan_joint': 0.0, 'head_tilt_joint': 1.0}
+            giskardpy.achieve_joint_goal(config)
             rospy.sleep(1.4)
             talk.pub_now("please wait and look at me", wait_bool=wait_bool)
+            config = {'arm_lift_joint': 0.05, 'arm_flex_joint': 0, 'arm_roll_joint': -1.2,
+                      'wrist_flex_joint': -1.5, 'wrist_roll_joint': 0, 'head_pan_joint': 0, 'head_tilt_joint': 1}
+            pakerino(config)
             get_attributes(guest)
 
         except PerceptionObjectNotFound:
@@ -343,8 +347,9 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
     # detect free seat
     seat = DetectAction(technique='location', state="sofa").resolve().perform()
     free_seat = False
+    x = 3.6
     # loop through all seating options detected by perception
-        if not no_sofa:
+    if not no_sofa:
         for place in seat[1]:
             if place[1] == 'False':
 
@@ -354,13 +359,15 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
                 lt = LocalTransformer()
                 pose_in_robot_frame = lt.transform_pose(not_point_pose, robot.get_link_tf_frame("base_link"))
                 print("in robot: " + str(pose_in_robot_frame))
-                if pose_in_robot_frame.pose.position.y > 0.55:
+                if pose_in_robot_frame.pose.position.y > 0.25:
                     talk.pub_now("please take a seat to the left from me")
-                    pose_in_robot_frame.pose.position.y += 0.8
+                    pose_in_robot_frame.pose.position.y += 0.2
+                    x = 4.9
 
-                elif pose_in_robot_frame.pose.position.y < -0.15:
+                elif pose_in_robot_frame.pose.position.y < -0.35:
                     talk.pub_now("please take a seat to the right from me")
-                    pose_in_robot_frame.pose.position.y -= 0.8
+                    pose_in_robot_frame.pose.position.y -= 0.3
+                    x = 3.7
 
                 else:
                     talk.pub_now("please take a seat in front of me")
@@ -376,16 +383,18 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
                     pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
                     talk.pub_now("please take a seat on the free chair")
                     free_seat = True
+                    x = 2.5
+                    break
 
     if free_seat:
         pose_guest = PointStamped()
         pose_guest.header.frame_id = "map"
-        pose_guest.point.x = pose_in_map.pose.position.x
+        pose_guest.point.x = x
         pose_guest.point.y = pose_in_map.pose.position.y
         pose_guest.point.z = 0.85
-        print(pose_guest)
 
         giskardpy.move_arm_to_point(pose_guest)
+
 
         print("found seat")
         return pose_guest
@@ -399,40 +408,21 @@ def demo(step):
         global doorbell
         global guest1
         global guest2
-        pose3 = Pose([1.9, 4.5, 0], [0, 0, 1, 0])
 
         # signal start
         pakerino()
 
-        talk.pub_now("waiting for guests", wait_bool=wait_bool)
+
+        # talk.pub_now("waiting for guests", wait_bool=wait_bool)
         image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         # receive data from nlp via topic
         rospy.Subscriber("nlp_out", String, data_cb)
-        rospy.Subscriber("nlp_out2", String, doorbell_cb)
-
-        if step <= 0:
-            # door opening sequence
-            pub_bell.publish("start bell detection")
-
-            # wait 15 seconds for sound
-            start_time = time.time()
-            while not doorbell:
-                # continue challenge to not waste time
-                if time.time() - start_time > timeout:
-                    print("Timeout reached, no bell")
-                    break
-
-                time.sleep(0.5)
-
-            # set it back to false for second guest
-            doorbell = False
-
-            # door_opening()
 
         if step <= 1:
             # reception/talking sequence
             pakerino()
+            rospy.sleep(2.5)
             guest1 = welcome_guest(1, guest1)
 
         if step <= 2:
@@ -441,7 +431,7 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # leading to living room and pointing to free seat
-            talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
+            # talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
 
             # head straight
             pakerino()
@@ -449,22 +439,20 @@ def demo(step):
 
             # lead human to living room
             # TODO: change according to arena
-            move.pub_now(after_door_ori)
-            move.pub_now(pose_corner)
-            move.pub_now(door_to_couch)
+            move.pub_now(nav_pose1)
+            move.pub_now(couch_pose_semantik)
 
             # place new guest in living room
             gripper.pub_now("close")
             talk.pub_now("welcome to the living room", wait_bool=wait_bool)
-            giskardpy.move_head_to_pose(couch_pose_semantik)
-            rospy.sleep(1)
 
-            ########################################################
-            # update poses from guest1 and host
             counter = 0
             while counter < 3:
                 found_host = False
                 try:
+                    # giskardpy.move_head_to_pose(look_couch)
+                    pakerino()
+                    rospy.sleep(0.5)
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
                     id_humans = human_dict["keys"]
@@ -478,12 +466,12 @@ def demo(step):
                 except:
                     print("i am a faliure and i hate my life")
                     if counter == 2:
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        talk.pub_now("sitting people please look at me", wait_bool=wait_bool)
                         rospy.sleep(1.5)
 
                     elif counter == 3:
                         # TODO change according to arena
-                        config = {'head_pan_joint': -0.2}
+                        config = {'head_pan_joint': -0.3}
                         pakerino(config=config)
                         talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(1.5)
@@ -502,13 +490,14 @@ def demo(step):
             ########################################################
 
             # find free seat
-            giskardpy.move_head_to_pose(couch_pose_semantik)
+            # giskardpy.move_head_to_pose(look_couch)
+            pakerino()
             guest_pose = detect_point_to_seat()
             image_switch_publisher.pub_now(ImageEnum.SOFA.value)
             if not guest_pose:
                 # move head a little to perceive chairs
                 # TODO: change according to arena
-                config = {'head_pan_joint': -0.1}
+                config = {'head_pan_joint': -0.3}
                 pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
                 guest1.set_pose(guest_pose)
@@ -535,26 +524,12 @@ def demo(step):
             # head straight
             # TODO: change accoring to map
             pakerino()
-            move.pub_now(pose_corner_back)
-            move.pub_now(pose3)
+            move.pub_now(greet_guest_pose)
 
             # signal start
             talk.pub_now("waiting for new guests", wait_bool=wait_bool)
             image_switch_publisher.pub_now(ImageEnum.HI.value)
-
-            # wait 12 seconds for sound
-            pub_bell.publish("start bell detection")
-            start_time = time.time()
-            while not doorbell:
-                # continue challenge to not waste time
-                if time.time() - start_time > timeout:
-                    print("Timeout reached, no bell")
-                    break
-
-                time.sleep(0.5)
-
-            # TODO: Giskard has to fix movement
-            # door_opening()
+            rospy.sleep(4)
 
         if step <= 5:
             guest2 = welcome_guest(2, guest2)
@@ -573,17 +548,15 @@ def demo(step):
 
             # lead human to living room
             # TODO: cange according to arena
-            move.pub_now(after_door_ori, interrupt_bool=False)
-            move.pub_now(pose_corner)
-            move.pub_now(door_to_couch)
-
+            move.pub_now(nav_pose1)
+            move.pub_now(couch_pose_semantik)
             talk.pub_now("welcome to the living room", wait_bool=wait_bool)
 
             # place new guest in living room
-
         if step <= 7:
 
-            giskardpy.move_head_to_pose(couch_pose_semantik)
+            # giskardpy.move_head_to_pose(look_couch)
+            pakerino()
             rospy.sleep(1)
             gripper.pub_now("close")
 
@@ -625,14 +598,12 @@ def demo(step):
                     elif counter == 2:
                         talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
-                    # move head to side to detect faces that were not in vision before
-                    # TODO: change direction according to arena
+
                     elif counter == 3:
                         config = {'head_pan_joint': -0.2}
                         pakerino(config=config)
                         talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
-
 
                 except PerceptionObjectNotFound:
                     print("i am a failure and i hate my life")
@@ -641,7 +612,7 @@ def demo(step):
                     if counter == 3:
                         config = {'head_pan_joint': -0.2}
                         pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        # talk.pub_now("please look at me", wait_bool=wait_bool)
                         rospy.sleep(2.5)
 
             # Failure Handling if at least one person was not recognized
@@ -667,7 +638,8 @@ def demo(step):
 
         if step <= 8:
             # look t couch
-            giskardpy.move_head_to_pose(couch_pose_semantik)
+            # giskardpy.move_head_to_pose(look_couch)
+            pakerino()
             rospy.sleep(1)
 
             # find a place for guest2 to sit and point
@@ -677,7 +649,7 @@ def demo(step):
             if not guest_pose:
                 # move head a little
                 # TODO: change according to arena
-                config = {'head_pan_joint': -0.1}
+                config = {'head_pan_joint': -0.15}
                 pakerino(config=config)
                 guest_pose = detect_point_to_seat(no_sofa=True)
                 if guest_pose:
@@ -696,4 +668,4 @@ def demo(step):
                 describe(guest1)
 
 
-demo(1)
+demo(0)

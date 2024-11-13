@@ -423,8 +423,8 @@ class HSRBDetectingReal(ProcessModule):
                 human_pose_attr = attributes_queryHuman()
                 counter += 1
                 if counter > 3:
+                    rospy.sleep(3)
                     TalkingMotion("please step in front of me").resolve().perform()
-                    rospy.sleep(2)
 
             if counter >= 3:
                 return "False"
@@ -435,8 +435,10 @@ class HSRBDetectingReal(ProcessModule):
                 gender = gender[:4]
             clothes = human_pose_attr.res[0].attribute[1][20:]
             brightness_clothes = human_pose_attr.res[0].attribute[0][5:]
+            print(brightness_clothes)
             hat = human_pose_attr.res[0].attribute[2][20:]
             attr_list = [gender, hat, clothes, brightness_clothes]
+            print(attr_list)
             return attr_list
 
         # used when region-filter of robokudo should be used

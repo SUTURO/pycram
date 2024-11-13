@@ -256,7 +256,7 @@ def welcome_guest(num, guest: HumanDescription):
     talk.pub_now("What is your name and favorite drink?", True, wait_bool=wait_bool)
     rospy.sleep(2)
 
-    talk.pub_now("please answer me after the beep sound", True, wait_bool=wait_bool)
+    # talk.pub_now("please answer me after the beep sound", True, wait_bool=wait_bool)
     rospy.sleep(2.5)
 
     # signal to start listening

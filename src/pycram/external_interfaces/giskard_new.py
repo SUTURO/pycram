@@ -661,6 +661,7 @@ def move_arm_to_point(point: PointStamped):
     print("in move arm")
     p_axis = Vector3Stamped()
     p_axis.header.frame_id = "hand_gripper_tool_frame"
+    print(point)
     p_axis.vector.x = 0
     p_axis.vector.y = 0
     p_axis.vector.z = 1

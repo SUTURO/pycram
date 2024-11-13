@@ -314,11 +314,13 @@ def describe(human: HumanDescription):
     :param human: human to be described
     """
     if human.attributes:
+        print("++++++++++++++++++++++++")
+        print(human.attributes[0])
 
         if human.pose:
             pub_pose.publish(human.pose)
 
-        talk.pub_now(f"I will describe {human.name} further now, please lean forward", wait_bool=wait_bool)
+        talk.pub_now(f"I will describe {human.name} further now", wait_bool=wait_bool)
         rospy.sleep(1.5)
 
         # gender
@@ -330,31 +332,13 @@ def describe(human: HumanDescription):
         rospy.sleep(1)
 
         # kind of clothes
-        # talk.pub_now(f"you are  {human.attributes[2]}", wait_bool=wait_bool)
-        rospy.sleep(1)
-
-        # brightness of clothes
-        talk.pub_now(f"you are wearing {human.attributes[3]}", wait_bool=wait_bool)
-        rospy.sleep(2)
-
-        talk.pub_now(f"I will describe {human.name} again", wait_bool=wait_bool)
-        rospy.sleep(1.5)
-
-        # gender
-        talk.pub_now(f"i think your gender is {human.attributes[0]}", wait_bool=wait_bool)
-        rospy.sleep(1.5)
-
-        # headgear or not
-        talk.pub_now(f"you are not {human.attributes[1]}", wait_bool=wait_bool)
-        rospy.sleep(1)
-
-        # kind of clothes
         talk.pub_now(f"you are  {human.attributes[2]}", wait_bool=wait_bool)
         rospy.sleep(1)
 
         # brightness of clothes
         talk.pub_now(f"you are wearing {human.attributes[3]}", wait_bool=wait_bool)
         rospy.sleep(2)
+
 
 
 def toPoseStamped(x_cord: float, y_cord: float, z_cord: float) -> PoseStamped:
