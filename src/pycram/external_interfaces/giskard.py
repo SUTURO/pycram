@@ -462,6 +462,32 @@ def achieve_align_planes_goal(goal_normal: List[float], tip_link: str, tip_norma
     return giskard_wrapper.execute()
 
 
+def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
+    """
+    Moves the arm around the dishwasher door after the first opening action. Dishwasher is in this state half open.
+    :param handle_name: the name of the handle the HSR was grasping.
+    :return: MoveResult message for this goal
+    """
+    giskard_wrapper.motion_goals.set_hsrb_dishwasher_door_around(handle_name)
+    return giskard_wrapper.execute()
+
+
+def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult':
+    """
+    After the first opening part, the dishwasher is half open.
+    Movement to move the arm around the dishwasher and bringing the arm in a position to push the door down.
+    :param handle_name: The name of the handle of the container that was half opened.
+    :param door_name: The name of the container door, where the arm needs to be moved around and aligned.
+    :return: MoveResult message for this goal.
+    """
+    giskard_wrapper.motion_goals.set_hsrb_align_to_push_door_goal(handle_name, door_name)
+    giskard_wrapper.execute()
+
+    giskard_wrapper.motion_goals.set_hsrb_pre_push_door_goal(handle_name=handle_name, hinge_frame_id=door_name)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    return giskard_wrapper.execute()
+
+
 @init_giskard_interface
 @thread_safe
 def achieve_open_container_goal(tip_link: str, environment_link: str) -> 'MoveResult':
