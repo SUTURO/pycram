@@ -26,7 +26,7 @@ try:
 except ModuleNotFoundError as e:
     logwarn("Failed to import Giskard messages, the real robot will not be available")
 
-giskard_wrapper = None
+giskard_wrapper: Optional[GiskardWrapper] = None
 giskard_update_service = None
 is_init = False
 
