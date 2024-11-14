@@ -325,7 +325,7 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str, posit
     :param orientation_threshold: Orientation distance at which the goal is successfully reached
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_cart_goal, _pose_to_pose_stamped(goal_pose),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_cart_goal, _pose_to_pose_stamped(goal_pose),
                                           tip_link, root_link)
     if par_return:
         return par_return
@@ -359,12 +359,12 @@ def achieve_straight_cartesian_goal(goal_pose: Pose, tip_link: str,
     :param root_link: The starting link of the chain which should be used to achieve this goal
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_straight_cart_goal, _pose_to_pose_stamped(goal_pose),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_straight_cart_goal, _pose_to_pose_stamped(goal_pose),
                                           tip_link, root_link)
     if par_return:
         return par_return
 
-    giskard_wrapper.set_straight_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
+    giskard_wrapper.motion_goals.set_straight_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -381,12 +381,12 @@ def achieve_translation_goal(goal_point: List[float], tip_link: str, root_link: 
     :param root_link: The start link of the chain
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_translation_goal, make_point_stamped(goal_point),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_translation_goal, make_point_stamped(goal_point),
                                           tip_link, root_link)
     if par_return:
         return par_return
 
-    giskard_wrapper.set_translation_goal(make_point_stamped(goal_point), tip_link, root_link)
+    giskard_wrapper.motion_goals.set_translation_goal(make_point_stamped(goal_point), tip_link, root_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -403,13 +403,13 @@ def achieve_straight_translation_goal(goal_point: List[float], tip_link: str, ro
     :param root_link: The start link of the chain
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_straight_translation_goal,
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_straight_translation_goal,
                                           make_point_stamped(goal_point),
                                           tip_link, root_link)
     if par_return:
         return par_return
 
-    giskard_wrapper.set_straight_translation_goal(make_point_stamped(goal_point), tip_link, root_link)
+    giskard_wrapper.motion_goals.set_straight_translation_goal(make_point_stamped(goal_point), tip_link, root_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -426,12 +426,12 @@ def achieve_rotation_goal(quat: List[float], tip_link: str, root_link: str) -> '
     :param root_link: The start link of the chain
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_rotation_goal, make_quaternion_stamped(quat),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_rotation_goal, make_quaternion_stamped(quat),
                                           tip_link, root_link)
     if par_threads:
         return par_return
 
-    giskard_wrapper.set_rotation_goal(make_quaternion_stamped(quat), tip_link, root_link)
+    giskard_wrapper.motion_goals.set_rotation_goal(make_quaternion_stamped(quat), tip_link, root_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -450,12 +450,12 @@ def achieve_align_planes_goal(goal_normal: List[float], tip_link: str, tip_norma
     :param root_link: The starting link of the chain that should be used.
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_align_planes_goal, make_vector_stamped(goal_normal),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_align_planes_goal, make_vector_stamped(goal_normal),
                                           tip_link, make_vector_stamped(tip_normal), root_link)
     if par_return:
         return par_return
 
-    giskard_wrapper.set_align_planes_goal(make_vector_stamped(goal_normal), tip_link,
+    giskard_wrapper.motion_goals.set_align_planes_goal(make_vector_stamped(goal_normal), tip_link,
                                           make_vector_stamped(tip_normal),
                                           root_link)
     # giskard_wrapper.add_default_end_motion_conditions()
@@ -499,10 +499,10 @@ def achieve_open_container_goal(tip_link: str, environment_link: str) -> 'MoveRe
     :param environment_link: The name of the handle for this container.
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_open_container_goal, tip_link, environment_link)
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_open_container_goal, tip_link, environment_link)
     if par_return:
         return par_return
-    giskard_wrapper.set_open_container_goal(tip_link, environment_link)
+    giskard_wrapper.motion_goals.set_open_container_goal(tip_link, environment_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -518,11 +518,11 @@ def achieve_close_container_goal(tip_link: str, environment_link: str) -> 'MoveR
     :param environment_link: Name of the handle
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.set_close_container_goal, tip_link, environment_link)
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_close_container_goal, tip_link, environment_link)
     if par_return:
         return par_return
 
-    giskard_wrapper.set_close_container_goal(tip_link, environment_link)
+    giskard_wrapper.motion_goals.set_close_container_goal(tip_link, environment_link)
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -554,7 +554,7 @@ def projection_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) ->
     :param root_link: The starting link of the chain which should be used to achieve this goal
     :return: MoveResult message for this goal
     """
-    giskard_wrapper.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
+    giskard_wrapper.motion_goals.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
     return giskard_wrapper.projection()
 
 
@@ -572,11 +572,11 @@ def projection_cartesian_goal_with_approach(approach_pose: Pose, goal_pose: Pose
     :param robot_base_link: The base link of the robot
     :return: A trajectory calculated to move the tip_link to the goal_pose
     """
-    giskard_wrapper.allow_all_collisions()
-    giskard_wrapper.set_cart_goal(_pose_to_pose_stamped(approach_pose), robot_base_link, "map")
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.motion_goals.set_cart_goal(_pose_to_pose_stamped(approach_pose), robot_base_link, "map")
     giskard_wrapper.projection()
-    giskard_wrapper.avoid_all_collisions()
-    giskard_wrapper.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
+    giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
     return giskard_wrapper.projection()
 
 
@@ -591,8 +591,8 @@ def projection_joint_goal(goal_poses: Dict[str, float], allow_collisions: bool =
     :return: MoveResult message for this goal
     """
     if allow_collisions:
-        giskard_wrapper.allow_all_collisions()
-    giskard_wrapper.set_joint_goal(goal_poses)
+        giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.motion_goals.set_joint_goal(goal_poses)
     return giskard_wrapper.projection()
 
 
@@ -611,7 +611,7 @@ def allow_gripper_collision(gripper: Arms) -> None:
     add_gripper_groups()
     for gripper_group in get_gripper_group_names():
         if gripper in gripper_group or gripper == "all":
-            giskard_wrapper.allow_collision(gripper_group, CollisionEntry.ALL)
+            giskard_wrapper.motion_goals.allow_collision(gripper_group, CollisionEntry.ALL)
 
 
 @init_giskard_interface
@@ -619,7 +619,7 @@ def get_gripper_group_names() -> List[str]:
     """
     :return: The list of groups that are registered in giskard which have 'gripper' in their name.
     """
-    groups = giskard_wrapper.get_group_names()
+    groups = giskard_wrapper.world.get_group_names()
     return list(filter(lambda elem: "gripper" in elem, groups))
 
 
