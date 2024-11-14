@@ -758,7 +758,7 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
 @init_giskard_interface
 @thread_safe
-def move_arm_to_point(point: PointStamped):
+def move_arm_to_point(point: PointStamped) -> 'MoveResult':
     """
     moves arm to given position
     :param point: point
@@ -773,11 +773,11 @@ def move_arm_to_point(point: PointStamped):
                                       pointing_axis=p_axis,
                                       root_link="map")
     giskard_wrapper.add_default_end_motion_conditions()
-    giskard_wrapper.execute()
+    return giskard_wrapper.execute()
 
 @init_giskard_interface
 @thread_safe
-def move_head_to_human():
+def move_head_to_human() -> 'MoveResult':
     """
     continously moves head in direction of perceived human
     """
@@ -792,7 +792,7 @@ def allow_all_collisions():
 
 @init_giskard_interface
 @thread_safe
-def grasp_doorhandle(handle_name: str):
+def grasp_doorhandle(handle_name: str) -> 'MoveResult':
     print("grasp handle")
 
     giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
@@ -803,7 +803,7 @@ def grasp_doorhandle(handle_name: str):
 
 @init_giskard_interface
 @thread_safe
-def grasp_handle(handle_name: str):
+def grasp_handle(handle_name: str) -> 'MoveResult':
     """
     grasps the dishwasher handle.
 
@@ -811,12 +811,12 @@ def grasp_handle(handle_name: str):
     """
     giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
     giskard_wrapper.add_default_end_motion_conditions()
-    giskard_wrapper.execute()
+    return giskard_wrapper.execute()
 
 
 @init_giskard_interface
 @thread_safe
-def open_doorhandle(handle_name: str):
+def open_doorhandle(handle_name: str) -> 'MoveResult':
     giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
     giskard_wrapper.motion_goals.allow_all_collisions()
     return giskard_wrapper.execute()
