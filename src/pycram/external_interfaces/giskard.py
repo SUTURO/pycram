@@ -542,6 +542,67 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
     return giskard_wrapper.execute()
 
 
+@init_giskard_interface
+@thread_safe
+def move_arm_to_point(point: PointStamped) -> 'MoveResult':
+    """
+    moves arm to given position
+    :param point: point
+    """
+    p_axis = Vector3Stamped()
+    p_axis.header.frame_id = "hand_gripper_tool_frame"
+    p_axis.vector.x = 0
+    p_axis.vector.y = 0
+    p_axis.vector.z = 1
+    giskard_wrapper.motion_goals.add_pointing(goal_point=point,
+                                      tip_link="hand_gripper_tool_frame",
+                                      pointing_axis=p_axis,
+                                      root_link="map")
+    giskard_wrapper.add_default_end_motion_conditions()
+    return giskard_wrapper.execute()
+
+@init_giskard_interface
+@thread_safe
+def move_head_to_human() -> 'MoveResult':
+    """
+    continously moves head in direction of perceived human
+    """
+
+    giskard_wrapper.motion_goals.continuous_pointing_head()
+    return giskard_wrapper.execute(wait=False)
+
+
+@init_giskard_interface
+@thread_safe
+def grasp_doorhandle(handle_name: str) -> 'MoveResult':
+    print("grasp handle")
+
+    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.add_default_end_motion_conditions()
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+@thread_safe
+def grasp_handle(handle_name: str) -> 'MoveResult':
+    """
+    grasps the dishwasher handle.
+
+    :param handle_name: name of the dishwasher handle, which should be grasped
+    """
+    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
+    giskard_wrapper.add_default_end_motion_conditions()
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+@thread_safe
+def open_doorhandle(handle_name: str) -> 'MoveResult':
+    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    return giskard_wrapper.execute()
+
 # Projection Goals
 
 
@@ -758,64 +819,3 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
     ps.header = pose.header
 
     return ps
-
-@init_giskard_interface
-@thread_safe
-def move_arm_to_point(point: PointStamped) -> 'MoveResult':
-    """
-    moves arm to given position
-    :param point: point
-    """
-    p_axis = Vector3Stamped()
-    p_axis.header.frame_id = "hand_gripper_tool_frame"
-    p_axis.vector.x = 0
-    p_axis.vector.y = 0
-    p_axis.vector.z = 1
-    giskard_wrapper.motion_goals.add_pointing(goal_point=point,
-                                      tip_link="hand_gripper_tool_frame",
-                                      pointing_axis=p_axis,
-                                      root_link="map")
-    giskard_wrapper.add_default_end_motion_conditions()
-    return giskard_wrapper.execute()
-
-@init_giskard_interface
-@thread_safe
-def move_head_to_human() -> 'MoveResult':
-    """
-    continously moves head in direction of perceived human
-    """
-
-    giskard_wrapper.motion_goals.continuous_pointing_head()
-    return giskard_wrapper.execute(wait=False)
-
-
-@init_giskard_interface
-@thread_safe
-def grasp_doorhandle(handle_name: str) -> 'MoveResult':
-    print("grasp handle")
-
-    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
-    giskard_wrapper.motion_goals.allow_all_collisions()
-    giskard_wrapper.add_default_end_motion_conditions()
-    return giskard_wrapper.execute()
-
-
-@init_giskard_interface
-@thread_safe
-def grasp_handle(handle_name: str) -> 'MoveResult':
-    """
-    grasps the dishwasher handle.
-
-    :param handle_name: name of the dishwasher handle, which should be grasped
-    """
-    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
-    giskard_wrapper.add_default_end_motion_conditions()
-    return giskard_wrapper.execute()
-
-
-@init_giskard_interface
-@thread_safe
-def open_doorhandle(handle_name: str) -> 'MoveResult':
-    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
-    giskard_wrapper.motion_goals.allow_all_collisions()
-    return giskard_wrapper.execute()
