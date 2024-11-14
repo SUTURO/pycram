@@ -661,7 +661,7 @@ class HSRBPointingReal(ProcessModule):
         pointing_pose.point.x = designator.x_coordinate
         pointing_pose.point.y = designator.y_coordinate
         pointing_pose.point.z = designator.z_coordinate
-        giskard.move_arm_to_pose(pointing_pose)
+        giskard.move_arm_to_point(pointing_pose)
 
 
 class HSRBOpenDoorReal(ProcessModule):

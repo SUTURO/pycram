@@ -741,6 +741,25 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
     return ps
 
+
+def move_arm_to_point(point: PointStamped):
+    """
+    moves arm to given position
+    :param point: point
+    """
+    p_axis = Vector3Stamped()
+    p_axis.header.frame_id = "hand_gripper_tool_frame"
+    p_axis.vector.x = 0
+    p_axis.vector.y = 0
+    p_axis.vector.z = 1
+    giskard_wrapper.motion_goals.add_pointing(goal_point=point,
+                                      tip_link="hand_gripper_tool_frame",
+                                      pointing_axis=p_axis,
+                                      root_link="map")
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
+
+
 def move_head_to_human():
     """
     continously moves head in direction of perceived human
