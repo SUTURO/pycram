@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import inspect
 import itertools
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
+import sqlalchemy
+from geometry_msgs.msg import WrenchStamped
 from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
@@ -14,13 +18,15 @@ from typing_extensions import List, Union, Callable, Optional, Type
 
 from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
-    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, PointingMotion, HeadFollowMotion
+    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, PointingMotion, HeadFollowMotion, TalkingMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..designator import ActionDesignatorDescription
-from ..failures import ObjectUnfetchable, ReachabilityFailure
+from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringCondition
+from ..helper import multiply_quaternions
+from ..language import Monitor
 from ..local_transformer import LocalTransformer
 from ..ontology.ontology import OntologyConceptHolder
 from ..orm.action_designator import Action as ORMAction
@@ -34,7 +40,10 @@ from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, Naviga
 from ..orm.base import Pose as ORMPose
 from ..orm.object_designator import Object as ORMObject
 from ..robot_description import RobotDescription
+from ..ros.logging import logwarn
+from ..ros_utils.force_torque_sensor import ForceTorqueSensor
 from ..tasktree import with_tree
+from ..utils import axis_angle_to_quaternion
 
 
 class MoveTorsoAction(ActionDesignatorDescription):
@@ -571,6 +580,187 @@ class PointingAction(ActionDesignatorDescription):
         """
         return PointingActionPerformable(self.x_coordinate, self.y_coordinate, self.z_coordinate)
 
+
+class PouringAction(ActionDesignatorDescription):
+    """
+    Designator to let the robot perform a pouring action.
+    """
+
+    target_location: Pose
+    """
+    The Pose the robot should pour into.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for pouring.
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'.
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to.
+    """
+
+    def __init__(self, target_locations: List[Pose], arms: List[Arms], directions: List[str], angles: List[float],
+                 resolver=None):
+        """
+        :param target_locations: List of possible target locations to be poured into
+        :param arms: List of possible arms that could be used
+        :param directions: List of possible directions for the pouring direction
+        :param angles: List of possible angles that the gripper tilts to
+        :param resolver: An optional resolver that returns a performable designator with elements from the lists of
+                         possible paramter
+        """
+        super().__init__(resolver)
+        self.target_locations: List[Pose] = target_locations
+        self.arms: List[Arms] = arms
+        self.directions: List[str] = directions
+        self.angels: List[float] = angles
+
+    def ground(self) -> PouringActionPerformable:
+        """
+        Default resolver that returns a performable designator with the first entries from the lists of possible
+        parameter.
+        :return: A performable designator
+        """
+        return PouringActionPerformable(self.target_locations[0], self.arms[0], self.directions[0], self.angels[0])
+
+
+class MixingAction(ActionDesignatorDescription):
+    """
+    Designator to let the robot perform a mixing action.
+    """
+
+    object_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the object that should be mixed.
+    """
+
+    object_tool_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the mixing tool.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for mixing.
+    """
+
+    grasp: Grasp
+    """
+    The grasp that should be used for mixing. For example, 'left' or 'right'.
+    """
+
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    """
+    The object at the time this Action got created. It is used to be a static, information holding entity. It is
+    not updated when the BulletWorld object is changed.
+    """
+    def insert(self, session: sqlalchemy.orm.session.Session, **kwargs):
+        """
+        Insert the mixing action into the database session.
+        """
+        action = super().insert(session)
+        # Additional logic for inserting mixing action data goes here
+        session.add(action)
+        session.commit()
+
+        return action
+
+    def __init__(self, object_designator_description: ObjectDesignatorDescription,
+                 object_tool_designator_description: ObjectDesignatorDescription, arms: List[Arms], grasps: List[Grasp],
+                 resolver=None):
+        """
+        Initialize the MixingAction with object and tool designators, arms, and grasps.
+        :param object_designator_description: Object designator for the object to be mixed.
+        :param object_tool_designator_description: Object designator for the mixing tool.
+        :param arms: List of possible arms that could be used.
+        :param grasps: List of possible grasps for the mixing action.
+        :param resolver: An optional resolver for dynamic parameter selection.
+        """
+        super(MixingAction, self).__init__(resolver)
+        self.object_designator_description: ObjectDesignatorDescription = object_designator_description
+        self.object_tool_designator_description: ObjectDesignatorDescription = object_tool_designator_description
+        self.arms: List[Arms] = arms
+        self.grasps: List[Grasp] = grasps
+
+    def ground(self) -> MixingActionPerformable:
+        """
+        Default resolver, returns a performable designator with the first entries from the lists of possible parameter.
+        :return: A performable designator
+        """
+        return MixingActionPerformable(self.object_designator_description.ground(),
+                                       self.object_tool_designator_description.ground(), self.arms[0], self.grasps[0])
+
+
+class PlaceGivenObjectAction(ActionDesignatorDescription):
+    """
+       A class representing a designator for a place action of human given objects, allowing a robot to place a
+     human given object, that could not be picked up or were not found in the FOV.
+    This class encapsulates the details of the place action of human given objects, including the type of the object to
+    be placed, the arm to be used, the target_location to place the object and the grasp type. It defines the sequence
+    of operations for the robot to execute the place action of human given object, such as moving the arm holding the
+    object to the target_location, opening the gripper, and lifting the arm.
+    """
+    object_type: str
+    """
+    Object type describing the object that should be placed
+    """
+
+    arm: Arms
+    """
+    Arm that is currently holding the object
+    """
+
+    target_location: Pose
+    """
+    Pose in the world at which the object should be placed
+    """
+
+    grasp: Grasp
+    """
+    Grasp that defines how to place the given object
+    """
+
+    on_table: Optional[bool]
+    """
+    When placing a plate needed to differentiate between placing in a dishwasher and placing on the table. 
+    Default is placing on a table.
+    """
+
+    def __init__(self,
+                 object_types: List[str], arms: List[Arms], target_locations: List[Pose], grasps: List[Grasp],
+                 on_table: Optional[bool] = True, resolver=None):
+        """
+        Lets the robot place a human given object. The description needs an object type describing the object that
+        should be placed, an arm that should be used as well as the target location where the object should be placed
+        and the needed grasping movement.
+        :param object_types: List of possible object types
+        :param arms: List of possible arms that could be used
+        :param target_locations: List of possible target locations for the object to be placed
+        :param grasps: List of possible grasps for the object
+        :param resolver: An optional resolver that returns a performable designator with elements from the lists of
+                         possible paramter
+        """
+        super().__init__(resolver)
+        self.object_types: List[str] = object_types
+        self.arms: List[Arms] = arms
+        self.grasps: List[Grasp] = grasps
+        self.target_locations: List[Pose] = target_locations
+        self.on_table: bool = on_table
+
+    def ground(self) -> PlaceGivenObjectPerformable:
+        """
+        Default resolver that returns a performable designator with the first entries from the lists of possible
+        parameter.
+        :return: A performable designator
+        """
+        return PlaceGivenObjectPerformable(self.object_types[0], self.arms[0], self.target_locations[0], self.grasps[0], self.on_table)
 
 # ----------------------------------------------------------------------------
 # ---------------- Performables ----------------------------------------------
@@ -1205,3 +1395,318 @@ class PointingActionPerformable(ActionAbstract):
     @with_tree
     def perform(self) -> None:
         PointingMotion(self.x_coordinate, self.y_coordinate, self.z_coordinate).perform()
+
+
+@dataclass
+class PouringActionPerformable(ActionAbstract):
+    """
+    Designator to let the robot perform a pouring action.
+    """
+
+    target_location: Pose
+    """
+    The Pose the robot should pour into.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for pouring.
+    """
+
+    direction: str
+    """
+    The direction that should be used for pouring. For example, 'left' or 'right'.
+    """
+
+    angle: float
+    """
+    the angle to move the gripper to.
+    """
+
+    @with_tree
+    def perform(self):
+        # Initialize the local transformer and robot reference
+        lt = LocalTransformer()
+        robot = World.robot
+
+        # Calculate the object's pose in the map frame
+        oTm = self.target_location
+        execute = True
+
+        # Determine the grasp orientation and transform the pose to the base link frame
+        grasp_rotation = RobotDescription.current_robot_description.grasps[Grasp.FRONT]
+        oTbs = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+        oTbs.pose.position.x += 0.009  # was 0,009
+        oTbs.pose.position.z += 0.17  # was 0.13
+
+        if self.direction == "right":
+            oTbs.pose.position.y -= 0.125
+        else:
+            oTbs.pose.position.y += 0.125
+
+        oTms = lt.transform_pose(oTbs, "map")
+        World.current_world.add_vis_axis(oTms)
+
+        #
+        oTog = lt.transform_pose(oTms, robot.get_link_tf_frame("base_link"))
+        oTog.orientation = grasp_rotation
+        oTgm = lt.transform_pose(oTog, "map")
+        World.current_world.add_vis_axis(oTgm)
+
+        if self.direction == "right":
+            new_q = axis_angle_to_quaternion([0, 0, 1], -self.angle)
+        else:
+            new_q = axis_angle_to_quaternion([0, 0, 1], self.angle)
+        new_ori = multiply_quaternions(
+            [oTgm.orientation.x, oTgm.orientation.y, oTgm.orientation.z,
+             oTgm.orientation.w], new_q)
+        oTmsp = oTgm.copy()
+        oTmsp.pose.orientation.x = new_ori[0]
+        oTmsp.pose.orientation.y = new_ori[1]
+        oTmsp.pose.orientation.z = new_ori[2]
+        oTmsp.pose.orientation.w = new_ori[3]
+        World.current_world.add_vis_axis(oTmsp)
+
+        if execute:
+            MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
+            MoveTCPMotion(oTmsp, self.arm, allow_gripper_collision=False).perform()
+            MoveTCPMotion(oTgm, self.arm, allow_gripper_collision=False).perform()
+
+
+@dataclass
+class MixingActionPerformable(ActionAbstract):
+
+    object_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the object that should be mixed.
+    """
+
+    object_tool_designator: ObjectDesignatorDescription.Object
+    """
+    Object designator describing the mixing tool.
+    """
+
+    arm: Arms
+    """
+    The arm that should be used for mixing.
+    """
+
+    grasp: Grasp
+    """
+    The grasp that should be used for mixing. For example, 'left' or 'right'.
+    """
+
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    """
+    The object at the time this Action got created. It is used to be a static, information holding entity. It is
+    not updated when the BulletWorld object is changed.
+    """
+
+    @with_tree
+    def perform(self) -> None:
+        """
+        Perform the mixing action using the specified object, tool, arm, and grasp.
+        """
+        # Store the object's data copy at execution
+        self.object_at_execution = self.object_designator.data_copy()
+        # Retrieve object and robot from designators
+        object = self.object_designator.world_object
+
+        obj_dim = object.get_object_dimensions()
+
+        dim = [max(obj_dim[0], obj_dim[1]), min(obj_dim[0], obj_dim[1]), obj_dim[2]]
+        obj_height = dim[2]
+        oTm = object.get_pose()
+        object_pose = object.local_transformer.transform_to_object_frame(oTm, object)
+
+        def generate_spiral(pose, upward_increment, radial_increment, angle_increment, steps):
+            x_start, y_start, z_start = pose.pose.position.x, pose.pose.position.y, pose.pose.position.z
+            spiral_poses = []
+
+            for t in range(2 * steps):
+                tmp_pose = pose.copy()
+
+                r = radial_increment * t
+                a = angle_increment * t
+                h = upward_increment * t
+
+                x = x_start + r * math.cos(a)
+                y = y_start + r * math.sin(a)
+                z = z_start + h
+
+                tmp_pose.pose.position.x += x
+                tmp_pose.pose.position.y += y
+                tmp_pose.pose.position.z += z
+
+                spiralTm = object.local_transformer.transform_pose(tmp_pose, "map")
+                spiral_poses.append(spiralTm)
+                World.current_world.add_vis_axis(spiralTm)
+
+            return spiral_poses
+
+        # this is a very good one but takes ages
+        # spiral_poses = generate_spiral(object_pose, 0.0004, 0.0008, math.radians(10), 100)
+        spiral_poses = generate_spiral(object_pose, 0.001, 0.0035, math.radians(30), 10)
+
+        World.current_world.remove_vis_axis()
+        for spiral_pose in spiral_poses:
+            oriR = axis_angle_to_quaternion([1, 0, 0], 180)
+            ori = multiply_quaternions(
+                [spiral_pose.orientation.x, spiral_pose.orientation.y, spiral_pose.orientation.z,
+                 spiral_pose.orientation.w], oriR)
+            adjusted_slice_pose = spiral_pose.copy()
+            # # Set the orientation of the object pose by grasp in MAP
+            adjusted_slice_pose.orientation.x = ori[0]
+            adjusted_slice_pose.orientation.y = ori[1]
+            adjusted_slice_pose.orientation.z = ori[2]
+            adjusted_slice_pose.orientation.w = ori[3]
+
+            # Adjust the position of the object pose by grasp in MAP
+            lift_pose = adjusted_slice_pose.copy()
+            lift_pose.pose.position.z += (obj_height + 0.08)
+            # Perform the motion for lifting the tool
+            # BulletWorld.current_bullet_world.add_vis_axis(lift_pose)
+            MoveTCPMotion(lift_pose, self.arm).perform()
+
+    # def to_sql(self) -> ORMMixingAction:
+    #     """
+    #     Convert the action to a corresponding SQL representation for storage.
+    #     """
+    #     return ORMMixingAction(self.arm, self.grasp)
+
+
+@dataclass
+class PlaceGivenObjectPerformable(ActionAbstract):
+    object_type: str
+    """
+    Object type describing the object that should be placed
+    """
+
+    arm: Arms
+    """
+    Arm that is currently holding the object
+    """
+
+    target_location: Pose
+    """
+    Pose in the world at which the object should be placed
+    """
+
+    grasp: Grasp
+    """
+    Grasp that defines how to place the given object
+    """
+
+    on_table: Optional[bool]
+    """
+    When placing a plate needed to differentiate between placing in a dishwasher and placing on the table. 
+    Default is placing on a table.
+    """
+
+    @with_tree
+    def perform(self) -> None:
+        lt = LocalTransformer()
+        robot = World.robot
+        fts = ForceTorqueSensor(robot_name=robot.name)
+
+        # oTm = Object Pose in Frame map
+        oTm = self.target_location
+        execute = True
+
+        # TODO add for other robots
+        if self.object_type == "Metalplate" and self.on_table and robot.name == "hsrb":
+
+            grasp_rotation = RobotDescription.current_robot_description.grasps[Grasp.FRONT]
+            oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+            oTb.orientation = grasp_rotation
+            oTmG = lt.transform_pose(oTb, "map")
+
+            logwarn("Placing now")
+            MoveTCPMotion(oTmG, self.arm).perform()
+
+            MoveTorsoAction([0.62]).resolve().perform()
+            kwargs = dict()
+
+            # taking in the predefined arm configuration for placing
+            if self.arm in ["left", "both"]:
+                kwargs["left_arm_config"] = "place_plate"
+                MoveArmJointsMotion(**kwargs).perform()
+
+            # turning the gripper downwards to better drop the plate
+            MoveJointsMotion(["wrist_flex_joint"], [-0.8]).perform()
+
+            # correct a possible sloped orientation
+            NavigateAction(
+                [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y,
+                       0])]).resolve().perform()
+
+            MoveGripperMotion(motion=GripperState.OPEN, gripper=Arms.LEFT).perform()
+
+            # Move away from the table
+            # todo generalize so that hsr is always moving backwards
+            NavigateAction(
+                [Pose([robot.get_pose().pose.position.x - 0.1, robot.get_pose().pose.position.y,
+                       0])]).resolve().perform()
+
+        # placing everything else or the Metalplate in the dishwasher
+        else:
+            if self.grasp == "top":
+                oTm.pose.position.z += 0.05
+
+            # Determine the grasp orientation and transform the pose to the base link frame
+            grasp_rotation = RobotDescription.current_robot_description.grasps[self.grasp]
+            oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+            # Set pose to the grasp rotation
+            oTb.orientation = grasp_rotation
+            # Transform the pose to the map frame
+            oTmG = lt.transform_pose(oTb, "map")
+
+            logwarn("Placing now")
+            World.current_world.add_vis_axis(oTmG)
+            if execute:
+                MoveTCPMotion(oTmG, self.arm).perform()
+
+            tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(self.arm)
+            push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
+            if robot.name == "hsrb":
+                z = 0.03
+                if self.grasp == "top":
+                    z = 0.07
+                push_base.pose.position.z += z
+            # todo: make this for other robots
+            push_baseTm = lt.transform_pose(push_base, "map")
+
+            logwarn("Pushing now")
+            World.current_world.add_vis_axis(push_baseTm)
+            if execute:
+                MoveTCPMotion(push_baseTm, self.arm).perform()
+            if self.object_type == "Metalplate":
+                loweringTm = push_baseTm
+                loweringTm.pose.position.z -= 0.08
+                World.current_world.add_vis_axis(loweringTm)
+                if execute:
+                    MoveTCPMotion(loweringTm, self.arm).perform()
+                # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
+                logwarn("sidepush monitoring")
+                TalkingMotion("sidepush.").perform()
+                side_push = Pose(
+                    [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.125, loweringTm.pose.position.z],
+                    [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
+                     push_baseTm.orientation.w])
+                try:
+                    plan = MoveTCPMotion(side_push, self.arm) >> Monitor(fts.monitor_func)
+                    plan.perform()
+                except (SensorMonitoringCondition):
+                    logwarn("Open Gripper")
+                    MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
+
+            # Finalize the placing by opening the gripper and lifting the arm
+            logwarn("Open Gripper")
+            MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
+
+            logwarn("Lifting now")
+            liftingTm = push_baseTm
+            liftingTm.pose.position.z += 0.08
+            World.current_world.add_vis_axis(liftingTm)
+            if execute:
+                MoveTCPMotion(liftingTm, self.arm).perform()
