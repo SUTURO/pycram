@@ -682,6 +682,37 @@ class HSRBGraspHandleReal(ProcessModule):
         giskard.grasp_doorhandle(designator.handle)
 
 
+class HSRBGraspDishwasherHandleReal(ProcessModule):
+    """Grasps the dishwasher handle"""
+
+    def _execute(self, designator: GraspingDishwasherHandleMotion) -> Any:
+        giskard.grasp_handle(designator.handle_name)
+
+
+class HSRBHalfOpenDishwasherReal(ProcessModule):
+    """Partially opens the dishwasher door."""
+
+    def _execute(self, designator: HalfOpeningDishwasherMotion) -> Any:
+        giskard.achieve_open_container_goal(robot_description.get_tool_frame("left"), designator.handle_name,
+                                            goal_state=designator.goal_state_half_open, special_door=True)
+
+
+class HSRBMoveArmAroundDishwasherReal(ProcessModule):
+    """Moves the HSR arm around the dishwasher door after partially opening"""
+
+    def _execute(self, designator: MoveArmAroundMotion) -> Any:
+        giskard.set_hsrb_dishwasher_door_around(designator.handle_name)
+
+
+class HSRBFullOpenDishwasherReal(ProcessModule):
+    """Opens the dishwasher fully"""
+
+    def _execute(self, designator: FullOpeningDishwasherMotion) -> Any:
+        giskard.fully_open_dishwasher_door(designator.handle_name, designator.door_name)
+        giskard.achieve_open_container_goal(robot_description.get_tool_frame("left"), designator.handle_name,
+                                            goal_state=designator.goal_state_full_open, special_door=True)
+
+
 ###########################################################
 ########## HSRB MANAGER ###############
 ###########################################################
