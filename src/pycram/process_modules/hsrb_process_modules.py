@@ -5,7 +5,7 @@ import rospy
 from typing_extensions import Any
 
 from ..datastructures.dataclasses import Color
-from ..datastructures.enums import ExecutionType
+from ..datastructures.enums import ExecutionType, JointType
 from ..external_interfaces.ik import request_ik
 from ..external_interfaces.navigate import PoseNavigator
 from ..external_interfaces.robokudo import *
