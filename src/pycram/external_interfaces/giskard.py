@@ -527,6 +527,19 @@ def achieve_close_container_goal(tip_link: str, environment_link: str) -> 'MoveR
     return giskard_wrapper.execute()
 
 
+@init_giskard_interface
+@thread_safe
+def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
+    """
+    tilts the gripper to the given angle
+    :param direction: The direction that should be used for pouring. For example, 'left' or 'right'.
+    :param angle: The angle that the robot tilts his gripper to
+    :return: MoveResult message for this goal
+    """
+    giskard_wrapper.motion_goals.tilting(direction, angle)
+    return giskard_wrapper.execute()
+
+
 # Projection Goals
 
 
