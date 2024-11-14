@@ -461,7 +461,8 @@ def achieve_align_planes_goal(goal_normal: List[float], tip_link: str, tip_norma
     # giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
-
+@init_giskard_interface
+@thread_safe
 def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
     """
     Moves the arm around the dishwasher door after the first opening action. Dishwasher is in this state half open.
@@ -471,7 +472,8 @@ def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
     giskard_wrapper.motion_goals.set_hsrb_dishwasher_door_around(handle_name)
     return giskard_wrapper.execute()
 
-
+@init_giskard_interface
+@thread_safe
 def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult':
     """
     After the first opening part, the dishwasher is half open.
@@ -754,7 +756,8 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
     return ps
 
-
+@init_giskard_interface
+@thread_safe
 def move_arm_to_point(point: PointStamped):
     """
     moves arm to given position
@@ -772,7 +775,8 @@ def move_arm_to_point(point: PointStamped):
     giskard_wrapper.add_default_end_motion_conditions()
     giskard_wrapper.execute()
 
-
+@init_giskard_interface
+@thread_safe
 def move_head_to_human():
     """
     continously moves head in direction of perceived human
@@ -786,6 +790,8 @@ def allow_all_collisions():
     giskard_wrapper.motion_goals.allow_all_collisions()
 
 
+@init_giskard_interface
+@thread_safe
 def grasp_doorhandle(handle_name: str):
     print("grasp handle")
 
@@ -795,6 +801,8 @@ def grasp_doorhandle(handle_name: str):
     return giskard_wrapper.execute()
 
 
+@init_giskard_interface
+@thread_safe
 def grasp_handle(handle_name: str):
     """
     grasps the dishwasher handle.
@@ -806,6 +814,8 @@ def grasp_handle(handle_name: str):
     giskard_wrapper.execute()
 
 
+@init_giskard_interface
+@thread_safe
 def open_doorhandle(handle_name: str):
     giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35, hinge_limit=-0.8)
     giskard_wrapper.motion_goals.allow_all_collisions()
