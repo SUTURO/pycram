@@ -639,6 +639,9 @@ def add_gripper_groups() -> None:
         for description in RobotDescription.current_robot_description.get_manipulator_chains():
             giskard_wrapper.world.register_group(description.name + "_gripper", description.start_link, RobotDescription.current_robot_description.name)
 
+@init_giskard_interface
+def allow_all_collisions():
+    giskard_wrapper.motion_goals.allow_all_collisions()
 
 @init_giskard_interface
 def avoid_all_collisions() -> None:
@@ -784,10 +787,6 @@ def move_head_to_human() -> 'MoveResult':
 
     giskard_wrapper.motion_goals.continuous_pointing_head()
     return giskard_wrapper.execute(wait=False)
-
-
-def allow_all_collisions():
-    giskard_wrapper.motion_goals.allow_all_collisions()
 
 
 @init_giskard_interface
