@@ -39,15 +39,15 @@ pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 response = ""
 wait_bool = False
 callback = False
-timeout = 12  # 12 seconds timeout
+timeout = 10  # 12 seconds timeout
 
 # Declare variables for humans
-host = HumanDescription("Jule", fav_drink="apple juice")
+host = HumanDescription("Bob", fav_drink="Milk")
 host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
 
 # for testing, if the first part of the demo is skipped
-guest1.set_attributes(['female', 'without a hat', 'wearing a t-shirt', ' a dark top'])
+guest1.set_attributes([[1], ['female', 'without a hat', 'wearing a t-shirt', ' a dark top']])
 guest1.set_id(0)
 
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
@@ -163,6 +163,8 @@ def drink_repeat():
     while trys < 2:
         talk.pub_now("i am sorry, please repeat your drink loud and clear", wait_bool=wait_bool)
         rospy.sleep(3.5)
+        talk.pub_now("please use the sentence my favorite drink is", wait_bool=wait_bool)
+        rospy.sleep(3.1)
         pub_nlp.publish("start")
 
         # sound/picture
@@ -184,6 +186,8 @@ def drink_repeat():
             return response[2]
 
         trys += 1
+
+    return "water"
 
 
 def welcome_guest(num, guest: HumanDescription):
@@ -245,13 +249,11 @@ def welcome_guest(num, guest: HumanDescription):
                 # ask for name again once
                 name = True
                 guest.set_drink(response[2])
-            elif response[2].strip() == "None":
+
+            if response[2].strip() == "None":
                 drink = True
                 # ask for drink again
                 guest.set_name(response[1])
-            else:
-                name = True
-                drink = True
 
             if name:
                 guest.set_name(name_repeat())
@@ -293,7 +295,8 @@ def welcome_guest(num, guest: HumanDescription):
                         # ask for name again once
                         name = True
                         guest.set_drink(response[2])
-                    elif response[2].strip() == "None":
+
+                    if response[2].strip() == "None":
                         drink = True
                         # ask for drink again
                         guest.set_name(response[1])
@@ -366,8 +369,8 @@ def detect_point_to_seat(no_sofa: Optional[bool] = False):
 
                 elif pose_in_robot_frame.pose.position.y < -0.35:
                     talk.pub_now("please take a seat to the right from me")
-                    pose_in_robot_frame.pose.position.y -= 0.3
-                    x = 3.7
+                    pose_in_robot_frame.pose.position.y -= 0.4
+                    x = 2.9
 
                 else:
                     talk.pub_now("please take a seat in front of me")
@@ -412,7 +415,6 @@ def demo(step):
         # signal start
         pakerino()
 
-
         # talk.pub_now("waiting for guests", wait_bool=wait_bool)
         image_switch_publisher.pub_now(ImageEnum.HI.value)
 
@@ -431,7 +433,7 @@ def demo(step):
             DetectAction(technique='human', state='stop').resolve().perform()
 
             # leading to living room and pointing to free seat
-            # talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
+            talk.pub_now("please step out of the way and follow me", wait_bool=wait_bool)
 
             # head straight
             pakerino()
@@ -514,6 +516,8 @@ def demo(step):
             rospy.sleep(1.5)
 
             # introduce humans and look at them
+            print(f"host pose: {host.pose}")
+            print(f"guest pose: {guest1.pose}")
             introduce(host, guest1)
             rospy.sleep(2)
             giskardpy.cancel_all_called_goals()
@@ -567,6 +571,21 @@ def demo(step):
             while True:
                 unknown = []
                 try:
+
+                    if counter > 4 or (found_guest and found_host):
+                        break
+
+                    elif counter == 2:
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(2.5)
+
+                    elif counter == 3:
+                        config = {'head_pan_joint': -0.2}
+                        pakerino(config=config)
+                        talk.pub_now("please look at me", wait_bool=wait_bool)
+                        rospy.sleep(2.5)
+
+
                     human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
                     counter += 1
                     id_humans = human_dict["keys"]
@@ -593,17 +612,7 @@ def demo(step):
                             # store unknown ids for failure handling
                             unknown.append(key)
 
-                    if counter > 4 or (found_guest and found_host):
-                        break
-                    elif counter == 2:
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
-                        rospy.sleep(2.5)
 
-                    elif counter == 3:
-                        config = {'head_pan_joint': -0.2}
-                        pakerino(config=config)
-                        talk.pub_now("please look at me", wait_bool=wait_bool)
-                        rospy.sleep(2.5)
 
                 except PerceptionObjectNotFound:
                     print("i am a failure and i hate my life")

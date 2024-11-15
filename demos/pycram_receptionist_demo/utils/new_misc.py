@@ -315,7 +315,7 @@ def describe(human: HumanDescription):
     """
     if human.attributes:
         print("++++++++++++++++++++++++")
-        print(human.attributes[0])
+        print(human.attributes)
 
         if human.pose:
             pub_pose.publish(human.pose)
@@ -337,7 +337,9 @@ def describe(human: HumanDescription):
 
         # brightness of clothes
         talk.pub_now(f"you are wearing {human.attributes[3]}", wait_bool=wait_bool)
-        rospy.sleep(2)
+        rospy.sleep(2.5)
+        talk.pub_now("have fun at the party", wait_bool=wait_bool)
+
 
 
 
