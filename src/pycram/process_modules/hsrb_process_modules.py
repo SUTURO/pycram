@@ -241,9 +241,9 @@ class HSRBNavigationReal(ProcessModule):
     """
 
     def _execute(self, designator: MoveMotion) -> Any:
-        use_giskard = True
-        logdebug(f"Sending goal to giskard to Move the robot")
+        use_giskard = False
         if use_giskard:
+            logdebug(f"Sending goal to giskard to Move the robot")
             giskard.achieve_cartesian_goal(designator.target, RobotDescription.current_robot_description.base_link, "map")
         else:
             nav = PoseNavigator()
