@@ -28,6 +28,7 @@ from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringC
 from ..helper import multiply_quaternions
 from ..language import Monitor
 from ..local_transformer import LocalTransformer
+from ..luca_helper import adjust_grasp_for_object_rotation, calculate_object_faces
 from ..ontology.ontology import OntologyConceptHolder
 from ..orm.action_designator import Action as ORMAction
 from ..orm.action_designator import (ParkArmsAction as ORMParkArmsAction, NavigateAction as ORMNavigateAction,
@@ -247,7 +248,7 @@ class PlaceAction(ActionDesignatorDescription):
 
     def __init__(self,
                  object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
-                 target_locations: List[Pose], grasps: Optional[Grasp],
+                 target_locations: List[Pose], grasps: List[Grasp],
                  arms: List[Arms], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Create an Action Description to place an object
@@ -982,45 +983,19 @@ class PickUpActionPerformable(ActionAbstract):
     @with_tree
     def perform(self) -> None:
         robot = World.robot
-        # Retrieve object and robot from designators
         object = self.object_designator.world_object
-        # Get grasp orientation and target pose
-        grasp = RobotDescription.current_robot_description.grasps[self.grasp]
-        # oTm = Object Pose in Frame map
         oTm = object.get_pose()
-        # Transform the object pose to the object frame, basically the origin of the object frame
-        mTo = object.local_transformer.transform_to_object_frame(oTm, object)
-        # Adjust the pose according to the special knowledge of the object designator
-        adjusted_pose = self.object_designator.special_knowledge_adjustment_pose(self.grasp, mTo)
-        # Transform the adjusted pose to the map frame
-        adjusted_oTm = object.local_transformer.transform_pose(adjusted_pose, "map")
-        # multiplying the orientation therefore "rotating" it, to get the correct orientation of the gripper
+        self.grasp = calculate_object_faces(self.object_designator)
 
-        adjusted_oTm.multiply_quaternions(grasp)
-
-        # prepose depending on the gripper (its annoying we have to put pr2_1 here tbh
-        # gripper_frame = "pr2_1/l_gripper_tool_frame" if self.arm == "left" else "pr2_1/r_gripper_tool_frame"
-        gripper_frame = robot.get_link_tf_frame(
-            RobotDescription.current_robot_description.get_arm_chain(self.arm).get_tool_frame())
-        # First rotate the gripper, so the further calculations makes sense
-        tmp_for_rotate_pose = object.local_transformer.transform_pose(adjusted_oTm, gripper_frame)
-        tmp_for_rotate_pose.pose.position.x = 0
-        tmp_for_rotate_pose.pose.position.y = 0
-        tmp_for_rotate_pose.pose.position.z = -0.1
-        gripper_rotate_pose = object.local_transformer.transform_pose(tmp_for_rotate_pose, "map")
-
-        # Perform Gripper Rotate
-        # BulletWorld.current_bullet_world.add_vis_axis(gripper_rotate_pose)
-        # MoveTCPMotion(gripper_rotate_pose, self.arm).resolve().perform()
-
-        oTg = object.local_transformer.transform_pose(adjusted_oTm, gripper_frame)
-        oTg.pose.position.x -= 0.1  # in x since this is how the gripper is oriented
-        prepose = object.local_transformer.transform_pose(oTg, "map")
+        adjusted_grasp = adjust_grasp_for_object_rotation(oTm, self.grasp, self.arm)
+        adjusted_oTm = oTm.copy()
+        adjusted_oTm.set_orientation(adjusted_grasp)
+        prepose = object.local_transformer.transform_pose(adjusted_oTm, "map")
 
         # Perform the motion with the prepose and open gripper
         World.current_world.add_vis_axis(prepose)
-        MoveTCPMotion(prepose, self.arm, allow_gripper_collision=True).perform()
         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
+        MoveTCPMotion(prepose, self.arm, allow_gripper_collision=True).perform()
 
         # Perform the motion with the adjusted pose -> actual grasp and close gripper
         World.current_world.add_vis_axis(adjusted_oTm)
