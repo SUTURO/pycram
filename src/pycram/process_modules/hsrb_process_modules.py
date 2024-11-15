@@ -283,15 +283,15 @@ class HSRBDetectingReal(ProcessModule):
 
     def _execute(self, desig: DetectingMotion) -> Any:
         """
-                specifies the query send to robokudo
-                :param desig.technique: if this is set to human the hsr searches for human and publishes the pose
-                to /human_pose. returns PoseStamped of Human.
-                this value can also be set to 'attributes', 'location' or 'region' to get the attributes and pose of a human, a bool
-                if a seat specified in the sematic map is taken or to describe where objects should be perceived.
+        specifies the query send to robokudo
+        :param desig.technique: if this is set to human the hsr searches for human and publishes the pose
+        to /human_pose. returns PoseStamped of Human.
+        this value can also be set to 'attributes', 'location' or 'region' to get the attributes and pose of a human, a bool
+        if a seat specified in the sematic map is taken or to describe where objects should be perceived.
 
-                """
+        """
 
-        # todo at the moment perception ignores searching for a specific object type so we do as well on real
+        # ToDo: at the moment perception ignores searching for a specific object type so we do as well on real
         if desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
             human_pose = query_human()
             return human_pose
@@ -312,10 +312,6 @@ class HSRBDetectingReal(ProcessModule):
         elif desig.technique == 'holding_drink':
             print("not implemented yet")
             return_list = []
-            # human_pose_drink = queryDrinkingHuman()
-            # if human_pose_drink.res:
-            #     for human in human_pose_drink.res:
-            #         return_list.append((human.attribute[0], human.pose[0]))
 
             return return_list
 
@@ -334,7 +330,7 @@ class HSRBDetectingReal(ProcessModule):
                     loc_list.append(loc)
                 print(loc_list)
                 return loc_list
-                # return seat_human_pose[0].attribute
+
             # if only one seat is checked
             if seat != "sofa":
                 return seat_human_pose[0].attribute[0][9:].split(',')
@@ -382,29 +378,11 @@ class HSRBDetectingReal(ProcessModule):
                     if len(list) == 0:
                         continue
                     obj_pose = Pose.from_pose_stamped(list[0])
-                    # obj_pose.orientation = [0, 0, 0, 1]
-                    # obj_pose_tmp = query_result.res[i].pose[0]
                     obj_type = obj.type
                     obj_size = obj.size
-                    # obj_color = query_result.res[i].color[0]
-                    color_switch = {
-                        "red": [1, 0, 0, 1],
-                        "green": [0, 1, 0, 1],
-                        "blue": [0, 0, 1, 1],
-                        "black": [0, 0, 0, 1],
-                        "white": [1, 1, 1, 1],
-                        # add more colors if needed
-                    }
 
-                    # color = color_switch.get(obj_color)
-                    # if color is None:
-                    # color = [0, 0, 0, 1]
-
-                    # atm this is the string size that describes the object but it is not the shape size thats why string
+                    # atm this is the string size that describes the object, but it is not the shape size thats why string
                     def extract_xyz_values(input_string):
-                        # Split the input string by commas and colon to separate key-value pairs
-                        # key_value_pairs = input_string.split(', ')
-
                         # Initialize variables to store the X, Y, and Z values
                         x_value = None
                         y_value = None
@@ -415,21 +393,8 @@ class HSRBDetectingReal(ProcessModule):
                         y_value = input_string[(input_string.find("y") + 2): input_string.find("z")]
                         z_value = input_string[(input_string.find("z") + 2):]
 
-                        # Iterate through the key-value pairs to extract the values
-                        # for pair in key_value_pairs:
-                        #     key, value = pair.split(': ')
-                        #     if key == 'x':
-                        #         x_value = float(value)
-                        #     elif key == 'y':
-                        #         y_value = float(value)
-                        #     elif key == 'z':
-                        #         z_value = float(value)
-
                         return x_value, y_value, z_value
 
-                    x, y, z = extract_xyz_values(obj_size)
-                    # size = (x, z / 2, y)
-                    # size_box = (x / 2, z / 2, y / 2)
                     hard_size = (0.02, 0.02, 0.03)
                     id = World.current_world.add_rigid_box(obj_pose, hard_size, [0, 0, 0, 1])
                     box_object = Object(obj_type + "" + str(rospy.get_time()), obj_type, pose=obj_pose,
@@ -470,10 +435,6 @@ class HSRBDetectingReal(ProcessModule):
                 except IndexError:
                     pass
 
-                #if desig.object_type:
-                   # desig.object_type.
-                    #if not desig.object_type.lower() in obj_type.lower():
-                     #   pass
                 color_switch = {
                     "red": [1, 0, 0, 1],
                     "yellow": [1, 1, 0, 1],
