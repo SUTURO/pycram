@@ -325,7 +325,7 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str, posit
     :param orientation_threshold: Orientation distance at which the goal is successfully reached
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_cart_goal, _pose_to_pose_stamped(goal_pose),
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.add_cartesian_pose, _pose_to_pose_stamped(goal_pose),
                                           tip_link, root_link)
     if par_return:
         return par_return
