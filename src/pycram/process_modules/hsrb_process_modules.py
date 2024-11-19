@@ -22,7 +22,7 @@ from gtts import gTTS
 
 import io
 
-from ..ros.logging import logdebug, loginfo
+from ..ros.logging import logdebug, loginfo, logerr
 from ..utilities.robokudo_obj_translator import translate_obj
 from ..utils import _apply_ik
 from ..world_concepts.world_object import Object
@@ -72,10 +72,8 @@ class HSRBDetecting(ProcessModule):
         loginfo("Detecting technique: {}".format(desig.technique))
         robot = World.robot
         object_type = desig.object_type
-        # Should be "wide_stereo_optical_frame"
-        cam_frame_name = robot_description.get_camera_frame()
-        # should be [0, 0, 1]
-        front_facing_axis = robot_description.front_facing_axis
+        cam_frame_name = RobotDescription.current_robot_description.get_camera_frame()
+        front_facing_axis = RobotDescription.current_robot_description.get_default_camera().front_facing_axis
         if desig.technique == 'all':
             loginfo("Fake detecting all generic objects")
             objects = World.current_world.get_all_objects_not_robot()
@@ -85,7 +83,6 @@ class HSRBDetecting(ProcessModule):
             human.append(Object("human", ObjectType.HUMAN, "human_male.stl", pose=Pose([0, 0, 0])))
             object_dict = {}
 
-            # Iterate over the list of objects and store each one in the dictionary
             for i, obj in enumerate(human):
                 object_dict[obj.name] = obj
             return object_dict
@@ -100,7 +97,7 @@ class HSRBDetecting(ProcessModule):
         for obj in objects:
             if visible(obj, robot.get_link_pose(cam_frame_name), front_facing_axis):
                 perceived_objects.append(ObjectDesignatorDescription.Object(obj.name, obj.obj_type, obj))
-        # Iterate over the list of objects and store each one in the dictionary
+
         for i, obj in enumerate(perceived_objects):
             object_dict[obj.name] = obj
 
@@ -291,7 +288,7 @@ class HSRBDetectingReal(ProcessModule):
 
         """
 
-        # ToDo: at the moment perception ignores searching for a specific object type so we do as well on real
+        # ToDo: at the moment perception ignores searching for a specific object type so we do that as well on real
         if desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
             human_pose = query_human()
             return human_pose
@@ -310,7 +307,7 @@ class HSRBDetectingReal(ProcessModule):
                 return []
 
         elif desig.technique == 'holding_drink':
-            print("not implemented yet")
+            logerr("not implemented yet")
             return_list = []
 
             return return_list
@@ -326,9 +323,9 @@ class HSRBDetectingReal(ProcessModule):
             if seat == "long_table" or seat == "popcorn_table":
                 loc_list = []
                 for loc in seat_human_pose[0].attribute:
-                    print(f"location: {loc}, type: {type(loc)}")
+                    loginfo(f"location: {loc}, type: {type(loc)}")
                     loc_list.append(loc)
-                print(loc_list)
+                loginfo("".join(loc_list))
                 return loc_list
 
             # if only one seat is checked
@@ -339,7 +336,6 @@ class HSRBDetectingReal(ProcessModule):
             for i in seat_human_pose[0].attribute:
                 res.append(i.split(','))
 
-            print(res)
             return res
 
         elif desig.technique == 'attributes':
@@ -413,7 +409,7 @@ class HSRBDetectingReal(ProcessModule):
                     object_dict[obj.name] = obj
                 return object_dict
 
-        # technique == "all", detects objects
+        # technique == "all", detects all objects
         else:
             query_result = send_query()
             perceived_objects = []
