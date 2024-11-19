@@ -1,15 +1,13 @@
 import atexit
 import tf
-import time 
-import rospy
 
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import JointState
 from ..datastructures.world import World
 from ..robot_descriptions import robot_description
 from ..datastructures.pose import Pose
-from ..ros.data_types import Time, Duration
-from ..ros.ros_tools import wait_for_message, create_timer
+from ..ros.data_types import Time
+from ..ros.ros_tools import wait_for_message, create_timer, sleep
 
 
 class RobotStateUpdater:
@@ -29,12 +27,12 @@ class RobotStateUpdater:
         :param joint_state_topic: Name of the joint state topic, needs to publish sensor_msgs/JointState
         """
         self.tf_listener = tf.TransformListener()
-        time.sleep(1)
+        sleep(1.0)
         self.tf_topic = tf_topic
         self.joint_state_topic = joint_state_topic
 
-        self.tf_timer = create_timer(Duration().from_sec(0.1), self._subscribe_tf)
-        self.joint_state_timer = create_timer(Duration().from_sec(0.1), self._subscribe_joint_state)
+        self.tf_timer = create_timer(0.1, self._subscribe_tf)
+        self.joint_state_timer = create_timer(0.1, self._subscribe_joint_state)
 
         atexit.register(self._stop_subscription)
 
@@ -86,11 +84,11 @@ class KitchenStateUpdater:
         :param joint_state_topic: Name of the joint state topic, needs to publish sensor_msgs/JointState
         """
         self.tf_listener = tf.TransformListener()
-        rospy.sleep(1)
+        sleep(1.0)
         self.tf_topic = tf_topic
         self.joint_state_topic = joint_state_topic
 
-        self.joint_state_timer = rospy.Timer(rospy.Duration(0.1), self._subscribe_joint_state)
+        self.joint_state_timer = create_timer(0.1, self._subscribe_joint_state)
 
         atexit.register(self._stop_subscription)
 
