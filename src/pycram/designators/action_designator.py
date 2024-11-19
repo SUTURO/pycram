@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import abc
-import dataclasses
 import inspect
 import itertools
 import math
@@ -10,7 +9,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import sqlalchemy
-from geometry_msgs.msg import WrenchStamped
 from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
@@ -657,7 +655,7 @@ class MixingAction(ActionDesignatorDescription):
     The grasp that should be used for mixing. For example, 'left' or 'right'.
     """
 
-    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = field(init=False)
     """
     The object at the time this Action got created. It is used to be a static, information holding entity. It is
     not updated when the BulletWorld object is changed.
@@ -1471,7 +1469,7 @@ class MixingActionPerformable(ActionAbstract):
     The grasp that should be used for mixing. For example, 'left' or 'right'.
     """
 
-    object_at_execution: Optional[ObjectDesignatorDescription.Object] = dataclasses.field(init=False)
+    object_at_execution: Optional[ObjectDesignatorDescription.Object] = field(init=False)
     """
     The object at the time this Action got created. It is used to be a static, information holding entity. It is
     not updated when the BulletWorld object is changed.
