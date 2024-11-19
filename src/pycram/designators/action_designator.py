@@ -384,7 +384,7 @@ class DetectAction(ActionDesignatorDescription):
     Detects an object that fits the object description and returns an object designator describing the object.
     """
 
-    def __init__(self, technique: str, object_designator_description: Optional[ObjectDesignatorDescription] = None,
+    def __init__(self, object_designator_description: Optional[ObjectDesignatorDescription] = None, technique: str = "all",
                  resolver=None,
                  ontology_concept_holders: Optional[List[Thing]] = None):
         """
@@ -395,15 +395,12 @@ class DetectAction(ActionDesignatorDescription):
         :param ontology_concept_holders: A list of ontology concepts that the action is categorized as or associated with
         """
         super().__init__(resolver, ontology_concept_holders)
-        self.object_designator_description: ObjectDesignatorDescription = object_designator_description
-        self.technique: str = technique
-
+        self.object_designator_description: Optional[ObjectDesignatorDescription] = object_designator_description
+        self.technique: Optional[str] = technique
 
         if not object_designator_description:
             obj_des = ObjectDesignatorDescription()
             self.object_designator_description = obj_des
-
-        print(self.object_designator_description)
 
         if self.soma:
             self.init_ontology_concepts({"looking_for": self.soma.LookingFor,
@@ -416,7 +413,7 @@ class DetectAction(ActionDesignatorDescription):
         :return: A performable designator
         """
 
-        return DetectActionPerformable(technique=self.technique, object_designator = self.object_designator_description)
+        return DetectActionPerformable(technique=self.technique, object_designator = self.object_designator_description.resolve())
 
 
 
@@ -1163,7 +1160,7 @@ class DetectActionPerformable(ActionAbstract):
     Or 'all' if all objects should be detected
     """
 
-    object_designator: Optional[ObjectDesignatorDescription] = None
+    object_designator: ObjectDesignatorDescription.Object = None
     """
     Object designator loosely describing the object, e.g. only type. 
     """
@@ -1177,8 +1174,7 @@ class DetectActionPerformable(ActionAbstract):
 
     @with_tree
     def perform(self) -> None:
-        print("obj des:" + str(self.object_designator))
-        return DetectingMotion(object_type=self.object_designator, technique=self.technique,
+        return DetectingMotion(object_type=self.object_designator.obj_type, technique=self.technique,
                                state=self.state).perform()
 
 

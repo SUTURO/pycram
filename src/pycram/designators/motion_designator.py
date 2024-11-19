@@ -213,7 +213,7 @@ class DetectingMotion(BaseMotion):
     Technique means how the object should be detected, e.g. 'color', 'shape', 'all', etc. 
     """
 
-    object_type: Optional[ObjectDesignatorDescription]
+    object_type: ObjectType
     """
     Type of the object that should be detected
     """
