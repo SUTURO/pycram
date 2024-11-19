@@ -23,10 +23,10 @@ from threading import Lock, RLock
 try:
     from giskardpy.python_interface.python_interface import GiskardWrapper
     from giskard_msgs.msg import WorldBody, MoveResult, CollisionEntry
+    giskard_wrapper: Optional[GiskardWrapper] = None
 except ModuleNotFoundError as e:
     logwarn("Failed to import Giskard messages, the real robot will not be available")
 
-giskard_wrapper: Optional[GiskardWrapper] = None
 giskard_update_service = None
 is_init = False
 
