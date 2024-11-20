@@ -617,7 +617,7 @@ def projection_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str) ->
     :param root_link: The starting link of the chain which should be used to achieve this goal
     :return: MoveResult message for this goal
     """
-    giskard_wrapper.motion_goals.set_cart_goal(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
+    giskard_wrapper.motion_goals.add_cartesian_pose(_pose_to_pose_stamped(goal_pose), tip_link, root_link)
     return giskard_wrapper.projection()
 
 
