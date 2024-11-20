@@ -28,6 +28,7 @@ from ..utils import _apply_ik
 from ..world_concepts.world_object import Object
 from ..world_reasoning import link_pose_for_joint_config, visible
 
+use_giskard = True
 
 def _park_arms(arm):
     """
@@ -110,11 +111,17 @@ class HSRBMoveTCP(ProcessModule):
     This process moves the tool center point of either the right or the left arm.
     """
 
-    def _execute(self, desig: MoveTCPMotion):
-        target = desig.target
-        robot = World.robot
-
-        _move_arm_tcp(target, robot, desig.arm)
+    def _execute(self, designator: MoveTCPMotion) -> Any:
+        if use_giskard:
+            lt = LocalTransformer()
+            pose_in_map = lt.transform_pose(designator.target, "map")
+            giskard.avoid_all_collisions()
+            if designator.allow_gripper_collision:
+                giskard.allow_gripper_collision(designator.arm)
+            giskard.achieve_cartesian_goal(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
+                designator.arm).get_tool_frame(), "map")
+        else:
+            _move_arm_tcp(designator.target, World.robot, designator.arm)
 
 
 class HSRBMoveArmJoints(ProcessModule):
@@ -123,13 +130,19 @@ class HSRBMoveArmJoints(ProcessModule):
     list that should be applied or a pre-defined position can be used, such as "parking"
     """
 
-    def _execute(self, desig: MoveArmJointsMotion):
-
-        robot = World.robot
-        if desig.right_arm_poses:
-            robot.set_multiple_joint_positions(desig.right_arm_poses)
-        if desig.left_arm_poses:
-            robot.set_multiple_joint_positions(desig.left_arm_poses)
+    def _execute(self, designator: MoveArmJointsMotion):
+        if use_giskard:
+            joint_goals = {}
+            if designator.left_arm_poses:
+                joint_goals.update(designator.left_arm_poses)
+            giskard.avoid_all_collisions()
+            giskard.achieve_joint_goal(joint_goals)
+        else:
+            robot = World.robot
+            if designator.right_arm_poses:
+                robot.set_multiple_joint_positions(designator.right_arm_poses)
+            if designator.left_arm_poses:
+                robot.set_multiple_joint_positions(designator.left_arm_poses)
 
 
 class HSRBMoveJoints(ProcessModule):
@@ -137,9 +150,14 @@ class HSRBMoveJoints(ProcessModule):
     Process Module for generic joint movements, is not confined to the arms but can move any joint of the robot
     """
 
-    def _execute(self, desig: MoveJointsMotion):
-        robot = World.robot
-        robot.set_multiple_joint_positions(dict(zip(desig.names, desig.positions)))
+    def _execute(self, designator: MoveJointsMotion):
+        if use_giskard:
+            name_to_position = dict(zip(designator.names, designator.positions))
+            giskard.avoid_all_collisions()
+            giskard.achieve_joint_goal(name_to_position)
+        else:
+            robot = World.robot
+            robot.set_multiple_joint_positions(dict(zip(designator.names, designator.positions)))
 
 
 class HSRBWorldStateDetecting(ProcessModule):
