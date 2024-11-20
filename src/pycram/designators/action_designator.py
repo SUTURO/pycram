@@ -1048,13 +1048,24 @@ class PlaceActionPerformable(ActionAbstract):
         object_pose = self.object_designator.world_object.get_pose()
         local_tf = LocalTransformer()
 
-        # Transformations such that the target position is the position of the object and not the tcp
-        tcp_to_object = local_tf.transform_pose(object_pose,
-                                                World.robot.get_link_tf_frame(
-                                                    RobotDescription.current_robot_description.get_arm_chain(
-                                                        self.arm).get_tool_frame()))
-        target_diff = self.target_location.to_transform("target").inverse_times(
-            tcp_to_object.to_transform("object")).to_pose()
+        # Differentiate between different robots for now. Will be reworked in the master thesis from Luca Krohm
+        if World.robot.name == "hsrb":
+
+            self.grasp = calculate_object_faces(self.object_designator)
+
+            adjusted_grasp = adjust_grasp_for_object_rotation(self.target_location, self.grasp, self.arm)
+            adjusted_oTm = self.target_location.copy()
+            adjusted_oTm.set_orientation(adjusted_grasp)
+            target_diff = self.object_designator.world_object.local_transformer.transform_pose(adjusted_oTm, "map")
+
+        else:
+            # Transformations such that the target position is the position of the object and not the tcp
+            tcp_to_object = local_tf.transform_pose(object_pose,
+                                                    World.robot.get_link_tf_frame(
+                                                        RobotDescription.current_robot_description.get_arm_chain(
+                                                            self.arm).get_tool_frame()))
+            target_diff = self.target_location.to_transform("target").inverse_times(
+                tcp_to_object.to_transform("object")).to_pose()
 
         MoveTCPMotion(target_diff, self.arm).perform()
         MoveGripperMotion(GripperState.OPEN, self.arm).perform()
