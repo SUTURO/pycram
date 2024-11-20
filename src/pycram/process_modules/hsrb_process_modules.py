@@ -43,9 +43,9 @@ def _park_arms(arm):
 
 
 def _move_arm_tcp(target: Pose, robot: Object, arm: Arms) -> None:
-    gripper = robot_description.get_tool_frame(arm)
+    gripper = RobotDescription.current_robot_description.get_arm_tool_frame(arm)
 
-    joints = robot_description.chains[arm].joints
+    joints = RobotDescription.current_robot_description.get_arm_chain(arm).joints
 
     inv = request_ik(target, robot, joints, gripper)
     _apply_ik(robot, inv)
@@ -222,9 +222,9 @@ class HSRBMoveGripper(ProcessModule):
 
     def _execute(self, desig: MoveGripperMotion):
         robot = World.robot
-        gripper = desig.gripper
         motion = desig.motion
-        for joint, state in robot_description.get_static_gripper_chain(gripper, motion).items():
+        for joint, state in RobotDescription.current_robot_description.get_arm_chain(
+                desig.gripper).get_static_gripper_state(motion).items():
             robot.set_joint_position(joint, state)
 
 ###########################################################
@@ -751,7 +751,9 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveJointsReal(self._move_joints_lock)
 
     def move_gripper(self):
-        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveGripper(self._move_gripper_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveGripperReal(self._move_gripper_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveGripperReal(self._move_gripper_lock)
