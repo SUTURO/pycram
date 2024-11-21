@@ -384,7 +384,7 @@ class DetectAction(ActionDesignatorDescription):
     Detects an object that fits the object description and returns an object designator describing the object.
     """
 
-    def __init__(self, object_designator_description: Optional[ObjectDesignatorDescription] = None, technique: str = "all",
+    def __init__(self, object_designator_description: Optional[ObjectDesignatorDescription] = None, technique: str = "all", state: Optional[str] = None,
                  resolver=None,
                  ontology_concept_holders: Optional[List[Thing]] = None):
         """
@@ -397,6 +397,7 @@ class DetectAction(ActionDesignatorDescription):
         super().__init__(resolver, ontology_concept_holders)
         self.object_designator_description: Optional[ObjectDesignatorDescription] = object_designator_description
         self.technique: Optional[str] = technique
+        self.state: Optional[str] = state
 
         if not object_designator_description:
             obj_des = ObjectDesignatorDescription()
@@ -413,7 +414,7 @@ class DetectAction(ActionDesignatorDescription):
         :return: A performable designator
         """
 
-        return DetectActionPerformable(technique=self.technique, object_designator = self.object_designator_description.resolve())
+        return DetectActionPerformable(technique=self.technique, state=self.state, object_designator=self.object_designator_description.resolve())
 
 
 
@@ -1155,6 +1156,11 @@ class DetectActionPerformable(ActionAbstract):
     Detects an object that fits the object description and returns an object designator describing the object.
     """
     technique: str
+    """
+    Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
+    Or 'all' if all objects should be detected
+    """
+    state: Optional[str]
     """
     Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
     Or 'all' if all objects should be detected
