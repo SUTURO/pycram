@@ -351,7 +351,8 @@ class HSRBDetectingReal(ProcessModule):
                 return seat_human_pose[0].attribute[0][9:].split(',')
             # when whole sofa gets checked, a list of lists is returned
             res = []
-            for i in seat_human_pose[0].attribute:
+
+            for i in seat_human_pose.res[0].attribute:
                 res.append(i.split(','))
 
             return res
