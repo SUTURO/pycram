@@ -217,11 +217,7 @@ class DetectingMotion(BaseMotion):
     """
     Type of the object that should be detected
     """
-    technique: str
-    """
-    Technique means how the object should be detected, e.g. 'color', 'shape', 'region', etc. 
-    Or 'all' if all objects should be detected
-    """
+
     state: Optional[str] = None
     """
     The state instructs our perception system to either start or stop the search for an object or human.
@@ -235,7 +231,7 @@ class DetectingMotion(BaseMotion):
         if not world_object:
             raise PerceptionObjectNotFound(
                 f"Could not find an object with the type {self.object_type} in the FOV of the robot")
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             try:
                 return RealObject.Object(world_object.name, world_object.obj_type,
                                         world_object, world_object.get_pose())
@@ -534,6 +530,125 @@ class GraspHandleMotion(BaseMotion):
     def perform(self):
         pm_manager = ProcessModuleManager.get_manager()
         return pm_manager.grasp_door_handle().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class GraspingDishwasherHandleMotion(BaseMotion):
+    """
+    Designator for grasping the dishwasher handle
+    """
+
+    handle_name: str
+    """
+    Name of the handle to grasp
+    """
+    arm: str
+    """
+    Arm that should be used
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.grasp_dishwasher_handle().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class HalfOpeningDishwasherMotion(BaseMotion):
+    """
+    Designator for half opening the dishwasher door to a given degree.
+    """
+    handle_name: str
+    """
+    Name of the dishwasher handle which is grasped
+    """
+    goal_state_half_open: float
+    """
+    Goal state of the door, defining the degree to open the door
+    """
+    arm: str
+    """
+    Arm that should be used
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.half_open_dishwasher().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class MoveArmAroundMotion(BaseMotion):
+    """
+    Designator for moving the arm around the dishwasher to further open the door.
+    """
+
+    handle_name: str
+    """
+    Name of the dishwasher handle which was grasped
+    """
+    arm: str
+    """
+    Arm that should be used
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.move_arm_around_dishwasher().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
+class FullOpeningDishwasherMotion(BaseMotion):
+    """
+    Designator for fully opening the dishwasher. Assumes that the door is already half opened and the arm is in the right position.
+    """
+
+    handle_name: str
+    """
+    Name of the dishwasher handle which was grasped
+    """
+    door_name: str
+    """
+    Name of the dishwasher door which should be opened
+    """
+    goal_state_full_open: float
+    """
+    Goal state of the door, defining the degree to open the door
+    """
+    arm: str
+    """
+    Arm that should be used
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.full_open_dishwasher().execute(self)
 
     def to_sql(self) -> ORMMotionDesignator:
         pass
