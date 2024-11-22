@@ -172,10 +172,12 @@ def query_human_attributes() -> Any:
 def query_waving_human() -> Pose:
     """Query RoboKudo for detecting a waving human."""
     result = send_query(obj_type='human')
-    if result and result.res:
-        try:
-            pose = Pose.from_pose_stamped(result.res[0].pose[0])
-            return pose
-        except IndexError:
-            pass
-    return None
+    return result
+    # print(result)
+    # if result and result.res:
+    #     try:
+    #         pose = Pose.from_pose_stamped(result.res[0].pose[0])
+    #         return pose
+    #     except IndexError:
+    #         pass
+    # return None
