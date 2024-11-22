@@ -41,5 +41,5 @@ def is_master_online():
 def sleep(duration: float):
     rospy.sleep(duration)
 
-def create_timer(duration: int, callback, oneshot=False):
-    return rospy.Timer(rospy.Duration(duration), callback, oneshot=oneshot)
+def create_timer(duration: float, callback, oneshot=False):
+    return rospy.Timer(rospy.Duration().from_sec(duration), callback, oneshot=oneshot)
