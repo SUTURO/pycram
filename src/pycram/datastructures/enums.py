@@ -51,6 +51,8 @@ class Grasp(int, Enum):
     LEFT = 1
     RIGHT = 2
     TOP = 3
+    BACK = 4
+    BOTTOM = 5
 
 
 class ObjectType(int, Enum):
@@ -129,6 +131,14 @@ class GripperType(Enum):
     CUSTOM = auto()
 
 
+class FilterConfig(Enum):
+    """
+    Declare existing filter methods.
+    Currently supported: Butterworth
+    """
+    butterworth = 1
+
+    
 class PerceptionTechniques(Enum):
     """
     Enum for techniques for perception tasks.
@@ -138,9 +148,11 @@ class PerceptionTechniques(Enum):
     TYPES = auto()
 
 
+
 class ImageEnum(Enum):
     """
     Enum for image switch view on hsrb display.
+
     """
     HI = 0
     TALK = 1

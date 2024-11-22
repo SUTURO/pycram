@@ -1,14 +1,13 @@
 import atexit
 import tf
-import time 
 
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import JointState
 from ..datastructures.world import World
-from ..robot_descriptions import robot_description
+from ..robot_description import RobotDescription
 from ..datastructures.pose import Pose
-from ..ros.data_types import Time, Duration
-from ..ros.ros_tools import wait_for_message, create_timer
+from ..ros.data_types import Time
+from ..ros.ros_tools import wait_for_message, create_timer, sleep
 
 
 class RobotStateUpdater:
@@ -28,12 +27,12 @@ class RobotStateUpdater:
         :param joint_state_topic: Name of the joint state topic, needs to publish sensor_msgs/JointState
         """
         self.tf_listener = tf.TransformListener()
-        time.sleep(1)
+        sleep(1.0)
         self.tf_topic = tf_topic
         self.joint_state_topic = joint_state_topic
 
-        self.tf_timer = create_timer(Duration().from_sec(0.1), self._subscribe_tf)
-        self.joint_state_timer = create_timer(Duration().from_sec(0.1), self._subscribe_joint_state)
+        self.tf_timer = create_timer(0.1, self._subscribe_tf)
+        self.joint_state_timer = create_timer(0.1, self._subscribe_joint_state)
 
         atexit.register(self._stop_subscription)
 
@@ -43,7 +42,7 @@ class RobotStateUpdater:
 
         :param msg: TransformStamped message published to the topic
         """
-        trans, rot = self.tf_listener.lookupTransform("/map", robot_description.base_frame, Time(0))
+        trans, rot = self.tf_listener.lookupTransform("/map", RobotDescription.current_robot_description.base_link, Time(0))
         World.robot.set_pose(Pose(trans, rot))
 
     def _subscribe_joint_state(self, msg: JointState) -> None:
@@ -57,7 +56,8 @@ class RobotStateUpdater:
         try:
             msg = wait_for_message(self.joint_state_topic, JointState)
             for name, position in zip(msg.name, msg.position):
-                World.robot.set_joint_position(name, position)
+                if name in list(World.robot.joints.keys()):
+                    World.robot.set_joint_position(name, position)
         except AttributeError:
             pass
 
@@ -66,4 +66,55 @@ class RobotStateUpdater:
         Stops the Timer for TF and joint states and therefore the updating of the robot in the world.
         """
         self.tf_timer.shutdown()
+        self.joint_state_timer.shutdown()
+
+
+class KitchenStateUpdater:
+    """
+    Updates the robot in the Bullet World with information of the real robot published to ROS topics.
+    Infos used to update the robot are:
+        * The current pose of the robot
+        * The current joint state of the robot
+    """
+
+    def __init__(self, tf_topic: str, joint_state_topic: str):
+        """
+        The robot state updater uses a TF topic and a joint state topic to get the current state of the robot.
+
+        :param tf_topic: Name of the TF topic, needs to publish geometry_msgs/TransformStamped
+        :param joint_state_topic: Name of the joint state topic, needs to publish sensor_msgs/JointState
+        """
+        self.tf_listener = tf.TransformListener()
+        sleep(1.0)
+        self.tf_topic = tf_topic
+        self.joint_state_topic = joint_state_topic
+
+        self.joint_state_timer = create_timer(0.1, self._subscribe_joint_state)
+
+        atexit.register(self._stop_subscription)
+
+    def _subscribe_joint_state(self, msg: JointState) -> None:
+        """
+        Sets the current joint configuration of the robot in the bullet world to the configuration published on the topic.
+        Since this uses rospy.wait_for_message which can have errors when used with threads there might be an attribute error
+        in the rospy implementation.
+
+        :param msg: JointState message published to the topic.
+        """
+        try:
+            msg = wait_for_message(self.joint_state_topic, JointState)
+            for name, position in zip(msg.name, msg.position):
+                try:
+                    # Set the joint state if the joint exists
+                    World.current_world.set_joint_state(name, position)
+                except KeyError:
+                    # Handle the case where the joint name does not exist
+                    pass
+        except AttributeError:
+            pass
+
+    def _stop_subscription(self) -> None:
+        """
+        Stops the Timer for TF and joint states and therefore the updating of the robot in the bullet world.
+        """
         self.joint_state_timer.shutdown()

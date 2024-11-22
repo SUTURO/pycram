@@ -1124,12 +1124,12 @@ POSSIBILITY OF SUCH DAMAGE.
       <inertia ixx="0.015" ixy="0.0" ixz="0.0" iyy="0.015" iyz="0.0" izz="0.015"/>
     </inertial>
   </link>
-  <joint name="gripper_tool_joint" type="fixed">
+  <joint name="hand_gripper_tool_joint" type="fixed">
     <origin rpy="0.0 0.0 1.5707963267948963" xyz="0.0 0.0 0.23090002"/>
     <parent link="wrist_roll_link" />
-    <child link="gripper_tool_frame"/>
+    <child link="hand_gripper_tool_frame"/>
   </joint>
-  <link name="gripper_tool_frame"/>
+  <link name="hand_gripper_tool_frame"/>
   <joint name="hand_l_proximal_joint" type="revolute">
     <origin rpy="0.0 0.0 0.0" xyz="-0.01675 -0.0245 -0.0175"/>
     <axis xyz="1.0 0.0 0.0"/>

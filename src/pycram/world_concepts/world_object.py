@@ -22,6 +22,7 @@ from ..failures import ObjectAlreadyExists, WorldMismatchErrorBetweenObjects, Un
 from ..local_transformer import LocalTransformer
 from ..object_descriptors.generic import ObjectDescription as GenericObjectDescription
 from ..object_descriptors.urdf import ObjectDescription as URDF
+from ..ros.data_types import Time
 from ..ros.logging import logwarn
 
 try:
@@ -55,7 +56,9 @@ class Object(WorldEntity):
                  world: Optional[World] = None,
                  color: Color = Color(),
                  ignore_cached_files: bool = False,
-                 scale_mesh: Optional[float] = None):
+                 scale_mesh: Optional[float] = None,
+                 custom_id: Optional[int] = None,
+                 custom_geom: Optional[Dict[str, List[float]]] = None):
         """
         The constructor loads the description file into the given World, if no World is specified the
         :py:attr:`~World.current_world` will be used. It is also possible to load .obj and .stl file into the World.
@@ -89,6 +92,12 @@ class Object(WorldEntity):
         self.local_transformer = LocalTransformer()
         self.original_pose = self.local_transformer.transform_pose(pose, "map")
         self._current_pose = self.original_pose
+        self.customGeom = custom_geom
+
+        if not path and custom_id:
+            self.id = custom_id
+            self.links: Dict[str, int] = {'new_link': -1}
+            self.link_to_geometry = {'new_link': self.customGeom}
 
         if path is not None:
             self.path = self.world.preprocess_object_file_and_get_its_cache_path(path, ignore_cached_files,
@@ -1343,6 +1352,24 @@ class Object(WorldEntity):
         :return: The axis aligned bounding box of this object.
         """
         return self.world.get_object_axis_aligned_bounding_box(self)
+
+    def get_object_dimensions(self, link_name: Optional[str] = None) -> Tuple[float, float, float]:
+        """
+        Return the dimensions of the object.
+        :param link_name: The Optional name of a link of this object.
+        :return: The dimensions of the object, as a Tuple with float values.
+        """
+        import pycram_bullet as p
+        # Retrieve AABB based on link_name presence
+        if link_name:
+            aabb = p.getAABB(self.id, self.links[link_name], self.world.id)
+        else:
+            aabb = p.getAABB(self.id, physicsClientId=self.world.id)
+
+        # Calculate dimensions
+        dimensions = [np.absolute(aabb[0][i] - aabb[1][i]) for i in range(3)]
+
+        return dimensions
 
     def get_base_origin(self) -> Pose:
         """
