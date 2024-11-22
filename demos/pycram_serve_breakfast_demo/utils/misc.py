@@ -2,7 +2,6 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
-from pycram.designators.object_designator import *
 from pycram.failures import EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
 
@@ -21,10 +20,10 @@ def sort_objects(obj_dict: dict, wished_sorted_obj_list: list):
         return sorted_objects
 
     for value in obj_dict.values():
-        object_type = value.type
-        if value.type in ["Mueslibox", "Cornybox", "Cerealbox", "Crackerbox"]:
+        object_type = value.obj_type
+        if value.obj_type in ["Mueslibox", "Cornybox", "Cerealbox", "Crackerbox"]:
             object_type = "Cerealbox"
-        if value.type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
+        if value.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
             object_type = "Spoon"
         if object_type in wished_sorted_obj_list:
             tuples_list.append((value, wished_sorted_obj_list.index(object_type)))
@@ -33,7 +32,7 @@ def sort_objects(obj_dict: dict, wished_sorted_obj_list: list):
     # print which objects are in the final list
     test_list = []
     for test_object in sorted_objects:
-        test_list.append(test_object.type)
+        test_list.append(test_object.obj_type)
     print(test_list)
 
     return sorted_objects
@@ -49,7 +48,7 @@ def get_bowl_list(obj_dict: dict):
     if len(obj_dict) == 0:
         return objects_list
     for value in obj_dict.values():
-        if value.type == "Metalbowl":
+        if value.obj_type == "Metalbowl":
             objects_list.append(value)
     return objects_list
 
@@ -63,7 +62,7 @@ def get_bowl(obj_dict: dict):
     if len(obj_dict) == 0:
         return None
     for value in obj_dict.values():
-        if value.type == "Metalbowl":
+        if value.obj_type == "Metalbowl":
             return value
     return None
 
