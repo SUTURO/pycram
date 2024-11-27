@@ -3,22 +3,17 @@ import math
 import actionlib
 import rospy
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
-
-from pycram.fluent import Fluent
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 
-import pycram.external_interfaces.giskard_new as giskardpy
-
-
-class PoseNavigator():
+class PoseNavigator:
     def __init__(self):
         global move_client
         self.client = actionlib.SimpleActionClient('move_base/move', MoveBaseAction)
         rospy.loginfo("Waiting for move_base ActionServer")
         if self.client.wait_for_server():
             rospy.loginfo("Done")
-        #self.pub = rospy.Publisher('goal', PoseStamped, queue_size=10, latch=True)
+        # self.pub = rospy.Publisher('goal', PoseStamped, queue_size=10, latch=True)
         self.toya_pose = None
         self.goal_pose = None
         self.toya_pose_pub = rospy.Publisher("/initialpose", PoseWithCovarianceStamped, queue_size=100)
@@ -29,7 +24,9 @@ class PoseNavigator():
         msg = PoseWithCovarianceStamped()
         msg.pose.pose.position = fake_pose.pose.position
         msg.pose.pose.orientation = fake_pose.pose.orientation
-        msg.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]
+        msg.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                               0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                               0.06853892326654787]
         self.toya_pose_pub.publish(msg)
 
     def toya_pose_cb(self, msg):
@@ -76,5 +73,3 @@ class PoseNavigator():
             else:
                 rospy.logerr("something is wrong with navigation")
                 return False
-
-

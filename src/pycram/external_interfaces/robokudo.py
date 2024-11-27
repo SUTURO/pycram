@@ -89,7 +89,6 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
     if attributes:
         goal.obj.attribute = attributes
 
-    # client = actionlib.SimpleActionClient('robokudo/query', QueryAction)
     client = create_action_client("robokudo/query", QueryAction)
     loginfo("Waiting for action server")
     client.wait_for_server()
@@ -101,6 +100,10 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
         query_result = result
         loginfo("Query completed")
 
+    if goal.obj.type == "human":
+        client.send_goal(goal)
+        return "human"
+
     client.send_goal(goal, done_cb=done_callback)
     client.wait_for_result()
     return query_result
@@ -111,7 +114,6 @@ def query_object(obj_desc: ObjectDesignatorDescription) -> dict:
     """Query RoboKudo for an object that fits the description."""
     goal = QueryGoal()
     goal.obj.uid = str(id(obj_desc))
-    goal.obj.type = str(obj_desc.types[0].name)
 
     result = send_query(obj_type=goal.obj.type)
 
@@ -130,13 +132,12 @@ def query_human() -> PointStamped:
     result = send_query(obj_type='human')
     if result:
         return result  # Assuming result is of type PointStamped or similar.
-    return None
+    return "human found"
 
 
 @init_robokudo_interface
 def stop_query():
     """Stop any ongoing query to RoboKudo."""
-    #client = actionlib.SimpleActionClient('robokudo/query', QueryAction)
     client = create_action_client('robokudo/query', QueryAction)
     client.wait_for_server()
     client.cancel_all_goals()
@@ -171,10 +172,12 @@ def query_human_attributes() -> Any:
 def query_waving_human() -> Pose:
     """Query RoboKudo for detecting a waving human."""
     result = send_query(obj_type='human')
-    if result and result.res:
-        try:
-            pose = Pose.from_pose_stamped(result.res[0].pose[0])
-            return pose
-        except IndexError:
-            pass
-    return None
+    return result
+    # print(result)
+    # if result and result.res:
+    #     try:
+    #         pose = Pose.from_pose_stamped(result.res[0].pose[0])
+    #         return pose
+    #     except IndexError:
+    #         pass
+    # return None
