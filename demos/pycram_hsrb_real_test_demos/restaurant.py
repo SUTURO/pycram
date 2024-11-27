@@ -6,6 +6,7 @@ import rospy
 from geometry_msgs.msg import WrenchStamped, PoseStamped, PointStamped, PoseWithCovarianceStamped
 from robokudo_msgs.msg import QueryAction, QueryGoal
 
+from pycram.demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant, monitor_func
 from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction
 from pycram.designators.motion_designator import MoveGripperMotion
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -38,14 +39,23 @@ listener = tf.TransformListener()
 
 # Initialize global variable
 global human_bool
-human_bool = False
+
+def monitor_func_human(humanPoint: PointStamped, robotPoint:PoseStamped):
+    restaurant.set_human_pose(humanPoint)
+    tmp_dist = restaurant.distance()
+    if tmp_dist < 0.4:
+        print("min dist reached")
+        return SensorMonitoringCondition
+    if  humanPoint.point is None:
+        print("Human went missing lol. Where did he go?")
+        return False
 
 #
 # def monitor_func_human():
 #     der = fts.get_last_value()
 #     if abs(der.wrench.force.x) > 10.30:
 #         print("sensor")
-#         return SensorMonitoringCondition
+ #      return SensorMonitoringCondition
 #     if not human.human_pose.get_value():
 #         print("human")
 #         return HumanNotFoundCondition
@@ -101,32 +111,12 @@ class Human:
         else:
             self.human_pose.set_value(False)
 
-class Restaurant:
-    def __init__(self):
-        self.toya_pose = Fluent()
-        self.human_pose = None
-        self.toya_pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.toya_pose_cb)
-
-    def toya_pose_cb(self, msg):
-        #print("updating")
-        self.toya_pose.set_value(robot.get_pose())
-        rospy.sleep(0.5)
-
-    def distance(self):
-        print("toya pose:" + str(self.toya_pose.get_value().pose))
-        if self.human_pose:
-            dis = math.sqrt((self.human_pose.pose.position.x - self.toya_pose.get_value().pose.position.x) ** 2 +
-                            (self.human_pose.pose.position.y - self.toya_pose.get_value().pose.position.y) ** 2)
-            print("dis: " + str(dis))
-            return dis
-        else:
-            rospy.logerr("Cant calculate distance, no human pose found")
 
 
-restaurant = Restaurant()
+restaurant = Restaurant(robot, rospy)
 
 
-def transform_pose(input_pose, from_frame, to_frame):
+def transform_pose(input_pose, from_frame, to_frame, rospy:):
     """
     Transforms a pose from 'from_frame' to 'to_frame'.
     """
@@ -144,31 +134,34 @@ def transform_pose(input_pose, from_frame, to_frame):
         return None
 
 
-def monitor_func():
-    if restaurant.distance() < 1:
-        return SensorMonitoringCondition
-    return False
-
-
 rospy.loginfo("Waiting for action server")
 rospy.loginfo("You can start your demo now")
 tf_listener = LocalTransformer()
 
 def look_around(increase: float):
     angle = 0
-    #todo angle wieder anpassen
-    while angle <=0.2:
+    while angle <=1:
         #todo: das minus y ist nur weil anessa faul ist sonst musst du da 0
-        look_pose = Pose([1, -0.4, 0.4], frame="hsrb/"+ RobotDescription.current_robot_description.base_link)
+        look_pose = Pose([1, 0, 0.4], frame="hsrb/"+ RobotDescription.current_robot_description.base_link)
         #todo: increment also needs minus x hehe
         #todo: abbruch muss eign -> mensch gesehn sein
-        look_pose_in_map = tf_listener.transformPose("/map", look_pose)
-        look_point_in_map = look_pose_in_map.pose.position
+        #look_pose_in_map = tf_listener.transformPose("/map", look_pose)
+        #look_point_in_map = look_pose_in_map.pose.position
         # giskardpy.move_head_to_pose(look_point_in_map)
 
-        LookAtAction([Pose([look_point_in_map.x+angle, look_point_in_map.y+angle, look_point_in_map.z])]).resolve().perform()
-        rospy.sleep(1)
+        #LookAtAction([Pose([look_point_in_map.x+angle, look_point_in_map.y+angle, look_point_in_map.z])]).resolve().perform()
+        #rospy.sleep(1)
         angle += increase
+        print(angle)
+        if human_bool:
+            break
+    while angle >=0:
+        #LookAtAction([Pose([look_point_in_map.x-angle, look_point_in_map.x-angle, look_point_in_map.z])]).resolve().perform()
+        #angle -= increase
+        print(angle)
+        if human_bool:
+            break
+
 def demo(step):
     with real_robot:
         talk = True
@@ -198,8 +191,26 @@ def demo(step):
                     restaurant.human_pose = None
                     #todo: herrasufinden ob waving human in head_rgbd_sensor_rgb_frame oder in map uebergeben wird
                     #
-                    human_pose = robokudo.query_waving_human()
+                    #TODO for testing: Usage of query_human
+                    human_pose = robokudo.query_human()
+                    #human_pose = robokudo.query_waving_human()
                     print(human_pose)
+
+                    if human_pose is not None:
+                        human_bool = True
+                    human_pose_in_map  = human_pose
+                    human_point_in_map = human_pose_in_map.pose.position
+                    # transforms the human pose that is in map to a pose relative to Toya
+                    human_pose_tf_base = tf_listener.transformPose("hsrb/"+ RobotDescription.current_robot_description.base_link, human_pose)
+                    human_point_tf_base = human_pose_tf_base.pose.position
+                    try:
+                        plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                        plan.perform()
+                    except SensorMonitoringCondition:
+                        text_to_speech_publisher.pub_now("Finding my way. Please wait.", talk)
+                        image_switch_publisher.pub_now(ImageEnum.HI.value)
+
+
                     # human_poseTm = transform_pose(human_pose, "head_rgbd_sensor_rgb_frame", "map")
                     # human_p = human_poseTm
                     # human_p.pose.position.z = 0
