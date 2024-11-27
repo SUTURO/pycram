@@ -250,3 +250,19 @@ class HumanDescription:
         self.attributes = attribute_list[1]
 
 
+class CustomerDiscription(HumanDescription):
+    def __init__(self, id: int, pose: Pose):
+        self.id = id
+        self.pose = pose
+
+
+    def get_pose(self):
+        return self.pose
+
+    def set_pose(self, new_pose):
+        self.pose = new_pose
+        print(self.pose)
+    def get_id(self):
+        return id
+    def set_id(self, new_id):
+        self.id = new_id
