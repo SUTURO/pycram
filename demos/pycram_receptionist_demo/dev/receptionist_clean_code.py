@@ -35,7 +35,7 @@ RobotStateUpdater("/tf", "/giskard_joint_states")
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 
 # Define orientation for objects
-object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
+# object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
 
 response = [None, None, None]
 callback = False
@@ -67,14 +67,7 @@ image_switch_publisher = ImageSwitchPublisher()
 
 nlp = NLP_Functions()
 
-
-
-
-
-
-
-
-
+print("hello")
 
 
 def demo(step: int):
@@ -87,12 +80,13 @@ def demo(step: int):
 
         if step <= 2:
             get_attributes(guest1)
+            print(guest1.id)
 
         if step <= 3:
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
-            NavigateAction(couch_pose_semantik)
+            NavigateAction([couch_pose_semantik]).resolve().perform()
         if step <= 4:
             TalkingMotion("welcome to the living room").perform()
             counter = 0
@@ -125,9 +119,10 @@ def demo(step: int):
 
         if step <= 5:
             guest_pose = detect_point_to_seat(robot)
+            print("######" + str(guest_pose))
             if not guest_pose:
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                guest_pose = detect_point_to_seat(no_sofa=True)
+                guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 guest1.set_pose(guest_pose)
             else:
                 guest1.set_pose(guest_pose)
@@ -139,7 +134,7 @@ def demo(step: int):
             rospy.sleep(2)
 
         if step <= 7:
-            NavigateAction(greet_guest_pose).resolve().perform()
+            NavigateAction([greet_guest_pose]).resolve().perform()
             TalkingMotion("waiting for new guest").perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
@@ -148,7 +143,7 @@ def demo(step: int):
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
-            NavigateAction(couch_pose_semantik)
+            NavigateAction([couch_pose_semantik]).resolve().perform()
 
         if step <= 9:
             TalkingMotion("Welcome to the living room").perform()
@@ -175,4 +170,4 @@ def demo(step: int):
 
 
 
-
+demo(0)

@@ -8,19 +8,20 @@ from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 look_couch = Pose([3.8, 1.9, 0.8])
 
-def get_attributes(guest: HumanDescription):
+
+def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     """
     storing attributes and face of person in front of robot
     :param guest: variable to store information in
+    :param trys: failure handling
     """
     TalkingMotion("i will take a picture of you to recognize you later").perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
-    rospy.sleep(1.4)
-    trys = 0
+    rospy.sleep(2.4)
     # remember face
     while trys < 2:
         try:
-            keys = DetectAction(technique='human', state='face').resolve().perform()[1]
+            keys = DetectAction(technique='human', state='face').resolve().perform()
             new_id = keys["keys"][0]
             guest.set_id(new_id)
 
@@ -34,11 +35,13 @@ def get_attributes(guest: HumanDescription):
             # failure handling, if human has stepped away
             TalkingMotion("please step in front of me").perform()
             rospy.sleep(3.5)
+            trys += 1
 
             try:
-                get_attributes(guest)
+                get_attributes(guest, trys=trys)
 
             except PerceptionObjectNotFound:
+                trys += 1
                 print("continue without attributes")
 
         return guest
@@ -214,7 +217,7 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
     :param human2: the second human the robot talks to
     """
     pub_pose = rospy.Publisher('/human_pose', PointStamped, queue_size=10)
-
+    print("pose:" + str(human1.pose))
     if human1.pose:
         pub_pose.publish(human1.pose)
         rospy.sleep(1.0)
