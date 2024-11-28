@@ -6,7 +6,7 @@ from geometry_msgs.msg import PointStamped, PoseStamped
 from pycram.designators.action_designator import *
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
-look_couch = Pose([3.8, 1.9, 0.8])
+look_couch = Pose([3.8, 1.9, 0.75])
 
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
@@ -15,9 +15,12 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     :param guest: variable to store information in
     :param trys: failure handling
     """
+    MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
     TalkingMotion("i will take a picture of you to recognize you later").perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
     rospy.sleep(2.4)
+    TalkingMotion("please look at me").perform()
+    rospy.sleep(1.5)
     # remember face
     while trys < 2:
         try:
@@ -59,7 +62,6 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
     x = 3.6
     # loop through all seating options detected by perception
     if not no_sofa:
-        print("in placequ")
         for place in seat:
             if place[1] == 'False':
 
@@ -103,6 +105,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
         pose_guest.point.y = pose_in_map.pose.position.y
         pose_guest.point.z = 0.85
 
+        MoveGripperMotion(GripperState.CLOSE,Arms.LEFT).perform()
         PointingAction(x_coordinate=float(x), y_coordinate=float(pose_guest.point.y), z_coordinate=float(pose_guest.point.z)).resolve().perform()
 
 
@@ -118,8 +121,8 @@ def detect_host_face(host: HumanDescription):
     found_host = False
     try:
 
-        LookAtAction(look_couch).resolve().perform()
-        human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
+        LookAtAction([look_couch]).resolve().perform()
+        human_dict = DetectAction(technique='human', state='face').resolve().perform()
         id_humans = human_dict["keys"]
         print("id humans: " + str(id_humans))
         host_pose = human_dict[id_humans[0]]
@@ -128,7 +131,7 @@ def detect_host_face(host: HumanDescription):
         host.set_pose(PoseStamped_to_Point(host_pose))
         return True
 
-    except:
+    except PerceptionObjectNotFound:
         return False
 
 
@@ -152,7 +155,8 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                 TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
 
-            human_dict = DetectAction(technique='human', state='face').resolve().perform()[1]
+            human_dict = DetectAction(technique='human', state='face').resolve().perform()
+            print("face detect: " + str(human_dict))
             counter += 1
             id_humans = human_dict["keys"]
 

@@ -55,7 +55,7 @@ guest2 = HumanDescription("Sarah", fav_drink="Juice")
 guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright top'])
 
 # important poses
-couch_pose_semantik = Pose(position=[3.8, 1.9, 0], orientation=[0, 0, -0.7, 0.7])
+couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 1.9, 0.8])
 nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
 greet_guest_pose = Pose(position=[1.7, 0.86, 0], orientation=[0, 0, 0.8, -0.5])
@@ -67,11 +67,10 @@ image_switch_publisher = ImageSwitchPublisher()
 
 nlp = NLP_Functions()
 
-print("hello")
-
 
 def demo(step: int):
     with (real_robot):
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
         TalkingMotion("start demo").perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 
@@ -100,7 +99,6 @@ def demo(step: int):
                     rospy.sleep(1.5)
 
                 elif counter == 2:
-                    # TODO test
                     MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                     TalkingMotion("please look at me").perform()
                     rospy.sleep(1.5)
@@ -108,7 +106,7 @@ def demo(step: int):
                 if counter == 5:
                         try:
                             print("not found host human detect")
-                            host_pose = DetectAction(technique='human').resolve().perform()[1]
+                            host_pose = DetectAction(technique='human').resolve().perform()
                             host.set_pose(host_pose)
 
                         except Exception as e:
@@ -119,7 +117,6 @@ def demo(step: int):
 
         if step <= 5:
             guest_pose = detect_point_to_seat(robot)
-            print("######" + str(guest_pose))
             if not guest_pose:
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
@@ -132,6 +129,7 @@ def demo(step: int):
             rospy.sleep(2)
             introduce(host, guest1)
             rospy.sleep(2)
+            HeadFollowMotion(state="stop").perform()
 
         if step <= 7:
             NavigateAction([greet_guest_pose]).resolve().perform()
@@ -166,8 +164,5 @@ def demo(step: int):
             introduce(guest1, guest2)
             rospy.sleep(3)
             describe(guest1)
-
-
-
 
 demo(0)

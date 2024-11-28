@@ -2,6 +2,8 @@ import sys
 from threading import Lock, RLock
 from typing import Any
 
+import rospy
+
 from ..ros.action_lib import create_action_client
 from ..ros.logging import logwarn, loginfo, loginfo_once
 from ..ros.ros_tools import get_node_names
@@ -92,6 +94,9 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
     client = create_action_client("robokudo/query", QueryAction)
     loginfo("Waiting for action server")
     client.wait_for_server()
+    global human_bool
+    global human_pose
+    human_bool = False
 
     query_result = None
 
@@ -100,9 +105,21 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
         query_result = result
         loginfo("Query completed")
 
+    def human_callback(pose):
+        global human_bool
+        global human_pose
+        human_bool = True
+        human_pose = pose
+
     if goal.obj.type == "human":
         client.send_goal(goal)
-        return "human"
+
+        rospy.Subscriber("/human_pose", PointStamped, human_callback)
+
+        while not human_bool:
+            rospy.sleep(0.5)
+
+        return human_pose
 
     client.send_goal(goal, done_cb=done_callback)
     client.wait_for_result()
@@ -172,12 +189,14 @@ def query_human_attributes() -> Any:
 def query_waving_human() -> Pose:
     """Query RoboKudo for detecting a waving human."""
     result = send_query(obj_type='human')
-    return result
-    # print(result)
-    # if result and result.res:
-    #     try:
-    #         pose = Pose.from_pose_stamped(result.res[0].pose[0])
-    #         return pose
-    #     except IndexError:
-    #         pass
-    # return None
+    #return result
+    print(result)
+    print(Pose.from_pose_stamped(result.res[0].pose[0]))
+    if result and result.res:
+         try:
+             pose = Pose.from_pose_stamped(result.res[0].pose[0])
+             print("This is the pose", pose)
+             return pose
+         except IndexError:
+             pass
+    return None

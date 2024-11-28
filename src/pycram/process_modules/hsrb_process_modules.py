@@ -621,7 +621,7 @@ class HSRBHeadFollowReal(ProcessModule):
 
     def _execute(self, designator: HeadFollowMotion) -> Any:
         if designator.state == 'stop':
-            giskard.stop_looking()
+            giskard.cancel_goal()
         else:
             giskard.move_head_to_human()
 

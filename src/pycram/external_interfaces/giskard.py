@@ -21,7 +21,7 @@ from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vect
 from threading import Lock, RLock
 
 try:
-    from giskardpy.python_interface.python_interface import GiskardWrapper
+    from giskardpy_ros.python_interface.python_interface import GiskardWrapper
     from giskard_msgs.msg import WorldBody, MoveResult, CollisionEntry
     giskard_wrapper: Optional[GiskardWrapper] = None
 except ModuleNotFoundError as e:
@@ -294,6 +294,11 @@ def _manage_par_motion_goals(goal_func, *args) -> Optional['MoveResult']:
                 giskard_wrapper.monitors._monitors = tmp_monitors
                 return True
 
+@init_giskard_interface
+@thread_safe
+def cancel_goal():
+    giskard_wrapper.interrupt()
+    return
 
 @init_giskard_interface
 @thread_safe
