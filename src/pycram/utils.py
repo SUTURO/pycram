@@ -18,7 +18,6 @@ from typing_extensions import Tuple, Callable, List, Dict, TYPE_CHECKING
 from .datastructures.pose import Pose
 from .local_transformer import LocalTransformer
 
-
 if TYPE_CHECKING:
     from .world_concepts.world_object import Object
     from .robot_description import CameraDescription
@@ -409,4 +408,3 @@ def xyzw_to_wxyz(xyzw: List[float]) -> List[float]:
     :param xyzw: The quaternion in XYZW format.
     """
     return [xyzw[3], *xyzw[:3]]
-

@@ -346,8 +346,8 @@ def achieve_cartesian_goal(goal_pose: Pose, tip_link: str, root_link: str, posit
                                                     end_condition=cart_monitor1)
 
     giskard_wrapper.monitors.add_end_motion(start_condition=end_monitor)
-    # giskard_wrapper.motion_goals.avoid_all_collisions()
-    # giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
     return giskard_wrapper.execute()
 
 
