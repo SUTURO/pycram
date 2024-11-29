@@ -35,17 +35,22 @@ def tmc_gripper_control(designator: MoveGripperMotion, topic_name: Optional[str]
     """
     if (designator.motion == GripperState.OPEN):
         pub_gripper = create_publisher(topic_name, GripperApplyEffortActionGoal, 10)
-        rate = Rate(10)
         msg = GripperApplyEffortActionGoal()
         msg.goal.effort = 0.8
+        pub_gripper.publish(msg)
+        rospy.sleep(1)
         pub_gripper.publish(msg)
 
     elif (designator.motion == GripperState.CLOSE):
         pub_gripper = create_publisher(topic_name, GripperApplyEffortActionGoal, 10)
         rate = Rate(10)
+
         msg = GripperApplyEffortActionGoal()
         msg.goal.effort = -0.8
         pub_gripper.publish(msg)
+        rospy.sleep(1)
+        pub_gripper.publish(msg)
+
 
 
 class TextToSpeechPublisher:

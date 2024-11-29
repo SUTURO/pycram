@@ -162,6 +162,9 @@ class NLP_Functions:
                         if drink:
                             guest.set_drink(self.drink_repeat())
                             break
+
+        HeadFollowMotion(state="stop").perform()
+        DetectAction(technique='human', state="stop").resolve().perform()
         return guest
 
     def name_repeat(self):

@@ -4,6 +4,7 @@ import rospy
 from geometry_msgs.msg import PointStamped, PoseStamped
 
 from pycram.designators.action_designator import *
+from pycram.designators.motion_designator import PointingMotion
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 look_couch = Pose([3.8, 1.9, 0.75])
@@ -16,7 +17,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     :param trys: failure handling
     """
     MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
     TalkingMotion("i will take a picture of you to recognize you later").perform()
     rospy.sleep(2.4)
     TalkingMotion("please look at me").perform()
@@ -30,6 +31,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
 
             # get clothes and gender
             attr_list = DetectAction(technique='attributes', state='start').resolve().perform()
+            print(attr_list)
             guest.set_attributes(attr_list)
             rospy.loginfo(attr_list)
             break
@@ -65,21 +67,19 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
         for place in seat:
             if place[1] == 'False':
 
-                not_point_pose = Pose([float(place[2]), float(place[3]), 0.85])
+                pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
                 print("place: " + str(place))
 
                 lt = LocalTransformer()
-                pose_in_robot_frame = lt.transform_pose(not_point_pose, robot.get_link_tf_frame("base_link"))
+                pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
                 print("in robot: " + str(pose_in_robot_frame))
                 if pose_in_robot_frame.pose.position.y > 0.25:
                     TalkingMotion("please take a seat to the left from me").perform()
-                    pose_in_robot_frame.pose.position.y += 0.2
-                    x = 4.9
+                    pose_in_robot_frame.pose.position.y += 0.4
 
                 elif pose_in_robot_frame.pose.position.y < -0.35:
                     TalkingMotion("please take a seat to the right from me").perform()
                     pose_in_robot_frame.pose.position.y -= 0.4
-                    x = 2.9
 
                 else:
                     TalkingMotion("please take a seat in front of me").perform()
@@ -101,13 +101,12 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
     if free_seat:
         pose_guest = PointStamped()
         pose_guest.header.frame_id = "map"
-        pose_guest.point.x = x
+        pose_guest.point.x = pose_in_map.pose.position.x
         pose_guest.point.y = pose_in_map.pose.position.y
         pose_guest.point.z = 0.85
 
-        MoveGripperMotion(GripperState.CLOSE,Arms.LEFT).perform()
-        PointingAction(x_coordinate=float(x), y_coordinate=float(pose_guest.point.y), z_coordinate=float(pose_guest.point.z)).resolve().perform()
-
+        MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+        PointingMotion(pose_guest).perform()
 
         print("found seat")
         return pose_guest
@@ -136,6 +135,7 @@ def detect_host_face(host: HumanDescription):
 
 
 def identify_faces(host: HumanDescription, guest1: HumanDescription):
+    LookAtAction([look_couch]).resolve().perform()
     counter = 0
     found_guest = False
     found_host = False

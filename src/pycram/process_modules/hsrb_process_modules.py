@@ -632,11 +632,7 @@ class HSRBPointingReal(ProcessModule):
     """
 
     def _execute(self, designator: PointingMotion) -> Any:
-        pointing_pose = PointStamped()
-        pointing_pose.header.frame_id = "map"
-        pointing_pose.point.x = designator.x_coordinate
-        pointing_pose.point.y = designator.y_coordinate
-        pointing_pose.point.z = designator.z_coordinate
+        pointing_pose = designator.goal_point
         giskard.move_arm_to_point(pointing_pose)
 
 

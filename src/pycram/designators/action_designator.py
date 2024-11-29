@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import sqlalchemy
+from geometry_msgs.msg import PointStamped
 from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
@@ -16,7 +17,7 @@ from typing_extensions import List, Union, Callable, Optional, Type
 
 from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
-    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, PointingMotion, HeadFollowMotion, TalkingMotion
+    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState
 from ..datastructures.pose import Pose
@@ -546,38 +547,6 @@ class HeadFollowAction(ActionDesignatorDescription):
         return HeadFollowActionPerformable(self.state)
 
 
-class PointingAction(ActionDesignatorDescription):
-    """
-    Point to Pose
-    """
-
-    def __init__(self, x_coordinate: float, y_coordinate: float, z_coordinate: float, resolver=None,
-                 ontology_concept_holders: Optional[List[Thing]] = None):
-        """
-        Lets the robot pour based on the given parameter.
-        :param x_coordinate: x coordinate where the robot points to (in map frame)
-        :param y_coordinate: y coordinate where the robot points to (in map frame)
-        :param z_coordinate: z coordinate where the robot points to (in map frame)
-        :param resolver: An alternative resolver
-        """
-        super().__init__(resolver, ontology_concept_holders)
-        self.x_coordinate = x_coordinate
-        self.y_coordinate = y_coordinate
-        self.z_coordinate = z_coordinate
-
-        if self.soma:
-            self.init_ontology_concepts({"pointing": self.soma.Headfollow})
-
-    def ground(self) -> PointingActionPerformable:
-        """
-        Default specialized_designators that returns a performable designator with the first entry
-        in the list of possible targets
-
-        :return: A performable designator
-        """
-        return PointingActionPerformable(self.x_coordinate, self.y_coordinate, self.z_coordinate)
-
-
 class PouringAction(ActionDesignatorDescription):
     """
     Designator to let the robot perform a pouring action.
@@ -981,7 +950,8 @@ class PickUpActionPerformable(ActionAbstract):
         robot = World.robot
         object = self.object_designator.world_object
         oTm = object.get_pose()
-        self.grasp = calculate_object_faces(self.object_designator)
+        if self.grasp != Grasp.TOP:
+            self.grasp = calculate_object_faces(self.object_designator)
 
         adjusted_grasp = adjust_grasp_for_object_rotation(oTm, self.grasp, self.arm)
         adjusted_oTm = oTm.copy()
@@ -1395,26 +1365,6 @@ class HeadFollowActionPerformable(ActionAbstract):
     @with_tree
     def perform(self) -> None:
         HeadFollowMotion(self.state).perform()
-
-
-@dataclass
-class PointingActionPerformable(ActionAbstract):
-    x_coordinate: float
-    """
-    x coordinate where the robot points to (in map frame)
-    """
-    y_coordinate: float
-    """
-    y coordinate where the robot points to (in map frame)
-    """
-    z_coordinate: float
-    """
-    z coordinate where the robot points to (in map frame)
-    """
-
-    @with_tree
-    def perform(self) -> None:
-        PointingMotion(self.x_coordinate, self.y_coordinate, self.z_coordinate).perform()
 
 
 @dataclass

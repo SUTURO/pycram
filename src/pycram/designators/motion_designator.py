@@ -468,17 +468,9 @@ class PointingMotion(BaseMotion):
     """
     Point at given Coordinates
     """
-    x_coordinate: float
+    goal_point: PointStamped
     """
-    x coordinate where the robot points to (in map frame)
-    """
-    y_coordinate: float
-    """
-    y coordinate where the robot points to (in map frame)
-    """
-    z_coordinate: float
-    """
-    z coordinate where the robot points to (in map frame)
+    point the robot moves gripper to (in map frame)
     """
 
     @with_tree

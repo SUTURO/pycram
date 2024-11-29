@@ -16,7 +16,6 @@ from pycram.utils import axis_angle_to_quaternion
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
 
-
 # Initialize the Bullet world for simulation
 world = BulletWorld()
 
@@ -40,14 +39,13 @@ apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 response = [None, None, None]
 callback = False
 
-
 # Declare variables for humans
 host = HumanDescription("Bob", fav_drink="Milk")
 host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
 
 # for testing, if the first part of the demo is skipped
-guest1.set_attributes([[1], ['female', 'without a hat', 'wearing a t-shirt', ' a dark top']])
+guest1.set_attributes(['male', 'without a hat', 'wearing a t-shirt', ' a dark top'])
 guest1.set_id(0)
 
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
@@ -58,7 +56,7 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 1.9, 0.8])
 nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
-greet_guest_pose = Pose(position=[1.7, 0.86, 0], orientation=[0, 0, 0.8, -0.5])
+greet_guest_pose = Pose(position=[2.2, 1, 0], orientation=[0, 0, 0.8, -0.5])
 
 # variables for communcation with nlp
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
@@ -79,7 +77,7 @@ def demo(step: int):
 
         if step <= 2:
             get_attributes(guest1)
-            print(guest1.id)
+            print("guest 1 id: " + str(guest1.id))
 
         if step <= 3:
             TalkingMotion("i will show you the living room now").perform()
@@ -104,14 +102,14 @@ def demo(step: int):
                     rospy.sleep(1.5)
 
                 if counter == 5:
-                        try:
-                            print("not found host human detect")
-                            host_pose = DetectAction(technique='human').resolve().perform()
-                            host.set_pose(host_pose)
+                    try:
+                        print("host has no id")
+                        host_pose = DetectAction(technique='human').resolve().perform()
+                        host.set_pose(host_pose)
 
-                        except Exception as e:
-                            print(e)
-                        break
+                    except Exception as e:
+                        print(e)
+                    break
 
                 counter += 1
 
@@ -130,8 +128,10 @@ def demo(step: int):
             introduce(host, guest1)
             rospy.sleep(2)
             HeadFollowMotion(state="stop").perform()
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
         if step <= 7:
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction([greet_guest_pose]).resolve().perform()
             TalkingMotion("waiting for new guest").perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
@@ -164,5 +164,7 @@ def demo(step: int):
             introduce(guest1, guest2)
             rospy.sleep(3)
             describe(guest1)
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+
 
 demo(0)
