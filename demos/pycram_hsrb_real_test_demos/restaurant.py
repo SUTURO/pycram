@@ -8,7 +8,8 @@ from robokudo_msgs.msg import QueryAction, QueryGoal
 
 from demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant
 # from pycram.demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant, monitor_func
-from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction
+from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction, \
+    NavigateAction
 from pycram.designators.motion_designator import MoveGripperMotion
 from pycram.datastructures.enums import Arms, ImageEnum
 from pycram.fluent import Fluent
@@ -178,39 +179,47 @@ def human_pose_cb(data):
     query_result = data
     return data
 
-def look_around(increase: int):
+def look_around(increase: int, star_pose: PoseStamped):
     """
     Function to make Toya look continuous from left to right. It stops if Toya perceives a human.
     :param: increase: The increments in which Toya should look around.
     """
+    tmp_x = star_pose.pose.position.x
+    tmp_y = star_pose.pose.position.y
+    tmp_z = star_pose.pose.position.z
     for x in range(-10, 10, increase):
         angle = x / 10
-        look_pose = Pose([1, 0, 0.4], frame="hsrb/" + RobotDescription.current_robot_description.base_link)
-        # todo: abbruch muss eign -> mensch gesehn sein
+        look_pose = Pose([tmp_x, tmp_y, tmp_z], frame="hsrb/" + RobotDescription.current_robot_description.base_link)
         look_pose_in_map = tf_listener.transformPose("/map", look_pose)
         look_point_in_map = look_pose_in_map.pose.position
 
         LookAtAction(
             [Pose([look_point_in_map.x + angle, look_point_in_map.y + angle, look_point_in_map.z])]).resolve().perform()
         rospy.sleep(1)
-
-        if human_bool:
-            break
+        new_human_p = DetectAction(technique='human', state="start").resolve().perform()
+        if new_human_p is not None:
+            tmp_human_pose = new_human_p
+            new_human_p = DetectAction(technique='human', state="stop").resolve().perform()
+            print(new_human_p)
+            return tmp_human_pose
+        #if human_bool:
+         #   break
 
     for w in range(10, -10, -increase):
         angle = w / 10
-        look_pose = Pose([1, 0, 0.4], frame="hsrb/" + RobotDescription.current_robot_description.base_link)
-        # todo: increment also needs minus x hehe
-        # todo: abbruch muss eign -> mensch gesehn sein
+        look_pose = Pose([tmp_x, tmp_y, tmp_z], frame="hsrb/" + RobotDescription.current_robot_description.base_link)
         look_pose_in_map = tf_listener.transformPose("/map", look_pose)
         look_point_in_map = look_pose_in_map.pose.position
 
         LookAtAction(
             [Pose([look_point_in_map.x + angle, look_point_in_map.y + angle, look_point_in_map.z])]).resolve().perform()
         rospy.sleep(1)
-
-        if human_bool:
-            break
+        human_p = DetectAction(technique='human', state="start").resolve().perform()
+        if human_p is not None:
+            tmp_human_pose = human_p
+            new_human_p = DetectAction(technique='human', state="stop").resolve().perform()
+            print(new_human_p)
+            return tmp_human_pose
 
 
 def demo(step):
@@ -228,45 +237,64 @@ def demo(step):
             pakerino(config=config_for_placing)
 
             # todo: eign müsste sie schräg stehen weil sonst arm in weg und sie muss auf 0.5 hoch das ist nur zum gucken! nicht fahren
-            # MoveTorsoAction([0.1]).resolve().perform()
-            # ParkArmsAction([Arms.LEFT]).resolve().perform()
+            MoveTorsoAction([0.1]).resolve().perform()
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
             # TODO look around muss gleichzeitig ausgeführt werden, während perception läuft
-            #look_around(1)
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
             success = False
 
             while not success:
                 try:
                     # text_to_speech_publisher.pub_now("Please wave you hand. I will come to you", talk)
+                    tmp = look_around(1, start_pose)
 
-                    human_pose = None
-                                #todo: herrasufinden ob waving human in head_rgbd_sensor_rgb_frame oder in map uebergeben wird
-                                 #
-                                 #TODO for testing: Usage of query_human
-                    # human_pose = robokudo.query_human()
-                    #human_pose = robokudo.query_human()
-                    # human_dict = DetectAction(technique='human').resolve().perform()
-                    # print("Help me, i want to die ", human_dict)
-                    new_human_p = DetectAction(technique='human', state="start").resolve().perform()
+                    human_point_in_map = tmp.pose.position
+                    human_pose_in_map = Pose([human_point_in_map.x, human_point_in_map.y, human_point_in_map.z], frame="map")
+                    human_pose_in_bl = tf_listener.transformPose("hsrb/" + RobotDescription.current_robot_description.base_link, human_pose_in_map)
 
-                    new_human_p = DetectAction(technique='human', state="stop").resolve().perform()
-                    #print("Release me from my pain: ", new_human_p)
-                    #print("id humans: " + str(id_humans))
-                    #host_pose = human_dict[id_humans[0]]
-                    print(human_pose)
-                    #
-                    if human_pose is not None:
-                        human_bool = True
-                    human_pose_in_map = human_pose
-                    human_point_in_map = human_pose_in_map.pose.position
-                    # transforms the human pose that is in map to a pose relative to Toya
-                    human_pose_tf_base = tf_listener.transformPose(
-                        "hsrb/" + RobotDescription.current_robot_description.base_link, human_pose)
-                    human_point_tf_base = human_pose_tf_base.pose.position
+
+                    #TODO for testing: Usage of query_human
+
+                    #new_human_p = DetectAction(technique='human', state="start").resolve().perform()
+
+                    #new_human_p = DetectAction(technique='human', state="stop").resolve().perform()
+
+                    print("Human Point", tmp)
+                    print("Human Point in Map", human_point_in_map)
+                    print("Human Pose in Map", human_pose_in_map)
+                    print("Human Pose in Bl", human_pose_in_bl)
+                    print("Toyas Pose in frame", restaurant.toya_pose)
+
+                    #if human_pose_in_bl is not None:
+                     #   human_bool = True
+                     #   NavigateAction(target_locations=[Pose([human_pose_in_map.position.x-0.25, human_pose_in_map.position.y-0.25, 0])]).resolve().perform()
+
+
                 except Exception as e:
                     print(e)
+                try:
+                    MoveTorsoAction([0]).resolve().perform() # Damit Toya eingefahren ist bevor sie losfährt
+                    plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                    plan.perform()
+                except SensorMonitoringCondition:
+                    text_to_speech_publisher.pub_now("Finding my way. Please wait.", talk)
+                    image_switch_publisher.pub_now(ImageEnum.HI.value)
+
+        if step <= 2:
+            text_to_speech_publisher.pub_now("Driving.", talk)
+            image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
+            try:
+                plan = Code(lambda: NavigateAction([human_pose_in_map.pose.position.x-0.2, human_pose_in_map.pose.position.y-0.2, 0]).resolve().perform()) >> Monitor(monitor_func)
+                plan.perform()
+            except SensorMonitoringCondition:
+                print("ABBRUCH ALARM ALARM")
+                #TODO schauen, ob move interrupt vielleicht schon in einem Designator festgelegt worden ist
+                move.interrupt()
+
+
+
         #          try:
         #                 plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
         #                 plan.perform()
@@ -343,4 +371,4 @@ def demo(step):
 #     demo(step=1)
 
 
-demo(1)
+demo(0)
