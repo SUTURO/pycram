@@ -36,33 +36,78 @@ object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
 with (real_robot):
     # TalkingMotion("Starting demo").perform()
     # rospy.loginfo("Starting demo")
-
     ParkArmsAction([Arms.LEFT]).resolve().perform()
-    # NavigateAction(target_locations=[Pose([1.7, 2.4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
-    NavigateAction(target_locations=[Pose([4.25, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
-    LookAtAction(targets=[Pose([5.3, 3.9, 0.21], [0, 0, 0, 1])]).resolve().perform()
-    # place_poses_list = DetectAction(technique='location', state='popcorn_table').resolve().perform()
-    # sorted_places = get_free_spaces(place_poses_list[1])
-    # print(sorted_places)
+
+    pickup = "shelf"
+    placing = "popcorn_table"
+
+    if pickup == "shelf":
+        # shelf pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([4.25, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
+        LookAtAction(targets=[Pose([5.3, 3.9, 0.21], [0, 0, 0, 1])]).resolve().perform()
+        ##################################################################
+    elif pickup == "long_table":
+        # long table pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([4.7, 4.9, 0], [0, 0, 1, 0])]).resolve().perform()
+        LookAtAction(targets=[Pose([3.5, 4.9, 0.21], [0, 0, 1, 0])]).resolve().perform()
+        #################################################################
+    elif pickup == "popcorn_table":
+        # popcorn table pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        LookAtAction(targets=[Pose([1.55, 4.9, 0.21], [0, 0, 0.7, 0.7])]).resolve().perform()
+        #################################################################
+
     object_desig = DetectAction(technique='all').resolve().perform()
     obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Cerealbox"])
     PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
-    NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x - 0.6,
-                                           robot.get_pose().pose.position.y, 0],
-                                          [0, 0, 0, 1])]).resolve().perform()
+
+    if pickup == "shelf":
+        # shelf pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x - 0.6,
+                                               robot.get_pose().pose.position.y, 0],
+                                              [0, 0, 0, 1])]).resolve().perform()
+        ##################################################################
+    elif pickup == "long_table":
+        # long table pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x + 0.6,
+                                               robot.get_pose().pose.position.y, 0],
+                                              [0, 0, 1, 10])]).resolve().perform()
+        #################################################################
+    elif pickup == "popcorn_table":
+        # popcorn table pickup
+        #################################################################
+        NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
+                                               robot.get_pose().pose.position.y - 0.6, 0],
+                                              [0, 0, 0.7, 0.7])]).resolve().perform()
+        #################################################################
+
     ParkArmsAction([Arms.LEFT]).resolve().perform()
 
-    NavigateAction(target_locations=[Pose([3.9, 1.9, 0], [0, 0, 1, 0])]).resolve().perform()
-    NavigateAction(target_locations=[Pose([1.7, 2.4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
-    NavigateAction(target_locations=[Pose([1.4, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+    if placing == "popcorn_table":
+        # popcorn table placing
+        #################################################################
+        NavigateAction(target_locations=[Pose([3.9, 1.9, 0], [0, 0, 1, 0])]).resolve().perform()
+        NavigateAction(target_locations=[Pose([1.7, 2.4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
 
-    PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([1.4, 4.8, 0.875], [0, 0, 1, 0])],
-                grasps=[Grasp.FRONT], arms=[Arms.LEFT]).resolve().perform()
+        #TODO: change z + grasp
+        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([1.4, 4.8, 0.875], [0, 0, 0.7, 0.7])],
+                    grasps=[Grasp.FRONT], arms=[Arms.LEFT]).resolve().perform()
+        ################################################################
+    elif placing == "long_table":
+        # long table placing
+        ##################################################################
+        NavigateAction(target_locations=[Pose([4.5, 4.9, 0], [0, 0, 1, 0])]).resolve().perform()
+        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([3.6, 5, 0.875], [0, 0, 1, 0])],
+                    grasps=[Grasp.FRONT], arms=[Arms.LEFT]).resolve().perform()
+        #################################################################
 
 
-    # NavigateAction(target_locations=[Pose([4.5, 5, 0], [0, 0, 1, 0])]).resolve().perform()
-    # PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([3.6, 5, 0.875], [0, 0, 1, 0])],
-                # grasps=[Grasp.FRONT], arms=[Arms.LEFT]).resolve().perform()
     # try_pick_up(robot, obj_list[0], "front")
     # Move back
     # NavigateAction(target_locations=[Pose([1.45, 5, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
