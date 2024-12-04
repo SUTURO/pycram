@@ -1004,15 +1004,15 @@ class PickUpActionPerformable(ActionAbstract):
         push_base = special_knowledge_offset
         # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
         #  depending on robot if we dont generlize this we will have a big list in the end of all robots
-        if robot.name == "hsrb":
-            z = 0.04
-            if self.grasp == "top":
-                z = 0.025
-                if self.object_designator.obj_type == "Metalbowl":
-                    z = 0.044
-            push_base.pose.position.z += z
+        # if robot.name == "hsrb":
+        #     z = 0.04
+        #     if self.grasp == "top":
+        #         z = 0.025
+        #         if self.object_designator.obj_type == "Metalbowl":
+        #             z = 0.044
+        #     push_base.pose.position.z += z
         push_baseTm = lt.transform_pose(push_base, "map")
-        special_knowledge_offsetTm = lt.transform_pose(push_base, "map")
+        special_knowledge_offsetTm = lt.transform_pose(special_knowledge_offset, "map")
 
         # Grasping from the top inherently requires calculating an offset, whereas front grasping involves
         # slightly pushing the object forward.
