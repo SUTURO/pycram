@@ -307,8 +307,22 @@ class HSRBDetectingReal(ProcessModule):
         """
 
         # ToDo: at the moment perception ignores searching for a specific object type so we do that as well on real
-        if desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
+        if desig.state == "stop":
+            stop_query()
+            return "stopped"
+        elif desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
             human_pose = query_human()
+            return human_pose
+
+        elif desig.technique == 'waving':
+            query_result = query_waving_human()
+            for i in range(0, len(query_result.res)):
+                try:
+                    human_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                except IndexError:
+                    human_pose = Pose.from_pose_stamped(query_result.res[i].pose)
+                    pass
+
             return human_pose
         elif desig.state == "face":
 
@@ -330,9 +344,7 @@ class HSRBDetectingReal(ProcessModule):
 
             return return_list
 
-        elif desig.state == "stop":
-            stop_query()
-            return "stopped"
+
 
         elif desig.technique == 'location':
             seat = desig.state
