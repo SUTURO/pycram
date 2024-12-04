@@ -191,3 +191,4 @@ def query_waving_human() -> Pose:
     result = send_query(obj_type='waving')
     if result:
         return result
+
