@@ -270,12 +270,11 @@ class ManualMarkerPublisher:
         :param path_to_resource: Path to the resource of a Bulletworld object
         """
 
-        frame_id = marker_pose.header.frame_id
         new_marker = Marker()
         new_marker.id = self.current_id
-        new_marker.header.frame_id = frame_id
+        new_marker.header.frame_id = "map"
         new_marker.ns = name
-        new_marker.header.stamp = Time.now()
+        # new_marker.header.stamp = Time.now()
         new_marker.type = marker_type
         new_marker.action = Marker.ADD
         new_marker.pose = marker_pose.pose
