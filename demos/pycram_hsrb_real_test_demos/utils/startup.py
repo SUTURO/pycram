@@ -1,11 +1,12 @@
 from pycram.datastructures.dataclasses import Color
+from pycram.local_transformer import LocalTransformer
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater, KitchenStateUpdater
 
 from pycram.datastructures.enums import ObjectType
 
 from pycram.external_interfaces.navigate import PoseNavigator
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
-from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
+from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher, ManualMarkerPublisher
 from pycram.worlds.bullet_world import BulletWorld, Object
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher
 
@@ -13,6 +14,8 @@ from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPub
 def startup():
     world = BulletWorld()
     v = VizMarkerPublisher()
+    marker = ManualMarkerPublisher()
+    tf_listener = LocalTransformer()
 
     #world = BulletWorld()
     v = VizMarkerPublisher()
@@ -28,4 +31,4 @@ def startup():
     KitchenStateUpdater("/tf", "/iai_kitchen/joint_states")
     move = PoseNavigator()
 
-    return world, v, text_to_speech_publisher, image_switch_publisher, move, robot
+    return tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot
