@@ -80,7 +80,7 @@ def detect_waving():
     """
     talk = True
     global human_pose
-    text_to_speech_publisher.pub_now("Please wave you hand. I will come to you", talk)
+    #text_to_speech_publisher.pub_now("Please wave you hand. I will come to you", talk)
     human_pose = DetectAction(technique='waving', state='start').resolve().perform()
 
 
@@ -127,7 +127,7 @@ def demo(step):
     with real_robot:
         talk = True
         start_pose = robot.get_pose()
-        TalkingMotion("start demo").perform()
+        #TalkingMotion("start demo").perform()
         kitchenPose = start_pose
         if step <= 0:
             config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
@@ -142,45 +142,41 @@ def demo(step):
         if step <= 1:
            # text_to_speech_publisher.pub_now("Starting Restaurant Demo.", talk)
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
-            look_around(5, start_pose, talk)
+            look_around(20, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
             drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
             if human_pose is not None:
                 image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
                 customerCounter += 1
-                customer = CustomerDescription(customerCounter, human_pose)
+                customer = CustomerDescription(customerCounter, drive_pose)
             marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
             move.pub_now(navpose=drive_pose)
-            detect_obstacles()
-            if robot.get_pose() != drive_pose:
-                try:
-                    move.pub_now(navpose=drive_pose)
-                except EnvironmentError:
-                    print("Position of customer is not reachable. Please re-position yourself")
+
             print(customer.pose)
             print(customer.id)
         # if step <= 2:  # Order step
         #     image_switch_publisher.pub_now(ImageEnum.ORDER.value)
         #     MoveTorsoAction([0.1]).resolve().perform()
         #     TalkingMotion("What do you want to order?").perform()  # NLP Placeholder
-        #     customer.set_order(order)
+        #     customer.set_order("Cola",1)
+        #     TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
         # if step <= 3:  # Drive back step
-        #     image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
-        #     TalkingMotion("I will drive back now and return with your order").perform()
-        #     MoveTorsoAction([0]).resolve().perform()
-        #     move.pub_now(navpose=kitchenPose)
-        #     print("I am back")
+        #      image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
+        #      TalkingMotion("I will drive back now and return with your order").perform()
+        #      MoveTorsoAction([0]).resolve().perform()
+        #      move.pub_now(navpose=kitchenPose)
+        #      TalkingMotion(f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
+        # #     print("I am back")
         # if step <= 4:
         #     # Present the order
-        #     TalkingMotion(
-        #         f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}")
+        #     TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
         #     # wait for the cook
-        #     rospy.sleep(3)
+        #     rospy.sleep(1.5)
         #     move.pub_now(navpose=customer.pose)
         #     print("demo-done")
 
 
-demo(1)
+demo(0)
 
 # while not success:
 #     try:
