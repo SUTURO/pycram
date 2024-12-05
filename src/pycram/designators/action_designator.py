@@ -958,7 +958,7 @@ class PickUpActionPerformable(ActionAbstract):
         execute = True
 
         # Adjust object pose for top-grasping, if applicable
-        if self.grasp == "top":
+        if self.grasp == Grasp.TOP:
             print("Metalbowl from top")
             # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
             # Note: This includes hardcoded adjustments and should ideally be generalized
@@ -996,21 +996,21 @@ class PickUpActionPerformable(ActionAbstract):
         # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
         #  depending on robot
         if robot.name == "hsrb":
-            if self.grasp == "top":
+            if self.grasp == Grasp.TOP:
                 if self.object_designator.obj_type == "Metalbowl":
-                    special_knowledge_offset.pose.position.y += 0.085
-                    special_knowledge_offset.pose.position.x -= 0.03
+                    special_knowledge_offset.pose.position.y -= 0.085
+                    special_knowledge_offset.pose.position.x += 0.03
 
         push_base = special_knowledge_offset
         # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
         #  depending on robot if we dont generlize this we will have a big list in the end of all robots
-        # if robot.name == "hsrb":
-        #     z = 0.04
-        #     if self.grasp == "top":
-        #         z = 0.025
-        #         if self.object_designator.obj_type == "Metalbowl":
-        #             z = 0.044
-        #     push_base.pose.position.z += z
+        if robot.name == "hsrb":
+            z = 0.04
+            if self.grasp == Grasp.TOP:
+                z = 0.025
+                if self.object_designator.obj_type == "Metalbowl":
+                    z = 0.035
+            push_base.pose.position.z += z
         push_baseTm = lt.transform_pose(push_base, "map")
         special_knowledge_offsetTm = lt.transform_pose(special_knowledge_offset, "map")
 
@@ -1084,7 +1084,7 @@ class PlaceActionPerformable(ActionAbstract):
         robot = World.robot
         oTm = self.target_location
 
-        if self.grasp == "top":
+        if self.grasp == Grasp.TOP:
             oTm.pose.position.z += 0.05
 
         # Determine the grasp orientation and transform the pose to the base link frame
@@ -1105,7 +1105,7 @@ class PlaceActionPerformable(ActionAbstract):
         push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
         if robot.name == "hsrb":
             z = 0.03
-            if self.grasp == "top":
+            if self.grasp == Grasp.TOP:
                 z = 0.07
             push_base.pose.position.z += z
         # todo: make this for other robots
