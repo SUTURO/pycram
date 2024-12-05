@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from std_msgs.msg import String
-from knowledge_msgs.srv import IsKnown, ObjectPose
+from knowledge_msgs.srv import IsKnown, ObjectPose, ObjectInfo
 import rospy
 import rosservice
 
@@ -28,9 +28,9 @@ else:
 
 #logging.setLoggerClass(logging.Logger)
 logger = logging.getLogger(__name__)
-from pycram import ch
+# from pycram import ch
 
-logger.addHandler(ch)
+#logger.addHandler(ch)
 logger.setLevel(logging.DEBUG)
 
 
@@ -171,6 +171,23 @@ def get_guest_info(id):
     except rospy.ServiceException as e:
         rospy.logerr("Service call failed")
         pass
+
+
+def get_object_info(object_name):
+    rospy.wait_for_service('obj_info_server')  # Warte, bis der Service verfügbar ist
+    try:
+        # Erstelle einen Proxy für den Service
+        obj_info_service = rospy.ServiceProxy('obj_info_server', ObjectInfo)
+
+        # Rufe den Service mit dem Objektname auf
+        response = obj_info_service(object_name)
+        print("res:" + str(response))
+
+        return response
+
+    except rospy.ServiceException as e:
+        rospy.logerr(f"Service call failed: {e}")
+
 
 def get_table_pose(table_name):
     """
