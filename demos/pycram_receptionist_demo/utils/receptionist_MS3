@@ -1,0 +1,101 @@
+ALLES IN HSR_MODE ÖFFNEN!!!!!!
+
+1. pycharm
+
+
+##########################################################
+# Launch Script path
+cd /home/suturo/suturo23_24/pycram_ws/src/pycram/demos/util-scripts
+python3 setup-recepetionist.py
+
+########################################################
+
+oder:
+
+2. Receptionist Launch (startet rviz, couch, giskard, rasa und doorbell):
+roslaunch pycram receptionist.launch
+
+3. Perception:
+robokudo_venv
+rosrun robokudo main.py _ae=receptionist _ros_pkg=milestone1
+
+6. Audio Topic auf HSR starten
+ssh administrator@hsrb.local
+roslaunch audio_capture capture_wave.launch
+-> test, ob topic läuft: rostopic hz /audio/audio
+
+5. NLP
+nlp_venv
+cd /home/suturo/suturo23_24/nlp_ws/src/suturo_nlp/activate_language_processing/scripts
+python3 nlp_receptionist.py -hsr
+
+# NLP Ersatz Script
+cd /home/suturo/suturo23_24/pycram_ws/src/pycram/demos/pycram_receptionist_demo/tests
+python3 ms3_demo_nlp.py
+
+(4. giskard:
+roslaunch giskardpy giskardpy_hsr_real_vel.launch)
+
+5. Knowledge:
+mongodb     (um Datenbank zu aktivieren)
+vorher kn um knowledge zu sourcen
+roslaunch suturo_knowledge suturo_knowledge.launch
+rosrun suturo_knowledge object_info_server.py
+
+
+
+
+7. Debugging
+ssh administrator@hsrb.local
+docker logs --tail 50 --follow --timestamps docker.hsrb.robot.service  
+(htop alle jobs anzeigen)
+-------
+delay check:
+rostopic delay /hsrb/base_scan
+
+fixen mit shh auf admin und dann:
+sudo chronyd -q 'server 192.168.0.130 iburst'
+192.168.0.130
+
+-----
+
+# wenn velocity Controller die ganze Zeit Fehler wirft
+admin mode:  roslaunch unload_load_my_controller.launch 
+
+
+
+
+
+# Sonstiges
+
+## Roboter fährt nicht hoch
+login auf Bildschir: hsr-hmi
+p.hsrhmi
+
+##controls wieder einschalten
+rosrun rqt_controller_manager rqt_controller_manager
+
+# altes Perception
+rosrun robokudo main.py _ae=humandetection_demo _ros_pkg=milestone1
+
+# nur Rviz/Map Launch:
+roslaunch suturo_bringup envi_bringup.launch
+ 
+ 
+# Cooler Secret Command :)
+rostopic pub /hsrb/command_status_led std_msgs/UInt16 "data: 2"
+ 
+    
+    
+    
+ 
+ # Bluetooth Controller verbinden (aktuell funktioniert nicht)  
+ssh administrator@hsrb.local   
+sudo systemctl start fix-bluetooth.service
+
+
+
+
+
+
+

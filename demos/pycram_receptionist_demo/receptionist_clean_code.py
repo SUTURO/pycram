@@ -29,7 +29,6 @@ RobotStateUpdater("/tf", "/giskard_joint_states")
 
 # robot.set_color([0.5, 0.5, 0.9, 1])
 
-# TODO: change urdf
 # Create environmental objects
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 
@@ -45,7 +44,7 @@ host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
 
 # for testing, if the first part of the demo is skipped
-guest1.set_attributes(['male', 'without a hat', 'wearing a t-shirt', ' a dark top'])
+#guest1.set_attributes(['male', 'without a hat', 'wearing a t-shirt', ' a dark top'])
 guest1.set_id(0)
 
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
@@ -56,7 +55,7 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 1.9, 0.8])
 nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
-greet_guest_pose = Pose(position=[2.2, 1, 0], orientation=[0, 0, 0.8, -0.5])
+greet_guest_pose = Pose(position=[2.2, 0.6, 0], orientation=[0, 0, 0.8, -0.5])
 
 # variables for communcation with nlp
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
@@ -71,6 +70,7 @@ def demo(step: int):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
         TalkingMotion("start demo").perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
+        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
 
         if step <= 1:
             nlp.welcome_guest(guest1)

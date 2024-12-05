@@ -23,7 +23,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     TalkingMotion("please look at me").perform()
     rospy.sleep(1.5)
     # remember face
-    while trys < 2:
+    while trys < 1:
         try:
             keys = DetectAction(technique='human', state='face').resolve().perform()
             new_id = keys["keys"][0]
@@ -265,8 +265,7 @@ def describe(human: HumanDescription):
     """
     pub_pose2 = rospy.Publisher('/human_pose', PointStamped, queue_size=10)
     
-    if human.attributes:
-        print("++++++++++++++++++++++++")
+    if human.attributes != "False" and human.attributes is not None:
         print(human.attributes)
 
         if human.pose:
