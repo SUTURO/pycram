@@ -560,6 +560,18 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
+def check_force_torque(object_type: str, threshold: str) -> None:
+    """
+    threshold:  GraspCarefully
+                Place
+    object_type: Standard
+                 Bowl
+    """
+    giskard_wrapper.monitor_force_torque_check(object_type, threshold)
+
+
+@init_giskard_interface
+@thread_safe
 def move_arm_to_point(point: PointStamped) -> 'MoveResult':
     """
     moves arm to given position
