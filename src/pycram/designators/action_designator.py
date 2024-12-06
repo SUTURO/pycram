@@ -11,6 +11,7 @@ import numpy as np
 import rospy
 import sqlalchemy
 from geometry_msgs.msg import PointStamped
+from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
@@ -1027,13 +1028,7 @@ class PickUpActionPerformable(ActionAbstract):
         rospy.logwarn("Pushing now")
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
-            if self.object_designator.obj_type != "Metalbowl":
-                object_type = "Standard"
-            else:
-                object_type = "Bowl"
-            MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "GraspCarefully",
-                                     allow_gripper_collision=False).perform()
-            # MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).perform()
+            MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).perform()
 
         # Finalize the pick-up by closing the gripper and lifting the object
         rospy.logwarn("Close Gripper")
@@ -1044,7 +1039,16 @@ class PickUpActionPerformable(ActionAbstract):
         liftingTm.pose.position.z += 0.03
         World.current_world.add_vis_axis(liftingTm)
         if execute:
-            MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "Standard"
+            else:
+                object_type = "Bowl"
+            # try:
+            MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, "GraspCarefully",
+                                     allow_gripper_collision=False).perform()
+            # except ForceTorqueThresholdException:
+
+        # MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(arm=self.arm)
         robot.attach(child_object=self.object_designator.world_object, parent_link=tool_frame)
 

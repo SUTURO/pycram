@@ -122,7 +122,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
         return pm_manager.move_tcp_ft().execute(self)
 
     def to_sql(self) -> ORMMoveTCPMotion:
-        return ORMMoveTCPMotion(self.arm, self.object_type, self.threshold, self.allow_gripper_collision)
+        return ORMMoveTCPMotion(self.target, self.arm, self.object_type, self.threshold, self.allow_gripper_collision)
 
     def insert(self, session: Session, *args, **kwargs) -> ORMMoveTCPMotion:
         motion = super().insert(session)

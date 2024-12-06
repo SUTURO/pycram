@@ -61,7 +61,7 @@ class PlacingZPose(Enum):
     PLASTICKNIFE = 0.775
     KNIFE = 0.775
     METALBOWL = 0.815
-    MILKPACKJA = 0.845
+    MILKPACK = 0.845
     METALMUG = 0.775
     CEREALBOX = 0.875
     METALPLATE = 0.875

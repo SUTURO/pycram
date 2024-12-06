@@ -560,14 +560,27 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
-def check_force_torque(object_type: str, threshold: str) -> None:
+def check_force_torque(goal_pose: PoseStamped,
+                       tip_link: str,
+                       root_link: str,
+                       object_type: str,
+                       threshold_name: str,
+                       position_threshold: float = 0.02,
+                       orientation_threshold: float = 0.02
+                       ) -> None:
     """
     threshold:  GraspCarefully
                 Place
     object_type: Standard
                  Bowl
     """
-    giskard_wrapper.monitor_force_torque_check(object_type, threshold)
+    giskard_wrapper.monitor_force_torque_check(goal_pose=_pose_to_pose_stamped(goal_pose),
+                                               tip_link=tip_link,
+                                               root_link=root_link,
+                                               position_threshold=position_threshold,
+                                               orientation_threshold=orientation_threshold,
+                                               object_type=object_type,
+                                               threshold_name=threshold_name)
 
 
 @init_giskard_interface
