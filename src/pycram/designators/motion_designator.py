@@ -489,7 +489,7 @@ class HeadFollowMotion(BaseMotion):
     """
     continuously look at human
     """
-    state: Optional[str]
+    state: Optional[str] = "start"
     """
     Whether to start or stop motion
 
@@ -539,10 +539,6 @@ class DoorOpenMotion(BaseMotion):
     """
     name of the handle joint so that giskard knows how to open the door
     """
-    offset: Optional[Vector3]
-    """
-    name of the handle joint so that giskard knows how to open the door
-    """
 
     @with_tree
     def perform(self):
@@ -555,6 +551,7 @@ class DoorOpenMotion(BaseMotion):
     def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
         pass
 
+
 @dataclass
 class GraspHandleMotion(BaseMotion):
     """
@@ -564,6 +561,10 @@ class GraspHandleMotion(BaseMotion):
     handle: str
     """
     name of the handle joint so that giskard knows how to open the door
+    """
+    offset: Optional[Vector3] = None
+    """
+    give offset for the end grasping position
     """
 
     @with_tree

@@ -679,7 +679,7 @@ class HSRBGraspHandleReal(ProcessModule):
     """
 
     def _execute(self, designator: GraspHandleMotion) -> Any:
-        giskard.grasp_doorhandle(designator.handle)
+        giskard.grasp_doorhandle(designator.handle, designator.offset)
 
 
 class HSRBGraspDishwasherHandleReal(ProcessModule):

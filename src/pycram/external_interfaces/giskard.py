@@ -608,10 +608,15 @@ def grasp_doorhandle(handle_name: str, offset: Vector3) -> 'MoveResult':
 
     offset_stamp = Vector3Stamped()
     offset_stamp.header.frame_id = handle_name
-    offset_stamp.vector = offset
+    if offset:
+        offset_stamp.vector = offset
 
-    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name,
-                                                        grasp_axis_offset=offset_stamp)
+        giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name,
+                                                            grasp_axis_offset=offset_stamp)
+
+    else:
+        giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
+
     giskard_wrapper.motion_goals.allow_all_collisions()
     giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
