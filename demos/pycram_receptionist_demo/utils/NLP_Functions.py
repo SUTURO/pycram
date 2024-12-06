@@ -165,6 +165,8 @@ class NLP_Functions:
 
         HeadFollowMotion(state="stop").perform()
         DetectAction(technique='human', state="stop").resolve().perform()
+        rospy.sleep(1)
+        TalkingMotion("Nice to meet you").perform()
         return guest
 
     def name_repeat(self):

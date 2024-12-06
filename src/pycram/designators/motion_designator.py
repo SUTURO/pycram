@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
+from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import PointStamped
 
 from pycram.datastructures.enums import *
@@ -492,6 +492,10 @@ class DoorOpenMotion(BaseMotion):
     """
 
     handle: str
+    """
+    name of the handle joint so that giskard knows how to open the door
+    """
+    offset: Optional[Vector3]
     """
     name of the handle joint so that giskard knows how to open the door
     """

@@ -7,7 +7,7 @@ from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import PointingMotion
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
-look_couch = Pose([3.8, 1.9, 0.75])
+look_couch = Pose([3.8, 0.3, 0.75])
 
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
@@ -17,7 +17,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     :param trys: failure handling
     """
     MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-    MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.45]).perform()
     TalkingMotion("i will take a picture of you to recognize you later").perform()
     rospy.sleep(2.4)
     TalkingMotion("please look at me").perform()
@@ -126,7 +126,6 @@ def detect_host_face(host: HumanDescription):
         print("id humans: " + str(id_humans))
         host_pose = human_dict[id_humans[0]]
         host.set_id(id_humans[0])
-        # todo: in point? type right??
         host.set_pose(PoseStamped_to_Point(host_pose))
         return True
 
@@ -222,9 +221,11 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
     """
     pub_pose = rospy.Publisher('/human_pose', PointStamped, queue_size=10)
     print("pose:" + str(human1.pose))
+    rospy.sleep(2)
     if human1.pose:
         pub_pose.publish(human1.pose)
         rospy.sleep(1.0)
+        pub_pose.publish(human1.pose)
     TalkingMotion(f"Hey, {human1.name}").perform()
     rospy.sleep(2.5)
 

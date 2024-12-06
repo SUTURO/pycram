@@ -29,6 +29,7 @@ RobotStateUpdater("/tf", "/giskard_joint_states")
 
 # robot.set_color([0.5, 0.5, 0.9, 1])
 
+# TODO: change urdf
 # Create environmental objects
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 
@@ -39,7 +40,7 @@ response = [None, None, None]
 callback = False
 
 # Declare variables for humans
-host = HumanDescription("Bob", fav_drink="Milk")
+host = HumanDescription("Vanessa", fav_drink="coffee")
 host.set_id(1)
 guest1 = HumanDescription("Lisa", fav_drink="water")
 
@@ -53,9 +54,9 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 
 # important poses
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
-look_couch = Pose([3.8, 0.3, 0.75])
+look_couch = Pose([3.8, 0.3, 0.8])
 nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
-greet_guest_pose = Pose(position=[1.9, 0.6, 0], orientation=[0, 0, 0.8, -0.5])
+greet_guest_pose = Pose(position=[2.2, 1, 0], orientation=[0, 0, 0.8, -0.5])
 
 # variables for communcation with nlp
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
@@ -68,14 +69,14 @@ nlp = NLP_Functions()
 def demo(step: int):
     with (real_robot):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
-        TalkingMotion("start demo").perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
             nlp.welcome_guest(guest1)
 
         if step <= 2:
             get_attributes(guest1)
-            print("first guest id: " + str(guest1.id))
+            print("guest 1 id: " + str(guest1.id))
 
         if step <= 3:
             TalkingMotion("i will show you the living room now").perform()
@@ -103,7 +104,6 @@ def demo(step: int):
                     try:
                         print("host has no id")
                         host_pose = DetectAction(technique='human').resolve().perform()
-                        print(host_pose)
                         host.set_pose(host_pose)
 
                     except Exception as e:
@@ -114,13 +114,16 @@ def demo(step: int):
 
         if step <= 5:
             LookAtAction([look_couch]).resolve().perform()
-            guest_pose = detect_point_to_seat(robot)
-            if not guest_pose:
-                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
-                guest1.set_pose(guest_pose)
-            else:
-                guest1.set_pose(guest_pose)
+            TalkingMotion("please take da seat on the couch").perform()
+            pose_guest = PointStamped()
+            pose_guest.header.frame_id = "map"
+            pose_guest.point.x = 3.7
+            pose_guest.point.y = 0.3
+            pose_guest.point.z = 0.85
+            guest1.set_pose(pose_guest)
+
+            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+            PointingMotion(pose_guest).perform()
 
         if step <= 6:
             HeadFollowMotion(state="start").perform()
@@ -129,43 +132,10 @@ def demo(step: int):
             rospy.sleep(2)
             HeadFollowMotion(state="stop").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            describe(guest1)
 
         if step <= 7:
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction([greet_guest_pose]).resolve().perform()
-            TalkingMotion("waiting for new guest").perform()
-            image_switch_publisher.pub_now(ImageEnum.HI.value)
 
-        if step <= 8:
-            nlp.welcome_guest(guest2)
-            TalkingMotion("i will show you the living room now").perform()
-            rospy.sleep(1.5)
-            TalkingMotion("please step out of the way and follow me").perform()
-            NavigateAction([couch_pose_semantik]).resolve().perform()
-
-        if step <= 9:
-            TalkingMotion("Welcome to the living room").perform()
-            identify_faces(host, guest1)
-
-        if step <= 10:
-            LookAtAction([look_couch]).resolve().perform()
-            guest_pose = detect_point_to_seat(robot)
-            if not guest_pose:
-                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                guest_pose = detect_point_to_seat(no_sofa=True)
-                guest2.set_pose(guest_pose)
-            else:
-                guest2.set_pose(guest_pose)
-
-        if step <= 11:
-            HeadFollowMotion(state="start").perform()
-            rospy.sleep(1.5)
-            introduce(host, guest2)
-            rospy.sleep(3)
-            introduce(guest1, guest2)
-            rospy.sleep(3)
-            describe(guest1)
-            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-
-
-demo(5)
+demo(0)
