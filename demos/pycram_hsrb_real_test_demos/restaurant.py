@@ -9,6 +9,8 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
 from demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant
+
+from pycram.demos.pycram_hsrb_real_test_demos.utils.NLPRestaurant import NLPRestaurant
 # from pycram.demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant, monitor_func
 from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction, \
     NavigateAction
@@ -25,7 +27,6 @@ from pycram.process_module import real_robot
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 import pycram.external_interfaces.giskard as giskardpy
 import pycram.external_interfaces.robokudo as robokudo
-from demos.pycram_hsrb_real_test_demos.utils.nlp_restaurant import nlp_restaurant
 import rospy
 import tf
 from geometry_msgs.msg import PoseStamped
@@ -41,7 +42,7 @@ rospy.loginfo("Waiting for action server")
 rospy.loginfo("You can start your demo now")
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 
-nlp = nlp_restaurant()
+nlp = NLPRestaurant()
 
 ###########################################################################
 
@@ -50,6 +51,11 @@ global human_pose
 human_pose = None
 order = ('Cola', 2)
 
+
+###########################################################################
+#NLP Functions
+
+##########################################################################
 
 def monitor_found_waving():
     global human_pose
@@ -114,11 +120,6 @@ def look_around(increase: int, star_pose: PoseStamped, talk):
 
 
 
-def detect_obstacles():
-    def laser_scan_cb(msg):
-        ranges = list(msg.ranges)
-        print(ranges)
-    laser_subscriber = rospy.Subscriber("hsrb/base_scan", LaserScan, laser_scan_cb )
 
 
 def demo(step):
@@ -151,15 +152,15 @@ def demo(step):
                 customer = CustomerDescription(customerCounter, drive_pose)
             marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
             move.pub_now(navpose=drive_pose)
-
             print(customer.pose)
             print(customer.id)
-        # if step <= 2:  # Order step
-        #     image_switch_publisher.pub_now(ImageEnum.ORDER.value)
-        #     MoveTorsoAction([0.1]).resolve().perform()
-        #     TalkingMotion("What do you want to order?").perform()  # NLP Placeholder
-        #     customer.set_order("Cola",1)
-        #     TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
+        if step <= 2:  # Order step
+             image_switch_publisher.pub_now(ImageEnum.ORDER.value)
+             MoveTorsoAction([0.1]).resolve().perform()
+             TalkingMotion("What do you want to order?").perform()  # NLP Placeholder
+             nlp_restaurant.get_order(customer)
+             #customer.set_order("Cola",1)
+             #TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
         # if step <= 3:  # Drive back step
         #      image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
         #      TalkingMotion("I will drive back now and return with your order").perform()
