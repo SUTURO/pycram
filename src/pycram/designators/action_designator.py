@@ -18,7 +18,8 @@ from typing_extensions import List, Union, Callable, Optional, Type
 
 from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
-    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion
+    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
+    MoveTCPForceTorqueMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState
 from ..datastructures.pose import Pose
@@ -1026,7 +1027,13 @@ class PickUpActionPerformable(ActionAbstract):
         rospy.logwarn("Pushing now")
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
-            MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "Standard"
+            else:
+                object_type = "Bowl"
+            MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "GraspCarefully",
+                                     allow_gripper_collision=False).perform()
+            # MoveTCPMotion(push_baseTm, self.arm, allow_gripper_collision=False).perform()
 
         # Finalize the pick-up by closing the gripper and lifting the object
         rospy.logwarn("Close Gripper")
@@ -1114,7 +1121,12 @@ class PlaceActionPerformable(ActionAbstract):
         rospy.logwarn("Pushing now")
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
-            MoveTCPMotion(push_baseTm, self.arm).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "Standard"
+            else:
+                object_type = "Bowl"
+            MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "Place").perform()
+            # MoveTCPMotion(push_baseTm, self.arm).perform()
         # if self.object_designator.type == "Metalplate":
         #     loweringTm = push_baseTm
         #     loweringTm.pose.position.z -= 0.08

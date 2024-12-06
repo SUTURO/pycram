@@ -90,6 +90,50 @@ class MoveTCPMotion(BaseMotion):
 
 
 @dataclass
+class MoveTCPForceTorqueMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot
+    """
+
+    target: Pose
+    """
+    Target pose to which the TCP should be moved
+    """
+    arm: Arms
+    """
+    Arm with the TCP that should be moved to the target
+    """
+    object_type: str
+    """
+    Target pose to which the TCP should be moved
+    """
+    threshold: str
+    """
+    Target pose to which the TCP should be moved
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper can collide with something
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.move_tcp_ft().execute(self)
+
+    def to_sql(self) -> ORMMoveTCPMotion:
+        return ORMMoveTCPMotion(self.arm, self.object_type, self.threshold, self.allow_gripper_collision)
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMoveTCPMotion:
+        motion = super().insert(session)
+        pose = self.target.insert(session)
+        motion.pose = pose
+        session.add(motion)
+
+        return motion
+
+
+@dataclass
 class PickUpMotion(BaseMotion):
     """
     Lets the robot pick up a specific object
