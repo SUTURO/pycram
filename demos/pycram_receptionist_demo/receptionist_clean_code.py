@@ -11,7 +11,7 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
-from pycram.utilities.robocup_utils import ImageSwitchPublisher
+from pycram.utilities.robocup_utils import ImageSwitchPublisher, GraspListener
 from pycram.utils import axis_angle_to_quaternion
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
@@ -69,11 +69,15 @@ def demo(step: int):
     with (real_robot):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
         TalkingMotion("start demo").perform()
+        MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
 
         if step <= 1:
             nlp.welcome_guest(guest1)
 
         if step <= 2:
+            MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             get_attributes(guest1)
             print("first guest id: " + str(guest1.id))
 
@@ -138,6 +142,7 @@ def demo(step: int):
 
         if step <= 8:
             nlp.welcome_guest(guest2)
+            MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
@@ -168,4 +173,4 @@ def demo(step: int):
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
 
-demo(5)
+demo(0)

@@ -58,11 +58,13 @@ class NLP_Functions:
         # look for human
         DetectAction(technique='human').resolve().perform()
         rospy.sleep(1)
+        MoveJointsMotion(["torso_lift_joint"], [0.2]).perform()
 
         # look at guest and introduce
         HeadFollowMotion(state="start").perform()
         # giskardpy.move_head_to_human()
         rospy.sleep(2.3)
+        HeadFollowMotion(state="start").perform()
 
         TalkingMotion("Hello, i am Toya and my favorite drink is oil.").perform()
         rospy.sleep(3)

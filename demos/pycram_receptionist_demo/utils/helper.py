@@ -72,7 +72,6 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
 
                 lt = LocalTransformer()
                 pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
-                print("in robot: " + str(pose_in_robot_frame))
                 if pose_in_robot_frame.pose.position.y > 0.25:
                     TalkingMotion("please take a seat to the left from me").perform()
                     pose_in_robot_frame.pose.position.y += 0.4
@@ -182,7 +181,6 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                     unknown.append(key)
 
         except PerceptionObjectNotFound:
-            print("i am a failure and i hate my life")
             counter += 1
             print(counter)
             if counter == 3:
