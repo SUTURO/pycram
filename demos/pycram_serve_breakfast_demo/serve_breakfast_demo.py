@@ -29,7 +29,7 @@ bowl = None
 place_pose = None
 
 # x pose for placing the object
-x_pos = 1.4
+x_pos = 1.35
 
 # list of sorted placing poses
 sorted_places = []
