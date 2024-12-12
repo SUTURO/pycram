@@ -1,3 +1,4 @@
+import rospy
 from geometry_msgs.msg import Vector3
 
 from pycram.designators.action_designator import *
@@ -8,7 +9,7 @@ from pycram.external_interfaces.knowrob import get_object_info
 from pycram.process_module import real_robot
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
-from pycram.utilities.robocup_utils import ImageSwitchPublisher
+from pycram.utilities.robocup_utils import ImageSwitchPublisher, GraspListener
 from pycram.utils import axis_angle_to_quaternion
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
@@ -34,17 +35,41 @@ image_switch_publisher = ImageSwitchPublisher()
 
 def demo(step: int):
     with (real_robot):
-        TalkingMotion("start demo").perform()
-        print(robot.joints)
-        ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
-        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-        offset = Vector3()
-        offset.z = -0.01
-        offset.y = -0.015
-        grasp_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset)
-        MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-        open_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside")
+        if step <= 12:
+            grasp_listener = GraspListener()
+            if grasp_listener.check_grasp():
+                print("TRUE")
+            else: print("false")
+
+            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+            rospy.sleep(1)
+            if grasp_listener.check_grasp():
+                print("TRUE")
+            else:
+                print("false")
+
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            rospy.sleep(1)
+            if grasp_listener.check_grasp():
+                print("TRUE")
+            else:
+                print("false")
+        # # TalkingMotion("start demo").perform()
+        # ParkArmsAction([Arms.LEFT]).resolve().perform()
+        # MoveJointsMotion(["torso_lift_joint"], [0.2]).perform()
+        # # MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+        # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        # # door_pre = Pose([2.2, -0.9, 0])
+        # # NavigateAction([door_pre]).resolve().perform()
+        # offset = Vector3()
+        # offset.z = -0.035
+        # offset.y = -0.039
+        # #grasp_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset)
+        # GraspHandleMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset).perform()
+        # MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+        # DoorOpenMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside").perform()
+        # # open_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside")
+        # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
 
-demo(1)
+demo(12)

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
+from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import PointStamped
 
 from pycram.datastructures.enums import *
@@ -79,6 +79,50 @@ class MoveTCPMotion(BaseMotion):
 
     def to_sql(self) -> ORMMoveTCPMotion:
         return ORMMoveTCPMotion(self.arm, self.allow_gripper_collision)
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMoveTCPMotion:
+        motion = super().insert(session)
+        pose = self.target.insert(session)
+        motion.pose = pose
+        session.add(motion)
+
+        return motion
+
+
+@dataclass
+class MoveTCPForceTorqueMotion(BaseMotion):
+    """
+    Moves the Tool center point (TCP) of the robot
+    """
+
+    target: Pose
+    """
+    Target pose to which the TCP should be moved
+    """
+    arm: Arms
+    """
+    Arm with the TCP that should be moved to the target
+    """
+    object_type: str
+    """
+    Target pose to which the TCP should be moved
+    """
+    threshold: str
+    """
+    Target pose to which the TCP should be moved
+    """
+    allow_gripper_collision: Optional[bool] = None
+    """
+    If the gripper can collide with something
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.move_tcp_ft().execute(self)
+
+    def to_sql(self) -> ORMMoveTCPMotion:
+        return ORMMoveTCPMotion(self.target, self.arm, self.object_type, self.threshold, self.allow_gripper_collision)
 
     def insert(self, session: Session, *args, **kwargs) -> ORMMoveTCPMotion:
         motion = super().insert(session)
@@ -445,7 +489,7 @@ class HeadFollowMotion(BaseMotion):
     """
     continuously look at human
     """
-    state: Optional[str]
+    state: Optional[str] = "start"
     """
     Whether to start or stop motion
 
@@ -507,6 +551,7 @@ class DoorOpenMotion(BaseMotion):
     def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
         pass
 
+
 @dataclass
 class GraspHandleMotion(BaseMotion):
     """
@@ -516,6 +561,10 @@ class GraspHandleMotion(BaseMotion):
     handle: str
     """
     name of the handle joint so that giskard knows how to open the door
+    """
+    offset: Optional[Vector3] = None
+    """
+    give offset for the end grasping position
     """
 
     @with_tree

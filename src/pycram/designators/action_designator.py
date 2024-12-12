@@ -11,6 +11,7 @@ import numpy as np
 import rospy
 import sqlalchemy
 from geometry_msgs.msg import PointStamped
+from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from owlready2 import Thing
 from sqlalchemy.orm import Session
 from tf import transformations
@@ -18,7 +19,8 @@ from typing_extensions import List, Union, Callable, Optional, Type
 
 from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
-    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion
+    LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
+    MoveTCPForceTorqueMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState
 from ..datastructures.pose import Pose
@@ -997,6 +999,8 @@ class PickUpActionPerformable(ActionAbstract):
         #  depending on robot
         if robot.name == "hsrb":
             if self.grasp == Grasp.TOP:
+                if self.object_designator.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
+                    special_knowledge_offset.pose.position.y -= 0.02
                 if self.object_designator.obj_type == "Metalbowl":
                     special_knowledge_offset.pose.position.y -= 0.085
                     special_knowledge_offset.pose.position.x += 0.03
@@ -1037,6 +1041,15 @@ class PickUpActionPerformable(ActionAbstract):
         liftingTm.pose.position.z += 0.03
         World.current_world.add_vis_axis(liftingTm)
         if execute:
+            # if self.object_designator.obj_type != "Metalbowl":
+            #     object_type = "Standard"
+            # else:
+            #     object_type = "Bowl"
+            # try:
+            #     MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, "GraspCarefully",
+            #                             allow_gripper_collision=False).perform()
+            # except ForceTorqueThresholdException:
+
             MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(arm=self.arm)
         robot.attach(child_object=self.object_designator.world_object, parent_link=tool_frame)
@@ -1114,6 +1127,11 @@ class PlaceActionPerformable(ActionAbstract):
         rospy.logwarn("Pushing now")
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
+            # if self.object_designator.obj_type != "Metalbowl":
+            #     object_type = "Standard"
+            # else:
+            #     object_type = "Bowl"
+            # MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "Place").perform()
             MoveTCPMotion(push_baseTm, self.arm).perform()
         # if self.object_designator.type == "Metalplate":
         #     loweringTm = push_baseTm
@@ -1698,7 +1716,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
             kwargs = dict()
 
             # taking in the predefined arm configuration for placing
-            if self.arm in ["left", "both"]:
+            if self.arm in [Arms.LEFT, Arms.BOTH]:
                 kwargs["left_arm_config"] = "place_plate"
                 MoveArmJointsMotion(**kwargs).perform()
 
@@ -1720,7 +1738,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
 
         # placing everything else or the Metalplate in the dishwasher
         else:
-            if self.grasp == "top":
+            if self.grasp == Grasp.TOP:
                 oTm.pose.position.z += 0.05
 
             # Determine the grasp orientation and transform the pose to the base link frame
@@ -1740,7 +1758,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
             push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
             if robot.name == "hsrb":
                 z = 0.03
-                if self.grasp == "top":
+                if self.grasp == Grasp.TOP:
                     z = 0.07
                 push_base.pose.position.z += z
             # todo: make this for other robots

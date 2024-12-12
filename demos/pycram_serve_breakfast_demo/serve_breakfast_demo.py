@@ -29,7 +29,7 @@ bowl = None
 place_pose = None
 
 # x pose for placing the object
-x_pos = 1.4
+x_pos = 1.35
 
 # list of sorted placing poses
 sorted_places = []
@@ -61,7 +61,7 @@ class PlacingZPose(Enum):
     PLASTICKNIFE = 0.775
     KNIFE = 0.775
     METALBOWL = 0.815
-    MILKPACKJA = 0.845
+    MILKPACK = 0.845
     METALMUG = 0.775
     CEREALBOX = 0.875
     METALPLATE = 0.875
@@ -322,10 +322,8 @@ def remove_objects(value):
 
 
 with (real_robot):
-    """
     rospy.loginfo("Starting demo")
     TalkingMotion("Starting demo").perform()
-    """
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
     parkArms_and_moveTorso()
     TalkingMotion("Navigating").perform()
@@ -360,7 +358,7 @@ with (real_robot):
             place_objects(False, ["Metalbowl"], 0, Grasp.TOP)
             # navigate_to(4.3, 4.9, "shelf")
     pickup_and_place_objects(sorted_obj)
-    """
+
     # failure handling part 1
     new_sorted_obj = []
     print(f"length of sorted obj: {len(sorted_obj)}")
@@ -372,14 +370,14 @@ with (real_robot):
             # remove objects that were seen and transported so far
             remove_objects(value)
         TalkingMotion("Navigating").perform()
-        navigate_to(4.1, 4, "shelf")
+        navigate_to(4.5, 3.95, "shelf")
         new_object_desig = try_detect(Pose([5.3, 3.9, 0.21], [0, 0, 0, 1]))
         new_sorted_obj = sort_objects(new_object_desig, wished_sorted_obj_list)
         pickup_and_place_objects(new_sorted_obj)
         # failure handling part 2
         final_sorted_obj = sorted_obj + new_sorted_obj
         if len(final_sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-            navigate_to(4.1, 4, "shelf")
+            navigate_to(4.5, 3.95, "shelf")
             print("second Check")
             for value in final_sorted_obj:
                 # remove all objects that were seen and transported so far
@@ -396,4 +394,3 @@ with (real_robot):
                 place_objects(False, wished_sorted_obj_list, val, grasp)
     rospy.loginfo("Done!")
     TalkingMotion("Done").perform()
-    """

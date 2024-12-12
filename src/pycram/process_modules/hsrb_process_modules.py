@@ -498,6 +498,24 @@ class HSRBDetectingReal(ProcessModule):
             return object_dict
 
 
+class HSRBMoveTCPForceTorqueReal(ProcessModule):
+    """
+    Moves the tool center point of the real HSRB while avoiding all collisions via giskard with force torque data
+    """
+
+    def _execute(self, designator: MoveTCPForceTorqueMotion) -> Any:
+        lt = LocalTransformer()
+        pose_in_map = lt.transform_pose(designator.target, "map")
+        giskard.avoid_all_collisions()
+        if designator.allow_gripper_collision:
+            giskard.allow_gripper_collision(designator.arm)
+        giskard.check_force_torque(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
+            designator.arm).get_tool_frame(), 'map', designator.object_type, designator.threshold)
+        # giskard.achieve_cartesian_goal(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
+        #     designator.arm).get_tool_frame(), "map")
+
+
+
 class HSRBMoveTCPReal(ProcessModule):
     """
     Moves the tool center point of the real HSRB while avoiding all collisions via giskard
@@ -663,7 +681,7 @@ class HSRBGraspHandleReal(ProcessModule):
     """
 
     def _execute(self, designator: GraspHandleMotion) -> Any:
-        giskard.grasp_doorhandle(designator.handle)
+        giskard.grasp_doorhandle(designator.handle, designator.offset)
 
 
 class HSRBGraspDishwasherHandleReal(ProcessModule):
@@ -710,6 +728,7 @@ class HSRBManager(ProcessModuleManager):
         self._looking_lock = Lock()
         self._detecting_lock = Lock()
         self._move_tcp_lock = Lock()
+        self._move_tcp_ft_lock = Lock()
         self._move_arm_joints_lock = Lock()
         self._world_state_detecting_lock = Lock()
         self._move_joints_lock = Lock()
@@ -754,6 +773,14 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveTCPReal(self._move_tcp_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveTCPReal(self._move_tcp_lock)
+
+    def move_tcp_ft(self):
+        if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
+            return HSRBMoveTCPForceTorqueReal(self._move_tcp_ft_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBMoveTCPForceTorqueReal(self._move_tcp_ft_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBMoveTCPForceTorqueReal(self._move_tcp_ft_lock)
 
     def move_arm_joints(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:

@@ -39,13 +39,13 @@ with (real_robot):
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveTorsoAction([0.4]).resolve().perform()
 
-    pickup = "popcorn_table"
-    placing = "None"
+    pickup = "None"
+    placing = "popcorn_table"
 
     if pickup == "shelf":
         # shelf pickup
         #################################################################
-        NavigateAction(target_locations=[Pose([4.25, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
+        NavigateAction(target_locations=[Pose([4.5, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
         LookAtAction(targets=[Pose([5.3, 3.9, 0.21], [0, 0, 0, 1])]).resolve().perform()
         ##################################################################
     elif pickup == "long_table":
@@ -58,12 +58,12 @@ with (real_robot):
         # popcorn table pickup
         #################################################################
         NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
-        LookAtAction(targets=[Pose([1.55, 4.9, 0.4], [0, 0, 0.7, 0.7])]).resolve().perform()
+        LookAtAction(targets=[Pose([1.5, 4.9, 0.4], [0, 0, 0.7, 0.7])]).resolve().perform()
         #################################################################
 
     object_desig = DetectAction(technique='all').resolve().perform()
     print(object_desig)
-    obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Metalbowl"])
+    obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Spoon"])
     PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.TOP]).resolve().perform()
 
     if pickup == "shelf":
@@ -97,18 +97,21 @@ with (real_robot):
         # NavigateAction(target_locations=[Pose([1.8, 1.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
 
+        # PlaceGivenObjectAction(object_types=["Spoon"], arms=[Arms.LEFT],
+        #                        target_locations=[Pose([1.4, 4.8, 0.775], [0, 0, 0.7, 0.7])],
+        #                        grasps=[Grasp.TOP], on_table=True).resolve().perform()
         #TODO: change z + grasp
-        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([1.4, 4.8, 0.815], [0, 0, 0.7, 0.7])],
+        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([1.4, 4.8, 0.775], [0, 0, 0.7, 0.7])],
                     grasps=[Grasp.TOP], arms=[Arms.LEFT]).resolve().perform()
         NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveTorsoAction([0]).resolve().perform()
-        LookAtAction(targets=[Pose([1.55, 4.9, 0.4], [0, 0, 0.7, 0.7])]).resolve().perform()
-        bowl_desig = DetectAction(technique='all').resolve().perform()
-        print(bowl_desig)
-        print(type(bowl_desig))
-        bowl = get_bowl(bowl_desig)
-        PouringAction([bowl.pose], [Arms.LEFT], ["right"], [115]).resolve().perform()
+        # MoveTorsoAction([0]).resolve().perform()
+        # LookAtAction(targets=[Pose([1.55, 4.9, 0.4], [0, 0, 0.7, 0.7])]).resolve().perform()
+        # bowl_desig = DetectAction(technique='all').resolve().perform()
+        # print(bowl_desig)
+        # print(type(bowl_desig))
+        # bowl = get_bowl(bowl_desig)
+        # PouringAction([bowl.pose], [Arms.LEFT], ["right"], [115]).resolve().perform()
         ################################################################
     elif placing == "long_table":
         # long table placing

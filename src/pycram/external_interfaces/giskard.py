@@ -560,6 +560,31 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
+def check_force_torque(goal_pose: PoseStamped,
+                       tip_link: str,
+                       root_link: str,
+                       object_type: str,
+                       threshold_name: str,
+                       position_threshold: float = 0.02,
+                       orientation_threshold: float = 0.02
+                       ) -> None:
+    """
+    threshold:  GraspCarefully
+                Place
+    object_type: Standard
+                 Bowl
+    """
+    giskard_wrapper.monitor_force_torque_check(goal_pose=_pose_to_pose_stamped(goal_pose),
+                                               tip_link=tip_link,
+                                               root_link=root_link,
+                                               position_threshold=position_threshold,
+                                               orientation_threshold=orientation_threshold,
+                                               object_type=object_type,
+                                               threshold_name=threshold_name)
+
+
+@init_giskard_interface
+@thread_safe
 def move_arm_to_point(point: PointStamped) -> 'MoveResult':
     """
     moves arm to given position
@@ -596,10 +621,15 @@ def grasp_doorhandle(handle_name: str, offset: Vector3) -> 'MoveResult':
 
     offset_stamp = Vector3Stamped()
     offset_stamp.header.frame_id = handle_name
-    offset_stamp.vector = offset
+    if offset:
+        offset_stamp.vector = offset
 
-    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name,
-                                                        grasp_axis_offset=offset_stamp)
+        giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name,
+                                                            grasp_axis_offset=offset_stamp)
+
+    else:
+        giskard_wrapper.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name)
+
     giskard_wrapper.motion_goals.allow_all_collisions()
     giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()

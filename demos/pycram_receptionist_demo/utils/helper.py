@@ -1,23 +1,21 @@
 from typing import Optional
-
-import rospy
 from geometry_msgs.msg import PointStamped, PoseStamped
-
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import PointingMotion
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
-look_couch = Pose([3.8, 1.9, 0.75])
+
+look_couch = Pose([3.8, 0.3, 0.75])
 
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     """
     storing attributes and face of person in front of robot
     :param guest: variable to store information in
-    :param trys: failure handling
+    :param trys: keep track of failure handling
     """
     MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-    MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.45]).perform()
     TalkingMotion("i will take a picture of you to recognize you later").perform()
     rospy.sleep(2.4)
     TalkingMotion("please look at me").perform()
@@ -25,13 +23,14 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     # remember face
     while trys < 1:
         try:
+            # get an ID for face
             keys = DetectAction(technique='human', state='face').resolve().perform()
             new_id = keys["keys"][0]
             guest.set_id(new_id)
 
-            # get clothes and gender
+            # get 4 different attributes
             attr_list = DetectAction(technique='attributes', state='start').resolve().perform()
-            print(attr_list)
+            rospy.loginfo(attr_list)
             guest.set_attributes(attr_list)
             rospy.loginfo(attr_list)
             break
@@ -47,7 +46,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
 
             except PerceptionObjectNotFound:
                 trys += 1
-                print("continue without attributes")
+                rospy.logerr("continue without attributes")
 
         return guest
 
@@ -56,46 +55,52 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
     """
     function to look for a place to sit and poit to it
     returns bool if free place found or not
+    :param robot: robot-object used in the demo
+    :param no_sofa: if true, free seats on sofa get ignored
     """
 
     # detect free seat
     seat = DetectAction(technique='location', state="sofa").resolve().perform()
     free_seat = False
-    x = 3.6
+
     # loop through all seating options detected by perception
     if not no_sofa:
         for place in seat:
+            # found a place that is not occupied
             if place[1] == 'False':
 
                 pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
-                print("place: " + str(place))
+                rospy.loginfo("place: " + str(place))
 
+                # transform poses to find out position relative to robot
                 lt = LocalTransformer()
                 pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
-                print("in robot: " + str(pose_in_robot_frame))
+
                 if pose_in_robot_frame.pose.position.y > 0.25:
                     TalkingMotion("please take a seat to the left from me").perform()
+                    # move pose more to the left for clear pointing pose
                     pose_in_robot_frame.pose.position.y += 0.4
 
                 elif pose_in_robot_frame.pose.position.y < -0.35:
                     TalkingMotion("please take a seat to the right from me").perform()
+                    # move pose more to the right for clear pointing pose
                     pose_in_robot_frame.pose.position.y -= 0.4
 
                 else:
                     TalkingMotion("please take a seat in front of me").perform()
 
+                # get pose in map
                 pose_in_map = lt.transform_pose(pose_in_robot_frame, "map")
                 free_seat = True
                 break
     else:
-        print("only chairs")
+        rospy.loginfo("find free chairs")
         for place in seat[1]:
             if place[0] == 'chair':
                 if place[1] == 'False':
                     pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
                     TalkingMotion("please take a seat on the free chair").perform()
                     free_seat = True
-                    x = 2.5
                     break
 
     if free_seat:
@@ -108,7 +113,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
         PointingMotion(pose_guest).perform()
 
-        print("found seat")
+        rospy.loginfo("found seat")
         return pose_guest
     else:
         TalkingMotion("no free seat detected").perform()
@@ -117,16 +122,18 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
 
 
 def detect_host_face(host: HumanDescription):
-    found_host = False
+    """
+    function to detect a face on the couch
+    :param host: variable the id gets stored in
+    """
     try:
 
         LookAtAction([look_couch]).resolve().perform()
         human_dict = DetectAction(technique='human', state='face').resolve().perform()
         id_humans = human_dict["keys"]
-        print("id humans: " + str(id_humans))
+        rospy.loginfo("found face of host")
         host_pose = human_dict[id_humans[0]]
         host.set_id(id_humans[0])
-        # todo: in point? type right??
         host.set_pose(PoseStamped_to_Point(host_pose))
         return True
 
@@ -135,6 +142,13 @@ def detect_host_face(host: HumanDescription):
 
 
 def identify_faces(host: HumanDescription, guest1: HumanDescription):
+    """
+    function to identify known faces on a location
+    :param host: object with ID of host, that is searched
+    :param guest1: object with ID of guest, that is searched
+    note that the name giving in based on Robocup Receptionist challenge. any two
+    HumanDescriptions can be used. we assume that only two humans are in the area
+    """
     LookAtAction([look_couch]).resolve().perform()
     counter = 0
     found_guest = False
@@ -142,7 +156,6 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
     while True:
         unknown = []
         try:
-
             if counter > 4 or (found_guest and found_host):
                 break
 
@@ -151,20 +164,18 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                 rospy.sleep(2.5)
 
             elif counter == 3:
+                # look to the side to find faces
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
 
             human_dict = DetectAction(technique='human', state='face').resolve().perform()
-            print("face detect: " + str(human_dict))
+            rospy.loginfo("faces detect: " + str(human_dict))
             counter += 1
             id_humans = human_dict["keys"]
 
             # loop through detected face Ids
             for key in id_humans:
-                print("key: " + str(key))
-                print("counter: " + str(counter))
-
                 # found guest
                 if key == guest1.id:
                     # update pose
@@ -183,25 +194,23 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                     unknown.append(key)
 
         except PerceptionObjectNotFound:
-            print("i am a failure and i hate my life")
             counter += 1
-            print(counter)
             if counter == 3:
-                config = {'head_pan_joint': -0.2}
-
-                # TalkingMotion("please look at me", ).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+                TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
 
     # Failure Handling if at least one person was not recognized
     if not found_guest and not found_host:
         try:
-            # both have not been recognized
+            # both have not been recognized chose randomly
             guest1.set_pose(PoseStamped_to_Point(human_dict[unknown[0]]))
             host.set_pose(PoseStamped_to_Point(human_dict[unknown[1]]))
         except Exception as e:
             print(e)
     else:
         # either guest or host was not found
+        # if one unknown face was detected, it has to be the second human looked for
         if not found_guest:
             try:
                 guest1.set_pose(PoseStamped_to_Point(human_dict[unknown[0]]))
@@ -220,11 +229,14 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
     :param human1: the first human the robot talks to
     :param human2: the second human the robot talks to
     """
+
     pub_pose = rospy.Publisher('/human_pose', PointStamped, queue_size=10)
-    print("pose:" + str(human1.pose))
+    rospy.sleep(2)
+
     if human1.pose:
         pub_pose.publish(human1.pose)
         rospy.sleep(1.0)
+        pub_pose.publish(human1.pose)
     TalkingMotion(f"Hey, {human1.name}").perform()
     rospy.sleep(2.5)
 
@@ -247,6 +259,7 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
 def PoseStamped_to_Point(pose: PoseStamped):
     """
     function to transform PoseStamped to PointStamped in '/map' frame
+    :param pose: pose to be transformed
     """
     point_pose = PointStamped()
     point_pose.header.frame_id = "map"
