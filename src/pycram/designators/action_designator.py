@@ -1716,7 +1716,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
             kwargs = dict()
 
             # taking in the predefined arm configuration for placing
-            if self.arm in ["left", "both"]:
+            if self.arm in [Arms.LEFT, Arms.BOTH]:
                 kwargs["left_arm_config"] = "place_plate"
                 MoveArmJointsMotion(**kwargs).perform()
 
@@ -1738,7 +1738,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
 
         # placing everything else or the Metalplate in the dishwasher
         else:
-            if self.grasp == "top":
+            if self.grasp == Grasp.TOP:
                 oTm.pose.position.z += 0.05
 
             # Determine the grasp orientation and transform the pose to the base link frame
@@ -1758,7 +1758,7 @@ class PlaceGivenObjectPerformable(ActionAbstract):
             push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
             if robot.name == "hsrb":
                 z = 0.03
-                if self.grasp == "top":
+                if self.grasp == Grasp.TOP:
                     z = 0.07
                 push_base.pose.position.z += z
             # todo: make this for other robots
