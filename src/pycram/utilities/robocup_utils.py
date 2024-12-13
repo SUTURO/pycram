@@ -212,21 +212,6 @@ class ImageSwitchPublisher:
         rospy.loginfo("Image switch request published")
 
 
-class HSRBMoveGripperReal():
-    def __init__(self, latch=True):
-        self.pub = rospy.Publisher('/hsrb/gripper_controller/grasp/goal', GripperApplyEffortActionGoal,
-                                   queue_size=10, latch=latch)
-        self.msg = GripperApplyEffortActionGoal()
-
-    def pub_now(self, motion: str):
-        if motion == "open":
-            self.msg.goal.effort = 0.8
-            self.pub.publish(self.msg)
-        elif motion == "close":
-            self.msg.goal.effort = -0.8
-            self.pub.publish(self.msg)
-
-
 class GraspListener:
     def __init__(self):
 

@@ -6,12 +6,13 @@ from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
 from pycram.process_module import real_robot
-from pycram.ros_utils.robot_state_updater import RobotStateUpdater
+from pycram.ros_utils.object_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
 from pycram.utilities.robocup_utils import ImageSwitchPublisher
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
 import rospy
+from pycrap import Robot
 
 # Initialize the Bullet world for simulation
 world = BulletWorld()
@@ -20,17 +21,14 @@ world = BulletWorld()
 v = VizMarkerPublisher()
 
 # Create and configure the robot object
-robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
+robot = Object("hsrb", Robot, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
 RobotStateUpdater("/tf", "/giskard_joint_states")
 image_switch_publisher = ImageSwitchPublisher()
 
 # Create environmental objects
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 
-# variables for communication with nlp
-response = [None, None, None]
-callback = False
-pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
+# class object for communication with nlp
 nlp = NLP_Functions()
 
 # Declare variables for humans
