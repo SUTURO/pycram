@@ -567,7 +567,7 @@ def check_force_torque(goal_pose: PoseStamped,
                        threshold_name: str,
                        position_threshold: float = 0.02,
                        orientation_threshold: float = 0.02
-                       ) -> None:
+                       ) -> 'MoveResult':
     """
     threshold:  GraspCarefully
                 Place
@@ -581,6 +581,7 @@ def check_force_torque(goal_pose: PoseStamped,
                                                orientation_threshold=orientation_threshold,
                                                object_type=object_type,
                                                threshold_name=threshold_name)
+    return giskard_wrapper.execute()
 
 
 @init_giskard_interface
@@ -618,6 +619,8 @@ def move_head_to_human() -> 'MoveResult':
 @thread_safe
 def grasp_doorhandle(handle_name: str, offset: Vector3) -> 'MoveResult':
     print("grasp handle")
+    print(handle_name)
+    print(str(offset))
 
     offset_stamp = Vector3Stamped()
     offset_stamp.header.frame_id = handle_name
@@ -652,7 +655,7 @@ def grasp_handle(handle_name: str) -> 'MoveResult':
 @thread_safe
 def open_doorhandle(handle_name: str) -> 'MoveResult':
     giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name,
-                                                     handle_limit=0.4,
+                                                     handle_limit=0.5,
                                                      hinge_limit=-0.7)
     giskard_wrapper.motion_goals.allow_all_collisions()
     return giskard_wrapper.execute()
