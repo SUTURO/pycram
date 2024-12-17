@@ -250,19 +250,30 @@ class HumanDescription:
         self.attributes = attribute_list
 
 
-class CustomerDiscription(HumanDescription):
-    def __init__(self, id: int, pose: Pose):
-        self.id = id
-        self.pose = pose
-
-
-    def get_pose(self):
-        return self.pose
+class CustomerDescription(HumanDescription):
+    def __init__(self, id: int, pose: Pose, order: Optional = None):
+        super(CustomerDescription, self).__init__(id, pose)
+        self.order = order
 
     def set_pose(self, new_pose):
+        """
+        Function for setting the pose of the customer.
+        :param new_pose: new pose of customer
+        """
         self.pose = new_pose
-        print(self.pose)
-    def get_id(self):
-        return id
+
+
     def set_id(self, new_id):
+        """
+        Function for changing id of customer.
+        :param new_id: new id of customer
+        """
         self.id = new_id
+
+    def set_order(self, item:str, amount: int):
+        """
+        Function for changing order of customer.
+        :param item: The desired item to order
+        :param amount: The amount of order
+        """
+        self.order = (item, amount)
