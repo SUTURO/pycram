@@ -880,3 +880,15 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
     ps.header = pose.header
 
     return ps
+
+def cml(drive_back):
+    try:
+        print("in cml")
+        giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=drive_back)
+        giskard_exe= giskard_wrapper.execute()
+        print(giskard_exe)
+    except:
+        if giskard_exe.error.code == 2:
+            print("works fine")
+        else:
+            print("cml error")

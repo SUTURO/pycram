@@ -32,7 +32,7 @@ pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 nlp = NLP_Functions()
 
 # Declare variables for humans
-host = HumanDescription("Bob", fav_drink="Milk")
+host = HumanDescription("Jule", fav_drink="topical juice bottle")
 host.set_id(1)
 
 guest1 = HumanDescription("Lisa", fav_drink="water")
@@ -45,12 +45,13 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 # important poses
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 0.3, 0.75])
-nav_pose1 = Pose([2, 1.3, 0], orientation=[0, 0, 0.4, 0.9])
-greet_guest_pose = Pose(position=[1.9, 0.6, 0], orientation=[0, 0, 0.8, -0.5])
+nav_pose1 = Pose([2, 0.07, 0], orientation=[0, 0, 0.5, 0.8])
+greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
 
 
 def demo(step: int):
     with (real_robot):
+        NavigateAction([greet_guest_pose]).resolve().perform()
         rospy.loginfo("start demo at step " + str(step))
 
         # set neutral pose
@@ -73,6 +74,7 @@ def demo(step: int):
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
+            NavigateAction([nav_pose1]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
 
         if step <= 4:
@@ -143,6 +145,7 @@ def demo(step: int):
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
+            NavigateAction([nav_pose1]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
 
         if step <= 9:
