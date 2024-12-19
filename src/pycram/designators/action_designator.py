@@ -22,11 +22,11 @@ from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJoint
     LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
     MoveTCPForceTorqueMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
-from ..datastructures.enums import Arms, Grasp, GripperState
+from ..datastructures.enums import Arms, Grasp, GripperState, GiskardStateFTS
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..designator import ActionDesignatorDescription
-from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringCondition
+from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringCondition, ManipulationFTSCheckNoObject
 from ..helper import multiply_quaternions
 from ..language import Monitor
 from ..local_transformer import LocalTransformer
@@ -1041,16 +1041,17 @@ class PickUpActionPerformable(ActionAbstract):
         liftingTm.pose.position.z += 0.03
         World.current_world.add_vis_axis(liftingTm)
         if execute:
-            # if self.object_designator.obj_type != "Metalbowl":
-            #     object_type = "Standard"
-            # else:
-            #     object_type = "Bowl"
-            # try:
-            #     MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, "GraspCarefully",
-            #                             allow_gripper_collision=False).perform()
-            # except ForceTorqueThresholdException:
-
-            MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "default"
+            else:
+                object_type = "Bowl"
+            try:
+                MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
+                                        allow_gripper_collision=False).perform()
+            except ForceTorqueThresholdException:
+                raise ManipulationFTSCheckNoObject(f"Could not find an object to pickup after checking force-torque "
+                                                   f"values")
+            # MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(arm=self.arm)
         robot.attach(child_object=self.object_designator.world_object, parent_link=tool_frame)
 
@@ -1128,11 +1129,17 @@ class PlaceActionPerformable(ActionAbstract):
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
             # if self.object_designator.obj_type != "Metalbowl":
-            #     object_type = "Standard"
+            #     object_type = "default"
             # else:
             #     object_type = "Bowl"
-            # MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "Place").perform()
+            # try:
+            #     MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
+            #                              allow_gripper_collision=False).perform()
+            # except ForceTorqueThresholdException:
+            #     raise ManipulationFTSCheckNoObject(f"Could not find an object to pickup after checking force-torque "
+            #                                        f"values")
             MoveTCPMotion(push_baseTm, self.arm).perform()
+
         # if self.object_designator.type == "Metalplate":
         #     loweringTm = push_baseTm
         #     loweringTm.pose.position.z -= 0.08

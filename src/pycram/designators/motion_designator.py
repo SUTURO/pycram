@@ -107,7 +107,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
     """
     Target pose to which the TCP should be moved
     """
-    threshold: str
+    threshold: GiskardStateFTS
     """
     Target pose to which the TCP should be moved
     """
@@ -115,6 +115,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
     """
     If the gripper can collide with something
     """
+
 
     @with_tree
     def perform(self):

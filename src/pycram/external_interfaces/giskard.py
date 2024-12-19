@@ -4,10 +4,12 @@ import threading
 from threading import Lock, RLock
 
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
+from giskardpy.data_types.exceptions import ForceTorqueThresholdException
+from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
 from typing_extensions import List, Dict, Callable, Optional
 
 from ..datastructures.dataclasses import MeshVisualShape
-from ..datastructures.enums import JointType, ObjectType, Arms
+from ..datastructures.enums import JointType, ObjectType, Arms, GiskardStateFTS
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..robot_description import RobotDescription
@@ -560,27 +562,49 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
-def check_force_torque(goal_pose: PoseStamped,
-                       tip_link: str,
-                       root_link: str,
-                       object_type: str,
-                       threshold_name: str,
-                       position_threshold: float = 0.02,
-                       orientation_threshold: float = 0.02
-                       ) -> 'MoveResult':
+def achieve_cartesian_goal_w_fts(goal_pose: PoseStamped,
+                                 tip_link: str,
+                                 root_link: str,
+                                 object_type: str,
+                                 threshold_name: GiskardStateFTS,
+                                 position_threshold: float = 0.02,
+                                 orientation_threshold: float = 0.02
+                                 ) -> 'MoveResult':
     """
-    threshold:  GraspCarefully
-                Place
-    object_type: Standard
+    threshold:  GRASP
+                PLACE
+    object_type: default
                  Bowl
     """
-    giskard_wrapper.monitor_force_torque_check(goal_pose=_pose_to_pose_stamped(goal_pose),
-                                               tip_link=tip_link,
-                                               root_link=root_link,
-                                               position_threshold=position_threshold,
-                                               orientation_threshold=orientation_threshold,
-                                               object_type=object_type,
-                                               threshold_name=threshold_name)
+    cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
+                                                                goal_pose=goal_pose,
+                                                                position_threshold=position_threshold,
+                                                                orientation_threshold=orientation_threshold,
+                                                                name='cart goal 1')
+    end_monitor = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
+
+    giskard_wrapper.motion_goals.add_cartesian_pose(name='g1', root_link=root_link, tip_link=tip_link,
+                                                    goal_pose=goal_pose,
+                                                    end_condition=cart_monitor1)
+
+    giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    # gripper_closed = self.monitors.add_close_hsr_gripper()
+
+    mon = giskard_wrapper.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                               name=PayloadForceTorque.__name__,
+                                               topic='/filtered_raw/diff',
+                                               start_condition='',
+                                               threshold_name=threshold_name,
+                                               object_type=object_type)
+
+    sleep = giskard_wrapper.monitors.add_sleep(1)
+    # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
+
+    # FIXME: How to Error?giskard_wrapper
+    giskard_wrapper.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
+                                               ForceTorqueThresholdException('force violated'))
+    giskard_wrapper.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
     return giskard_wrapper.execute()
 
 
@@ -881,11 +905,12 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
     return ps
 
+
 def cml(drive_back):
     try:
         print("in cml")
         giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=drive_back)
-        giskard_exe= giskard_wrapper.execute()
+        giskard_exe = giskard_wrapper.execute()
         print(giskard_exe)
     except:
         if giskard_exe.error.code == 2:

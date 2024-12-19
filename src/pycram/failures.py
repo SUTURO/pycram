@@ -92,6 +92,13 @@ class EnvironmentManipulationImpossible(HighLevelFailure):
         super().__init__(*args, **kwargs)
 
 
+class ManipulationFTSCheckNoObject(HighLevelFailure):
+    """Thrown when manipulation cannot find an object to pickup after checking the force torque values."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 class EnvironmentUnreachable(HighLevelFailure):
     """Thrown when environment manipulation in collision or unreachable."""
 

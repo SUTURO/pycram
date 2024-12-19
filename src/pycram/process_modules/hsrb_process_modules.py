@@ -509,11 +509,10 @@ class HSRBMoveTCPForceTorqueReal(ProcessModule):
         giskard.avoid_all_collisions()
         if designator.allow_gripper_collision:
             giskard.allow_gripper_collision(designator.arm)
-        giskard.check_force_torque(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
+        giskard.achieve_cartesian_goal_w_fts(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
             designator.arm).get_tool_frame(), 'map', designator.object_type, designator.threshold)
         # giskard.achieve_cartesian_goal(pose_in_map, RobotDescription.current_robot_description.get_arm_chain(
         #     designator.arm).get_tool_frame(), "map")
-
 
 
 class HSRBMoveTCPReal(ProcessModule):
