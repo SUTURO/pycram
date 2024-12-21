@@ -174,15 +174,12 @@ def get_guest_info(id):
 
 
 def get_object_info(object_name):
-    rospy.wait_for_service('obj_info_server')  # Warte, bis der Service verfügbar ist
+    rospy.wait_for_service('obj_info_server')
     try:
-        # Erstelle einen Proxy für den Service
         obj_info_service = rospy.ServiceProxy('obj_info_server', ObjectInfo)
 
-        # Rufe den Service mit dem Objektname auf
+        # call service with object name
         response = obj_info_service(object_name)
-        print("res:" + str(response))
-
         return response
 
     except rospy.ServiceException as e:
