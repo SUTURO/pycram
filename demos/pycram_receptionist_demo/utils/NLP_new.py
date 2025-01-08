@@ -127,6 +127,66 @@ class NLP_Helper:
 
         trys += 1
 
+    def listen_return_answer(self):
+        """
+        function that returns whatever the person said
+        """
+
+        # signal to start listening
+        rospy.loginfo("nlp start")
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2.2)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        # wait for nlp answer
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+
+            if int(time.time() - start_time) == timeout:
+                rospy.logwarn("guest needs to repeat")
+                self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+        self.callback = False
+        return response
+
+    def get_fav_drink(self, guest: HumanDescription):
+        """
+        sequence in which robot asks person for favorite drink and stores it
+        :param guest: variable that stores favorite drink
+        """
+        TalkingMotion("What is your favorite drink?").perform()
+        rospy.sleep(2.5)
+        TalkingMotion("please answer me when my display changes").perform()
+        rospy.sleep(2.5)
+
+        # signal to start listening
+        self.nlp_pub.publish("start listening")
+        rospy.loginfo("nlp start")
+        rospy.sleep(2.2)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        # wait for nlp answer
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+
+            if int(time.time() - start_time) == timeout:
+                rospy.logwarn("guest needs to repeat")
+                self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+        self.callback = False
+
+        # check response -> was everything understood with right intent
+        if self.response[0] == "<GUEST>" and self.response[2].strip() != "None":
+            guest.set_drink(self.response[2])
+        else:
+            guest.set_drink(self.drink_repeat())
+
+
+
+
+
     def drink_repeat(self):
         """
         HRI-function to ask for drink again.
