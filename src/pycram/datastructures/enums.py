@@ -119,6 +119,14 @@ class GripperState(Enum):
     CLOSE = auto()
 
 
+class GiskardStateFTS(Enum):
+    """
+    Enum for the states of force-torque in Giskard.
+    """
+    GRASP = auto()
+    PLACE = auto()
+
+
 class GripperType(Enum):
     """
     Enum for the different types of grippers.
@@ -138,7 +146,7 @@ class FilterConfig(Enum):
     """
     butterworth = 1
 
-    
+
 class PerceptionTechniques(Enum):
     """
     Enum for techniques for perception tasks.
@@ -146,7 +154,6 @@ class PerceptionTechniques(Enum):
     ALL = auto()
     HUMAN = auto()
     TYPES = auto()
-
 
 
 class ImageEnum(Enum):
