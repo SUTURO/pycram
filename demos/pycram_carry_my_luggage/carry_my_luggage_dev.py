@@ -20,6 +20,7 @@ def demo(step: int):
         if step <= 1:
             start_pose = robot.get_pose()
             ParkArmsAction(Arms.LEFT).resolve().perform()
+            # wait for human and hand to be pushed down
             demo_start(human)
 
         if step <= 2:
