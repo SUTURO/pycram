@@ -195,7 +195,7 @@ class HumanDescription:
     """
 
     def __init__(self, name: String, fav_drink: Optional = None,
-                 pose: Optional = None, attributes: Optional = None):
+                 pose: Optional = None, attributes: Optional = None, interests: Optional[List] = None):
         """
         :param name: name of human
         :param fav_drink: favorite drink of human
@@ -209,8 +209,11 @@ class HumanDescription:
         self.fav_drink = fav_drink
         self.pose = pose
         self.attributes = attributes
+        if self.interests is None:
+            self.interests = []
+        else:
+            self.interests = interests
         self.id = -1
-
 
     def set_id(self, new_id: int):
         """
@@ -219,6 +222,24 @@ class HumanDescription:
         :param new_id: new id of human
         """
         self.id = new_id
+
+    def add_interests(self, new_interest: String):
+        """
+        function for adding interests of a human
+        :param new_interest: new hobby of human
+        """
+        self.interests.append(new_interest)
+
+    def remove_interests(self, index_to_remove: int):
+        """
+        function for removing items from interests-list
+        :param index_to_remove: index of item that gets removed
+        """
+
+        if len(self.interests) > index_to_remove:
+            self.interests.pop(index_to_remove)
+        else:
+            rospy.logerr("nothing removed, index to high")
 
     def set_name(self, new_name):
         """

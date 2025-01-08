@@ -196,7 +196,7 @@ class NLP_Functions:
         trys = 0
 
         while trys < 2:
-            TalkingMotion("i am sorry, please repeat your drink loud and clear").perform()
+            TalkingMotion("i am sorry, please repeat the drink loud and clear").perform()
             rospy.sleep(3.5)
             TalkingMotion("please use the sentence my favorite drink is").perform()
             rospy.sleep(3)
