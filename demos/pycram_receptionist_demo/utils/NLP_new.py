@@ -1,5 +1,9 @@
 import time
+
+import rospy
 from std_msgs.msg import String
+
+from demos.pycram_receptionist_demo.dev.receptionist_new_draft import res_loader
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import HumanDescription
@@ -92,7 +96,7 @@ class NLP_Helper:
         HeadFollowMotion(state="stop").perform()
         DetectAction(technique='human', state="stop").resolve().perform()
         rospy.sleep(1)
-        TalkingMotion("Nice to meet you i will show you around now").perform()
+        TalkingMotion("Nice to meet you").perform()
         return guest
 
     def name_repeat(self):
@@ -150,6 +154,36 @@ class NLP_Helper:
         self.callback = False
         return response
 
+    def listen_return_interest(self):
+        """
+        function that returns interests of conversational partner
+        """
+        trys = 0
+        while trys < 2:
+            # signal to start listening
+            rospy.loginfo("nlp start")
+            self.nlp_pub.publish("start listening")
+            rospy.sleep(2.2)
+            self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+            # wait for nlp answer
+            start_time = time.time()
+            while not self.callback:
+                rospy.sleep(1)
+
+                if int(time.time() - start_time) == timeout:
+                    rospy.logwarn("guest needs to repeat")
+                    self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+            self.callback = False
+            if self.response[0] == "<INTERESTS>" and self.response[1].strip() != "None":
+                rospy.loginfo("interest understood")
+                return self.response[1]
+            else:
+                trys += 1
+
+        return "fallback"
+
     def get_fav_drink(self, guest: HumanDescription):
         """
         sequence in which robot asks person for favorite drink and stores it
@@ -182,10 +216,6 @@ class NLP_Helper:
             guest.set_drink(self.response[2])
         else:
             guest.set_drink(self.drink_repeat())
-
-
-
-
 
     def drink_repeat(self):
         """
@@ -222,3 +252,17 @@ class NLP_Helper:
             trys += 1
 
         return "water"
+
+    def store_and_answer_hobby(self, guest: HumanDescription):
+        """
+        function to answer to hobby individually
+        """
+        # get interests
+        hobby_list = self.listen_return_interest()
+
+        # store interests
+        guest.add_interests(hobby_list)
+
+        # answer specifically
+        toya_text = res_loader.predict_response(hobby_list)
+        TalkingMotion(toya_text).perform()
