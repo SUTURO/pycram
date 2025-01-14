@@ -1,0 +1,159 @@
+{
+  "hobbies": {
+    "Volleyball": [
+      "I love playing as a setter.",
+      "Spiking the ball feels amazing!",
+      "Beach volleyball is my favorite."
+    ],
+    "Chess": [
+      "I enjoy strategizing for hours.",
+      "Outsmarting my opponent is thrilling.",
+      "Chess really sharpens my mind."
+    ],
+    "Photography": [
+      "I enjoy capturing sunsets and landscapes.",
+      "Macro photography is so fascinating.",
+      "Telling stories through photos is wonderful."
+    ],
+    "Cooking": [
+      "Experimenting with new recipes is so much fun!",
+      "I love trying out different cuisines.",
+      "Cooking is like creating art on a plate."
+    ],
+    "Painting": [
+      "Mixing colors and creating art is my passion.",
+      "I enjoy painting abstract pieces.",
+      "Watercolor landscapes are my specialty."
+    ],
+    "Cycling": [
+      "Riding through scenic routes is so refreshing.",
+      "I love the wind in my face during long rides.",
+      "Cycling keeps me fit and adventurous."
+    ],
+    "Gaming": [
+      "Exploring new worlds and completing quests is thrilling!",
+      "I love the competitive aspect of gaming.",
+      "Gaming helps me relax after a long day."
+    ],
+    "Reading": [
+      "Getting lost in a good book is the best feeling.",
+      "I love exploring new ideas through reading.",
+      "Books transport me to different worlds."
+    ],
+    "Running": [
+      "I love the feeling of the wind against my face while running.",
+      "It's a great way to clear my mind.",
+      "I always feel energized after a run."
+    ],
+    "Writing": [
+      "Writing lets me express my thoughts creatively.",
+      "I enjoy creating characters and stories.",
+      "It's therapeutic to put my ideas onto paper."
+    ],
+    "Swimming": [
+      "The pool is my happy place.",
+      "I love swimming laps for both exercise and relaxation.",
+      "There's nothing like a refreshing swim on a hot day."
+    ],
+    "Hiking": [
+      "I love the peace and serenity of nature.",
+      "Hiking is the perfect way to disconnect from technology.",
+      "Every trail brings a new adventure."
+    ],
+    "Fishing": [
+      "I enjoy the patience and relaxation that fishing brings.",
+      "Early mornings by the lake are the best.",
+      "Catching a big fish feels like an accomplishment."
+    ],
+    "Gardening": [
+      "I love watching my plants grow and thrive.",
+      "Gardening gives me a sense of accomplishment.",
+      "There's something so peaceful about tending to the garden."
+    ],
+    "Dancing": [
+      "Dancing is such a great way to express myself.",
+      "I enjoy learning new choreography.",
+      "Whether it's salsa or hip-hop, I love getting into the rhythm."
+    ],
+    "Singing": [
+      "Singing makes me feel alive.",
+      "I sing to lift my spirits.",
+      "There's nothing better than singing"
+    ],
+    "Yoga": [
+      "Yoga helps me feel centered and at peace.",
+      "It's my way of reconnecting with my joints and C P U cores.",
+      "I love the balance it brings to my life."
+    ],
+    "Meditation": [
+      "Meditation helps me clear my cache and relax.",
+      "It's a wonderful practice for mental clarity.",
+      "I use meditation to calm myself during stressful times."
+    ],
+    "Traveling": [
+      "I love exploring new places and cultures.",
+      "Traveling opens my mind to new perspectives.",
+      "My dream is to visit every continent."
+    ],
+    "Drawing": [
+      "I love bringing my imagination to life with a pencil.",
+      "Sketching is a way for me to unwind and relax.",
+      "Drawing helps me see the world from a different perspective."
+    ],
+    "Knitting": [
+      "Knitting is so soothing and calming.",
+      "I love creating something beautiful with my hands.",
+      "It's rewarding to make something from scratch."
+    ],
+    "Coding": [
+      "I enjoy solving problems and creating something functional.",
+      "Programming is both challenging and rewarding.",
+      "I love the creativity that comes with coding."
+    ],
+    "Robotics": [
+      "Building robots is my passion!",
+      "I love combining hardware and software to create something unique.",
+      "There's always something new to learn in robotics."
+    ],
+    "Cooking Italian food": [
+      "Italian food is my favorite – the flavors are incredible!",
+      "Cooking pasta and pizza from scratch is so much fun.",
+      "I love experimenting with different sauces and ingredients."
+    ],
+    "Playing guitar": [
+      "I love strumming my guitar and playing my favorite songs.",
+      "Guitar is such a versatile instrument.",
+      "There's nothing like the feeling of playing music with others."
+    ],
+    "Watching movies": [
+      "I enjoy immersing myself in a good film.",
+      "Movies are a great way to unwind after a long day.",
+      "I love the creativity and storytelling in films."
+    ],
+    "Listening to music": [
+      "Music is my constant companion.",
+      "I love discovering new artists and genres.",
+      "There's a song for every mood I’m in."
+    ],
+    "Playing soccer": [
+      "I love the teamwork and energy that comes with soccer.",
+      "Scoring a goal is the best feeling!",
+      "I enjoy playing soccer with friends on weekends."
+    ],
+    "Building model airplanes": [
+      "I love the challenge of assembling intricate model airplanes.",
+      "It's a rewarding hobby to see the finished model fly.",
+      "Building models gives me a sense of accomplishment."
+    ],
+    "Birdwatching": [
+      "Birdwatching helps me connect with nature.",
+      "I enjoy identifying different species of birds.",
+      "It's always exciting to spot a rare bird."
+    ]
+  },
+  "fallback": [
+    "That sounds interesting!",
+    "Oh, that must be fun!",
+    "I haven't tried that before, but it sounds fascinating!"
+  ]
+}

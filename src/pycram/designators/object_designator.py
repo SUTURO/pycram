@@ -223,7 +223,7 @@ class HumanDescription:
         """
         self.id = new_id
 
-    def add_interests(self, new_interest: String):
+    def add_interests(self, new_interest: str):
         """
         function for adding interests of a human
         :param new_interest: new hobby of human

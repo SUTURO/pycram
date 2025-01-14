@@ -305,5 +305,3 @@ def describe(human: HumanDescription):
         TalkingMotion("have fun at the party").perform()
 
 
-
-
