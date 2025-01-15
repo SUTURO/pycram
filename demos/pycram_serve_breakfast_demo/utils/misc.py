@@ -1,4 +1,5 @@
 import rospy
+from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from geometry_msgs.msg import PoseStamped
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
@@ -107,11 +108,11 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Objec
     """
     try:
         PickUpAction(obj, [Arms.LEFT], [grasps]).resolve().perform()
-    except (EnvironmentUnreachable, GripperClosedCompletely):
+    except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
         TalkingMotion("Try pick up again").perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
-        NavigateAction([Pose([4.1, 4, 0], [0, 0, 0, 1])]).resolve().perform()
+        NavigateAction([Pose([4.5, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
         # try to detect the object again
         LookAtAction(targets=[Pose([obj.pose.position.x, obj.pose.position.y, 0.21], [0, 0, 0, 1])]).resolve().perform()
         object_desig = DetectAction(technique='all').resolve().perform()
@@ -121,7 +122,7 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Objec
             TalkingMotion("try again").perform()
             PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
         # ask for human interaction if it fails a second time
-        except (EnvironmentUnreachable, GripperClosedCompletely):
+        except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
             step_back(robot)
             TalkingMotion(f"Can you please give me the {obj.obj_type} in the shelf?").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
