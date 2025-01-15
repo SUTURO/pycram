@@ -732,6 +732,10 @@ class HSRBManager(ProcessModuleManager):
         self._world_state_detecting_lock = Lock()
         self._move_joints_lock = Lock()
         self._move_gripper_lock = Lock()
+        self._grasp_dishwasher_lock = Lock()
+        self._move_around_lock = Lock()
+        self._half_open_lock = Lock()
+        self._full_open_lock = Lock()
         self._open_lock = Lock()
         self._close_lock = Lock()
         self._talk_lock = Lock()
@@ -810,6 +814,30 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveGripperReal(self._move_gripper_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveGripperReal(self._move_gripper_lock)
+
+    def grasp_dishwasher_handle(self):
+        if ProcessModuleManager.execution_type == "real":
+            return HSRBGraspDishwasherHandleReal(self._grasp_dishwasher_lock)
+        elif ProcessModuleManager.execution_type == "semi_real":
+            return HSRBGraspDishwasherHandleReal(self._grasp_dishwasher_lock)
+
+    def half_open_dishwasher(self):
+        if ProcessModuleManager.execution_type == "real":
+            return HSRBHalfOpenDishwasherReal(self._half_open_lock)
+        elif ProcessModuleManager.execution_type == "semi_real":
+            return HSRBHalfOpenDishwasherReal(self._half_open_lock)
+
+    def move_arm_around_dishwasher(self):
+        if ProcessModuleManager.execution_type == "real":
+            return HSRBMoveArmAroundDishwasherReal(self._move_around_lock)
+        elif ProcessModuleManager.execution_type == "semi_real":
+            return HSRBMoveArmAroundDishwasherReal(self._move_around_lock)
+
+    def full_open_dishwasher(self):
+        if ProcessModuleManager.execution_type == "real":
+            return HSRBFullOpenDishwasherReal(self._full_open_lock)
+        elif ProcessModuleManager.execution_type == "semi_real":
+            return HSRBFullOpenDishwasherReal(self._full_open_lock)
 
     def open(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
