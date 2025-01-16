@@ -313,6 +313,9 @@ class HSRBDetectingReal(ProcessModule):
         elif desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
             human_pose = query_human()
             return human_pose
+        elif desig.technique == 'drink':
+            drinks = query_beverages()
+            return drinks
 
         elif desig.technique == 'waving':
             query_result = query_waving_human()

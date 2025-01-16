@@ -192,3 +192,8 @@ def query_waving_human() -> Pose:
     if result:
         return result
 
+
+def query_beverages() -> Any:
+    """Query RoboKudo for detecting drinks in the robots field of vision"""
+    return send_query(obj_type='drink')
+
