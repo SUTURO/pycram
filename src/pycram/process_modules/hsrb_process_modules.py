@@ -694,8 +694,9 @@ class HSRBHalfOpenDishwasherReal(ProcessModule):
     """Partially opens the dishwasher door."""
 
     def _execute(self, designator: HalfOpeningDishwasherMotion) -> Any:
-        giskard.achieve_open_container_goal(robot_description.get_tool_frame("left"), designator.handle_name,
-                                            goal_state=designator.goal_state_half_open, special_door=True)
+        giskard.achieve_open_container_goal(RobotDescription.current_robot_description.get_arm_chain(designator.arm)
+                                            .get_tool_frame(), designator.handle_name,
+                                            goal_state=designator.goal_state_half_open, special_door=False)
 
 
 class HSRBMoveArmAroundDishwasherReal(ProcessModule):
@@ -710,7 +711,8 @@ class HSRBFullOpenDishwasherReal(ProcessModule):
 
     def _execute(self, designator: FullOpeningDishwasherMotion) -> Any:
         giskard.fully_open_dishwasher_door(designator.handle_name, designator.door_name)
-        giskard.achieve_open_container_goal(robot_description.get_tool_frame("left"), designator.handle_name,
+        giskard.achieve_open_container_goal(RobotDescription.current_robot_description.get_arm_chain(designator.arm)
+                                            .get_tool_frame(), designator.handle_name,
                                             goal_state=designator.goal_state_full_open, special_door=True)
 
 
@@ -816,27 +818,27 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveGripperReal(self._move_gripper_lock)
 
     def grasp_dishwasher_handle(self):
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBGraspDishwasherHandleReal(self._grasp_dishwasher_lock)
-        elif ProcessModuleManager.execution_type == "semi_real":
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBGraspDishwasherHandleReal(self._grasp_dishwasher_lock)
 
     def half_open_dishwasher(self):
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBHalfOpenDishwasherReal(self._half_open_lock)
-        elif ProcessModuleManager.execution_type == "semi_real":
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBHalfOpenDishwasherReal(self._half_open_lock)
 
     def move_arm_around_dishwasher(self):
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBMoveArmAroundDishwasherReal(self._move_around_lock)
-        elif ProcessModuleManager.execution_type == "semi_real":
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveArmAroundDishwasherReal(self._move_around_lock)
 
     def full_open_dishwasher(self):
-        if ProcessModuleManager.execution_type == "real":
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
             return HSRBFullOpenDishwasherReal(self._full_open_lock)
-        elif ProcessModuleManager.execution_type == "semi_real":
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBFullOpenDishwasherReal(self._full_open_lock)
 
     def open(self):

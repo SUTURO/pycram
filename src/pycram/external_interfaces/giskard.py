@@ -3,6 +3,7 @@ import sys
 import threading
 from threading import Lock, RLock
 
+import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
@@ -484,7 +485,7 @@ def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
     :param handle_name: the name of the handle the HSR was grasping.
     :return: MoveResult message for this goal
     """
-    giskard_wrapper.motion_goals.set_hsrb_dishwasher_door_around(handle_name)
+    giskard_wrapper.motion_goals.hsrb_dishwasher_door_around(handle_name)
     return giskard_wrapper.execute()
 
 
@@ -508,7 +509,8 @@ def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult'
 
 @init_giskard_interface
 @thread_safe
-def achieve_open_container_goal(tip_link: str, environment_link: str) -> 'MoveResult':
+def achieve_open_container_goal(tip_link: str, environment_link: str, goal_state: Optional[float] = None,
+                                   special_door: Optional[bool] = False) -> 'MoveResult':
     """
     Tries to open a container in an environment, this only works if the container was added as a URDF. This goal assumes
     that the handle was already grasped. Can only handle container with 1 DOF
@@ -517,12 +519,19 @@ def achieve_open_container_goal(tip_link: str, environment_link: str) -> 'MoveRe
     :param environment_link: The name of the handle for this container.
     :return: MoveResult message for this goal
     """
-    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.set_open_container_goal, tip_link,
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.add_open_container, tip_link,
                                           environment_link)
     if par_return:
         return par_return
-    giskard_wrapper.motion_goals.set_open_container_goal(tip_link, environment_link)
-    # giskard_wrapper.add_default_end_motion_conditions()
+
+    if goal_state is None:
+        giskard_wrapper.motion_goals.add_open_container(tip_link, environment_link)
+    else:
+        giskard_wrapper.motion_goals.add_open_container(tip_link, environment_link, goal_joint_state=goal_state,
+                                                       special_door=special_door)
+        giskard_wrapper.motion_goals.allow_all_collisions()
+
+    giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
 
@@ -576,6 +585,12 @@ def achieve_cartesian_goal_w_fts(goal_pose: PoseStamped,
     object_type: default
                  Bowl
     """
+    par_return = _manage_par_motion_goals(giskard_wrapper.motion_goals.add_cartesian_pose,
+                                          _pose_to_pose_stamped(goal_pose),
+                                          tip_link, root_link)
+    if par_return:
+        return par_return
+
     cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
                                                                 goal_pose=goal_pose,
                                                                 position_threshold=position_threshold,
@@ -595,13 +610,12 @@ def achieve_cartesian_goal_w_fts(goal_pose: PoseStamped,
                                                name=PayloadForceTorque.__name__,
                                                topic='/filtered_raw/diff',
                                                start_condition='',
-                                               threshold_name=threshold_name,
+                                               threshold_enum=threshold_name.value,
                                                object_type=object_type)
 
     sleep = giskard_wrapper.monitors.add_sleep(1)
     # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
-    # FIXME: How to Error?giskard_wrapper
     giskard_wrapper.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
                                                ForceTorqueThresholdException('force violated'))
     giskard_wrapper.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
@@ -670,7 +684,7 @@ def grasp_handle(handle_name: str) -> 'MoveResult':
 
     :param handle_name: name of the dishwasher handle, which should be grasped
     """
-    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.035)
+    giskard_wrapper.hsrb_dishwasher_door_handle_grasp(handle_name, grasp_bar_offset=0.045)
     giskard_wrapper.add_default_end_motion_conditions()
     return giskard_wrapper.execute()
 
@@ -680,7 +694,7 @@ def grasp_handle(handle_name: str) -> 'MoveResult':
 def open_doorhandle(handle_name: str) -> 'MoveResult':
     giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name,
                                                      handle_limit=0.5,
-                                                     hinge_limit=-0.7)
+                                                     hinge_limit=-0.75)
     giskard_wrapper.motion_goals.allow_all_collisions()
     return giskard_wrapper.execute()
 
@@ -905,13 +919,14 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
     return ps
 
-
+@init_giskard_interface
 def cml(drive_back):
     try:
         print("in cml")
-        giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=drive_back)
+        giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=False, point_cloud_laser_topic_name=None,
+                                          clear_path=True,
+                                          laser_avoidance_angle_cutout=np.pi/5)
         giskard_exe = giskard_wrapper.execute()
-        print(giskard_exe)
     except:
         if giskard_exe.error.code == 2:
             print("works fine")

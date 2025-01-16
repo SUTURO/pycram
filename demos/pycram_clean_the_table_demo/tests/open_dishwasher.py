@@ -40,5 +40,5 @@ dishwasher_main_name = "sink_area_dish_washer_main"
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
     ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
-    NavigateAction([Pose([2.6, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
+    NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
     OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()

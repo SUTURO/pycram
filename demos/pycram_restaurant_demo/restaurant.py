@@ -32,16 +32,19 @@ from geometry_msgs.msg import PoseStamped
 
 from pycram.robot_description import RobotDescription
 from pycram.ros_utils.viz_marker_publisher import ManualMarkerPublisher
-from pycram.utilities.robocup_utils import pakerino
+from pycram.utilities.robocup_utils import pakerino, ImageSwitchPublisher
 
 # Initialize the necessary components
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot = startup()
 
 rospy.loginfo("Waiting for action server")
 rospy.loginfo("You can start your demo now")
+response = [None, None]
+callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 
 nlp = nlp_restaurant()
+
 
 ###########################################################################
 
@@ -49,7 +52,6 @@ nlp = nlp_restaurant()
 global human_pose
 human_pose = None
 order = ('Cola', 2)
-
 
 def monitor_found_waving():
     global human_pose
@@ -102,10 +104,11 @@ def look_around(increase: int, star_pose: PoseStamped, talk):
                              frame="hsrb/" + RobotDescription.current_robot_description.base_link)
             look_pose_in_map = tf_listener.transformPose("/map", look_pose)
             look_point_in_map = look_pose_in_map.pose.position
-
+            # The only variable that needs to be updated is the x variable of the point
             LookAtAction(
-                [Pose([look_point_in_map.x + angle, look_point_in_map.y + angle,
+                [Pose([look_point_in_map.x + angle, look_point_in_map.y  ,
                        look_point_in_map.z])]).resolve().perform()
+            print(angle)
             if human_pose: break
 
     # Executes in paralel and breaks if human bool gets true
@@ -121,13 +124,14 @@ def detect_obstacles():
     laser_subscriber = rospy.Subscriber("hsrb/base_scan", LaserScan, laser_scan_cb )
 
 
-def demo(step):
+
+def demo(step:int):
     global customer
     customerCounter = 0
     with real_robot:
         talk = True
         start_pose = robot.get_pose()
-        #TalkingMotion("start demo").perform()
+        TalkingMotion("start demo").perform()
         kitchenPose = start_pose
         if step <= 0:
             config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
@@ -154,29 +158,36 @@ def demo(step):
 
             print(customer.pose)
             print(customer.id)
-        # if step <= 2:  # Order step
-        #     image_switch_publisher.pub_now(ImageEnum.ORDER.value)
-        #     MoveTorsoAction([0.1]).resolve().perform()
-        #     TalkingMotion("What do you want to order?").perform()  # NLP Placeholder
-        #     customer.set_order("Cola",1)
-        #     TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
-        # if step <= 3:  # Drive back step
-        #      image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
-        #      TalkingMotion("I will drive back now and return with your order").perform()
-        #      MoveTorsoAction([0]).resolve().perform()
-        #      move.pub_now(navpose=kitchenPose)
-        #      TalkingMotion(f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
+        if step <= 2:  # Order step
+             image_switch_publisher.pub_now(ImageEnum.ORDER.value)
+             MoveTorsoAction([0.1]).resolve().perform()
+             rospy.sleep(1)
+             print("nlp start")
+             Timmi = CustomerDescription(1, robot.get_pose())
+             nlp.get_order(customer=Timmi)
+             rospy.sleep(1)
+             image_switch_publisher.pub_now(ImageEnum.TALK.value)
+             #customer.set_order("Cola",1)
+             #TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
+        if step <= 3:  # Drive back step
+              image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
+              TalkingMotion("I will drive back now and return with your order").perform()
+              MoveTorsoAction([0]).resolve().perform()
+              move.pub_now(navpose=kitchenPose)
+              TalkingMotion(f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
+              rospy.sleep(1)
+
         # #     print("I am back")
-        # if step <= 4:
-        #     # Present the order
-        #     TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
-        #     # wait for the cook
-        #     rospy.sleep(1.5)
-        #     move.pub_now(navpose=customer.pose)
-        #     print("demo-done")
+        if step <= 4:
+             # Present the order
+             TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
+             # wait for the cook
+             rospy.sleep(1.5)
+             move.pub_now(navpose=customer.pose)
+             print("demo-done")
 
 
-demo(0)
+demo(2)
 
 # while not success:
 #     try:

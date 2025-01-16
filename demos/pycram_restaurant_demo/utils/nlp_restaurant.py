@@ -22,6 +22,7 @@ class nlp_restaurant:
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
         self.response = ["", ""]
         self.callback = False
+        self.image_switch_publisher = ImageSwitchPublisher()
 
     def data_cb(self, data):
         """
@@ -29,7 +30,7 @@ class nlp_restaurant:
         """
 
         image_switch_publisher = ImageSwitchPublisher()
-
+        print(data)
         image_switch_publisher.pub_now(ImageEnum.HI.value)
         self.response = data.data.split(",")
         for ele in self.response:
@@ -41,6 +42,7 @@ class nlp_restaurant:
     def repeat_order(self, customer: CustomerDescription):
         TalkingMotion("Do you want to order the following items?").perform()
         TalkingMotion(f"{customer.order[1]}{customer.order[0]} ").perform()
+
     def get_order(self, customer: CustomerDescription):
         """
         Method to order food if Toya successfully arrived at a customer.
@@ -48,10 +50,10 @@ class nlp_restaurant:
         """
         TalkingMotion("Welcome, what can I get for you? Please come close to me").perform()
 
-        DetectAction(technique='human').resolve().perform()
+        # DetectAction(technique='human').resolve().perform()
         rospy.sleep(1)
 
-        HeadFollowMotion(state='start').perform()
+        # HeadFollowMotion(state='start').perform()
 
         print("nlp start")
         self.nlp_pub.publish("start listening")
@@ -66,8 +68,14 @@ class nlp_restaurant:
                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
 
         self.callback = False
+        print(type(self.response))
 
         if self.response[0] == "<ORDER>":
+            for n in self.response:
+                print(n)
+                if n != "<ORDER>" or n != "None":
+                    print(n.split("'")[1])
+
             if self.response[1].strip() != "None" and self.response[2].strip() is not None:
                 customer.set_order(self.response[1], self.response[2])
             else:
@@ -76,5 +84,3 @@ class nlp_restaurant:
                 if self.response[1].strip() != "None":
                     order = True
                     customer.set_order(self.response[1].strip(), 1)
-
-
