@@ -126,6 +126,7 @@ def first_part(talk_bool):
         talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
         plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func)
+        
         plan.perform()
     except SensorMonitoringCondition:
         img.pub_now(ImageEnum.HI.value)  # hi im toya
@@ -203,7 +204,7 @@ def cml(step="default"):  # worksme
                         img.pub_now(ImageEnum.HI.value)
                         gripper.pub_now("close")
 
-                    talk.pub_now("Driving Back.", talk_bool,False)
+                    talk.pub_now("Driving Back.", talk_bool, False)
                     img.pub_now(ImageEnum.DRIVINGBACK.value)
 
                     # giskard fährt Weg selbst zurück
