@@ -215,7 +215,7 @@ class Repeat(Language):
         for i in range(self.repeat):
             for child in self.children:
                 if self.interrupted:
-                    return
+                    return State.INTERRUPTED, None
                 try:
                     results.append(child.resolve().perform())
                 except PlanFailure as e:

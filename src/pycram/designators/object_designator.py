@@ -209,7 +209,7 @@ class HumanDescription:
         self.fav_drink = fav_drink
         self.pose = pose
         self.attributes = attributes
-        if self.interests is None:
+        if interests is None:
             self.interests = []
         else:
             self.interests = interests
@@ -271,11 +271,11 @@ class HumanDescription:
         self.attributes = attribute_list
 
 
-class CustomerDiscription(HumanDescription):
-    def __init__(self, id: int, pose: Pose):
+class CustomerDescription(HumanDescription):
+    def __init__(self, id: int, pose: Pose, order: Optional = None):
         self.id = id
         self.pose = pose
-
+        self.order = order
 
     def get_pose(self):
         return self.pose
@@ -287,3 +287,7 @@ class CustomerDiscription(HumanDescription):
         return id
     def set_id(self, new_id):
         self.id = new_id
+
+    def set_order(self, order : List[(String, int)]):
+        self.order = order
+

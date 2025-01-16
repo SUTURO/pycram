@@ -63,14 +63,15 @@ def demo(step: int):
         # door_pre = Pose([2.2, -0.9, 0])
         # NavigateAction([door_pre]).resolve().perform()
         offset = Vector3()
-        offset.z = -0.025
-        offset.y = -0.039
-        grasp_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset)
-        # GraspHandleMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset).perform()
+        offset.z = -0.015
+        #offset.y = -0.03
+        # grasp_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset)
+        GraspHandleMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset).perform()
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
         DoorOpenMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside").perform()
         # open_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside")
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
 
 
 demo(12)

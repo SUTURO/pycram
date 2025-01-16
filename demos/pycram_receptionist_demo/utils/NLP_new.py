@@ -1,9 +1,8 @@
 import time
-
 import rospy
 from std_msgs.msg import String
 
-from demos.pycram_receptionist_demo.dev.receptionist_new_draft import res_loader
+from demos.pycram_receptionist_demo.utils.ResponseLoader import ResponseLoader
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import HumanDescription
@@ -22,6 +21,9 @@ class NLP_Helper:
     def __init__(self):
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
+        rospy.sleep(2)
+        self.res_loader = ResponseLoader("a.json")
+        self.res_loader.load_data()
         self.response = ["", ""]
         self.callback = False
         self.image_switch_publisher = ImageSwitchPublisher()
@@ -31,7 +33,8 @@ class NLP_Helper:
         function to receive data from nlp via /nlp_out topic
         """
         self.image_switch_publisher.pub_now(ImageEnum.HI.value)
-        self.response = data.data.split(",")
+        self.response = data.data.split(";")
+        print("response: " + str(self.response))
         for ele in self.response:
             ele.strip()
         self.response.append("None")
@@ -178,11 +181,11 @@ class NLP_Helper:
             self.callback = False
             if self.response[0] == "<INTERESTS>" and self.response[1].strip() != "None":
                 rospy.loginfo("interest understood")
-                return self.response[1]
+                return eval(self.response[1])
             else:
                 trys += 1
 
-        return "fallback"
+        return None
 
     def get_fav_drink(self, guest: HumanDescription):
         """
@@ -257,12 +260,15 @@ class NLP_Helper:
         """
         function to answer to hobby individually
         """
+
         # get interests
         hobby_list = self.listen_return_interest()
 
         # store interests
-        guest.add_interests(hobby_list)
+        if hobby_list:
+            guest.add_interests(hobby_list)
 
         # answer specifically
-        toya_text = res_loader.predict_response(hobby_list)
+        toya_text = self.res_loader.predict_response(hobby_list)
+        print(toya_text)
         TalkingMotion(toya_text).perform()
