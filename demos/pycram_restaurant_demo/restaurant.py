@@ -1,38 +1,22 @@
-import math
-from datetime import time
-
-import actionlib
-import rospy
-from geometry_msgs.msg import WrenchStamped, PoseStamped, PointStamped, PoseWithCovarianceStamped
-from robokudo_msgs.msg import QueryAction, QueryGoal
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
-from demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant
 # from pycram.demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant, monitor_func
-from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction, \
-    NavigateAction
-from pycram.designators.motion_designator import MoveGripperMotion, TalkingMotion
+from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction
+from pycram.designators.motion_designator import TalkingMotion
 from pycram.datastructures.enums import Arms, ImageEnum
 from pycram.designators.object_designator import CustomerDescription
-from pycram.external_interfaces.navigate import PoseNavigator
-from pycram.fluent import Fluent
-from pycram.language import Monitor, Code
-from pycram.local_transformer import LocalTransformer
-from pycram.failures import SensorMonitoringCondition, HumanNotFoundCondition
+from pycram.language import Code
+from pycram.failures import HumanNotFoundCondition
 from pycram.datastructures.pose import Pose
 from pycram.process_module import real_robot
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
-import pycram.external_interfaces.giskard as giskardpy
-import pycram.external_interfaces.robokudo as robokudo
-from demos.pycram_hsrb_real_test_demos.utils.nlp_restaurant import nlp_restaurant
+from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
 import rospy
-import tf
 from geometry_msgs.msg import PoseStamped
 
 from pycram.robot_description import RobotDescription
-from pycram.ros_utils.viz_marker_publisher import ManualMarkerPublisher
-from pycram.utilities.robocup_utils import pakerino, ImageSwitchPublisher
+from pycram.utilities.robocup_utils import pakerino
 
 # Initialize the necessary components
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot = startup()
@@ -40,6 +24,7 @@ tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher,
 rospy.loginfo("Waiting for action server")
 rospy.loginfo("You can start your demo now")
 response = [None, None]
+confirmation = [None]
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 
@@ -107,8 +92,9 @@ def look_around(increase: int, star_pose: PoseStamped, talk):
             # The only variable that needs to be updated is the x variable of the point
             LookAtAction(
                 [Pose([look_point_in_map.x + angle, look_point_in_map.y  ,
-                       look_point_in_map.z])]).resolve().perform()
+                       0.8])]).resolve().perform()
             print(angle)
+            print(look_point_in_map.x)
             if human_pose: break
 
     # Executes in paralel and breaks if human bool gets true
@@ -131,30 +117,30 @@ def demo(step:int):
     with real_robot:
         talk = True
         start_pose = robot.get_pose()
-        TalkingMotion("start demo").perform()
+        #TalkingMotion("start demo").perform()
         kitchenPose = start_pose
         if step <= 0:
             config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
                                   'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
-            perceive_conf = {'arm_lift_joint': 0.20, 'wrist_flex_joint': 1.8, 'arm_roll_joint': -1, }
             pakerino(config=config_for_placing)
 
-            # todo: eign müsste sie schräg stehen weil sonst arm in weg und sie muss auf 0.5 hoch das ist nur zum gucken! nicht fahren
             MoveTorsoAction([0.1]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
            # text_to_speech_publisher.pub_now("Starting Restaurant Demo.", talk)
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
-            look_around(20, start_pose, talk)
+            look_around(50, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
             drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
+            print("Drive Pose", drive_pose)
             if human_pose is not None:
                 image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
                 customerCounter += 1
                 customer = CustomerDescription(customerCounter, drive_pose)
             marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
             move.pub_now(navpose=drive_pose)
+            rospy.sleep(1)
 
             print(customer.pose)
             print(customer.id)
@@ -163,31 +149,32 @@ def demo(step:int):
              MoveTorsoAction([0.1]).resolve().perform()
              rospy.sleep(1)
              print("nlp start")
-             Timmi = CustomerDescription(1, robot.get_pose())
-             nlp.get_order(customer=Timmi)
-             rospy.sleep(1)
-             image_switch_publisher.pub_now(ImageEnum.TALK.value)
-             #customer.set_order("Cola",1)
-             #TalkingMotion(f"You want to order {customer.order[0]} in the following amount {customer.order[1]}").perform()
-        if step <= 3:  # Drive back step
-              image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
-              TalkingMotion("I will drive back now and return with your order").perform()
-              MoveTorsoAction([0]).resolve().perform()
-              move.pub_now(navpose=kitchenPose)
-              TalkingMotion(f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
-              rospy.sleep(1)
+             #Timmi = CustomerDescription(id=1, pose=robot.get_pose())
+             nlp.get_order(customer=customer)
+             rospy.sleep(2)
+             print(customer.order)
+             #if customer.order is not None:
+              #   nlp.confirm_order(customer.order)
+             #image_switch_publisher.pub_now(ImageEnum.TALK.value)
+       # if step <= 3:  # Drive back step
+       #       image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
+        #      TalkingMotion("I will drive back now and return with your order").perform()
+         #     MoveTorsoAction([0]).resolve().perform()
+          #    move.pub_now(navpose=kitchenPose)
+           #   TalkingMotion(f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
+            #  rospy.sleep(1)
 
         # #     print("I am back")
-        if step <= 4:
-             # Present the order
-             TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
-             # wait for the cook
-             rospy.sleep(1.5)
-             move.pub_now(navpose=customer.pose)
-             print("demo-done")
+        #if step <= 4:
+         #    # Present the order
+          #   TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
+           #  # wait for the cook
+            # rospy.sleep(1.5)
+             #move.pub_now(navpose=customer.pose)
+             #print("demo-done")
 
 
-demo(2)
+demo(0)
 
 # while not success:
 #     try:
