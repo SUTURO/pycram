@@ -56,20 +56,19 @@ class NLP_Helper:
 
         # look at guest and introduce
         HeadFollowMotion(state="start").perform()
-        rospy.sleep(2.3)
-        HeadFollowMotion(state="start").perform()
+        rospy.sleep(1)
 
         TalkingMotion("Hello, i am Toya").perform()
-        rospy.sleep(1.7)
+        rospy.sleep(1.1)
         TalkingMotion("What is your name?").perform()
-        rospy.sleep(1.7)
+        rospy.sleep(1.1)
         TalkingMotion("please answer me when my display changes").perform()
-        rospy.sleep(2.5)
+        rospy.sleep(2.3)
 
         # signal to start listening
         rospy.loginfo("nlp start")
         self.nlp_pub.publish("start listening")
-        rospy.sleep(2.2)
+        rospy.sleep(2.1)
         self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
         # wait for nlp answer
