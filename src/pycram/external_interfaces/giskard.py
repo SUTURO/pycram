@@ -491,6 +491,12 @@ def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
+def dishwasher_test(handle_name, hinge_name, door_name) -> 'MoveResult':
+    return giskard_wrapper.hsrb_dishwasher_test(handle_name, hinge_name, door_name)
+
+
+@init_giskard_interface
+@thread_safe
 def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult':
     """
     After the first opening part, the dishwasher is half open.
@@ -499,10 +505,7 @@ def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult'
     :param door_name: The name of the container door, where the arm needs to be moved around and aligned.
     :return: MoveResult message for this goal.
     """
-    giskard_wrapper.motion_goals.set_hsrb_align_to_push_door_goal(handle_name, door_name)
-    giskard_wrapper.execute()
-
-    giskard_wrapper.motion_goals.set_hsrb_pre_push_door_goal(handle_name=handle_name, hinge_frame_id=door_name)
+    giskard_wrapper.motion_goals.hsrb_pre_push_door_goal(handle_name=handle_name, hinge_frame_id=door_name)
     giskard_wrapper.motion_goals.allow_all_collisions()
     return giskard_wrapper.execute()
 
@@ -571,7 +574,7 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
-def achieve_cartesian_goal_w_fts(goal_pose: PoseStamped,
+def achieve_cartesian_goal_w_fts(goal_pose: Pose,
                                  tip_link: str,
                                  root_link: str,
                                  object_type: str,
@@ -592,14 +595,14 @@ def achieve_cartesian_goal_w_fts(goal_pose: PoseStamped,
         return par_return
 
     cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
-                                                                goal_pose=goal_pose,
+                                                                goal_pose=_pose_to_pose_stamped(goal_pose),
                                                                 position_threshold=position_threshold,
                                                                 orientation_threshold=orientation_threshold,
                                                                 name='cart goal 1')
     end_monitor = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
 
     giskard_wrapper.motion_goals.add_cartesian_pose(name='g1', root_link=root_link, tip_link=tip_link,
-                                                    goal_pose=goal_pose,
+                                                    goal_pose=_pose_to_pose_stamped(goal_pose),
                                                     end_condition=cart_monitor1)
 
     giskard_wrapper.motion_goals.avoid_all_collisions()

@@ -1077,7 +1077,7 @@ class PickUpActionPerformable(ActionAbstract):
         World.current_world.add_vis_axis(liftingTm)
         if execute:
             if self.object_designator.obj_type != "Metalbowl":
-                object_type = "default"
+                object_type = "Default"
             else:
                 object_type = "Bowl"
             try:
