@@ -52,6 +52,28 @@ class nlp_restaurant:
         self.confirmation = data.data.split(",")
         print(self.confirmation)
         self.callback = True
+    def order_ready(self, data):
+        """
+        Confirmation from the bartender that order is ready.
+        :param data: The response
+        :return: Boolean
+        """
+        TalkingMotion("Please confirm that the order is ready.").perform()
+        rospy.sleep(4)
+
+        rospy.loginfo("nlp start")
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+            if int(time.time()) - start_time == timeout:
+                rospy.loginfo("Please repeat")
+                self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+        self.callback = False
+
 
     def split_response(self, data):
         """
@@ -81,11 +103,24 @@ class nlp_restaurant:
         """
         print("Confirm oder", order[0][1])
         print(order[0][0])
-        TalkingMotion(f"Do you want to order {order[0][1]} {order[0][0]}?").perform()
-        rospy.sleep(1)
-        print("nlp start")
-        self.nlp_pub.publish("start listening")
-        rospy.sleep(2.3)
+        if len(order) == 1:
+            TalkingMotion(f"Do you want to order {order[0][1]} {order[0][0]}?").perform()
+            rospy.sleep(2.5)
+            print("nlp start")
+            self.nlp_pub.publish("start listening")
+            rospy.sleep(2.3)
+        # else:
+        #     for n in order:
+        #         TalkingMotion(f"Do you want to order {n[1]} {n[0]}?").perform()
+        #
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+
+            if int(time.time()) - start_time == timeout:
+                rospy.logwarn("Guest needs to repeat")
+                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+                TalkingMotion(f"Please repeat your confirmation").perform()
 
         self.callback = False
         print(self.confirmation)
@@ -96,17 +131,17 @@ class nlp_restaurant:
         :param: customer: The customer that wants to oder something
         """
         global order
-        TalkingMotion("Welcome, what can I get for you? Please come close to me").perform()
+        TalkingMotion("Welcome, what can I get for you?").perform()
+        rospy.sleep(2.5)
+        TalkingMotion("Please come close to me").perform()
+        rospy.sleep(2.5)
 
-        # DetectAction(technique='human').resolve().perform()
-        rospy.sleep(1)
-
-        # HeadFollowMotion(state='start').perform()
 
         print("nlp start")
         self.nlp_pub.publish("start listening")
         rospy.sleep(2.3)
-        image_switch_publisher.pub_now(ImageEnum.TALK.value)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
         start_time = time.time()
         while not self.callback:
             rospy.sleep(1)
@@ -114,10 +149,10 @@ class nlp_restaurant:
             if int(time.time() - start_time) == timeout:
                 print("guest needs to repeat")
                 image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
-                self.nlp_pub.publish("Please repeat your order")
+                TalkingMotion("Please repeat your order").perform()
+                rospy.sleep(2)
 
         self.callback = False
-        print(type(self.response))
 
         if self.response[0] == "<ORDER>":
             tmp = self.split_response(self.response)
@@ -134,12 +169,15 @@ class nlp_restaurant:
                 self.nlp_pub.publish("start")
                 self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
-                tart_time = time.time()
+                start_time_rep = time.time()
                 while not self.callback:
                     rospy.sleep(1)
                     if int(time.time() - start_time) == timeout:
                         rospy.logwarn("guest needs to repeat")
                         self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+                        TalkingMotion("Please repeat your order").perform()
+                        rospy.sleep(2)
+
                 self.callback = False
                 if self.response[0] == "<ORDER>":
                     tmp_rep = self.split_response(self.response)
