@@ -39,8 +39,8 @@ with (real_robot):
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveTorsoAction([0.4]).resolve().perform()
 
-    pickup = "None"
-    placing = "popcorn_table"
+    pickup = "popcorn_table"
+    placing = "none"
 
     if pickup == "shelf":
         # shelf pickup
@@ -63,8 +63,8 @@ with (real_robot):
 
     object_desig = DetectAction(technique='all').resolve().perform()
     print(object_desig)
-    obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Spoon"])
-    PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.TOP]).resolve().perform()
+    obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Cerealbox"])
+    PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
 
     if pickup == "shelf":
         # shelf pickup
@@ -122,6 +122,25 @@ with (real_robot):
         #################################################################
 
 
+    ###################################### OPEN DISHWASHER ##################################
+    # NavigateAction(target_locations=[Pose([2.65, -2.25, 0], [0, 0, -1, 1])]).resolve().perform()
+    # ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
+    # Opendishwasher
+    ########################################################################################
+
+
+
+    ####################################### Demo Start #####################################
+    # navigate from door to dishwasher
+    # open dishwasher
+    # navigate to popcorn table and perceive twice once from left one from right
+    # merge found objects into one list
+    # pick up objects that doesnt belong to the "serve breakfast" and place then in the dishwasher
+    # after cleaning up the table look which objects still remaining and navigate to shelf to pick them up
+    # pick up remaaining objects and place them on popcorn table with pouring
+
+    # navigate_to(1.63, y, "popcorn table")
+    # navigate_to(2.45, y, "popcorn table")
 
 
     # try_pick_up(robot, obj_list[0], "front")

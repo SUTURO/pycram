@@ -107,7 +107,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
     """
     Target pose to which the TCP should be moved
     """
-    threshold: str
+    threshold: GiskardStateFTS
     """
     Target pose to which the TCP should be moved
     """
@@ -115,6 +115,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
     """
     If the gripper can collide with something
     """
+
 
     @with_tree
     def perform(self):
@@ -589,7 +590,7 @@ class GraspingDishwasherHandleMotion(BaseMotion):
     """
     Name of the handle to grasp
     """
-    arm: str
+    arm: Arms
     """
     Arm that should be used
     """
@@ -619,7 +620,7 @@ class HalfOpeningDishwasherMotion(BaseMotion):
     """
     Goal state of the door, defining the degree to open the door
     """
-    arm: str
+    arm: Arms
     """
     Arm that should be used
     """
@@ -646,7 +647,7 @@ class MoveArmAroundMotion(BaseMotion):
     """
     Name of the dishwasher handle which was grasped
     """
-    arm: str
+    arm: Arms
     """
     Arm that should be used
     """
@@ -681,7 +682,7 @@ class FullOpeningDishwasherMotion(BaseMotion):
     """
     Goal state of the door, defining the degree to open the door
     """
-    arm: str
+    arm: Arms
     """
     Arm that should be used
     """

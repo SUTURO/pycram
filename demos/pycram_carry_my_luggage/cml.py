@@ -6,14 +6,20 @@ import rospy
 from geometry_msgs.msg import PointStamped
 from robokudo_msgs.msg import QueryAction, QueryGoal
 
-import pycram.external_interfaces.giskard_new as giskardpy
+import pycram.external_interfaces.giskard as giskardpy
+from pycram.datastructures.enums import ImageEnum
+
+# TODO find fts
 from pycram.designators.action_designator import fts
-from pycram.enums import ImageEnum
+# from pycram import ImageEnum
+
+from pycram.external_interfaces import robokudo
+from pycram.failures import SensorMonitoringCondition, HumanNotFoundCondition
 from pycram.fluent import Fluent
 from pycram.language import Monitor, Code
-from pycram.plan_failures import SensorMonitoringCondition, HumanNotFoundCondition
 from pycram.process_module import real_robot
 from pycram.utilities.robocup_utils import TextToSpeechPublisher, ImageSwitchPublisher, HSRBMoveGripperReal, pakerino
+from pycram.utilities.tf_wrapper import transform_pose
 
 # Initialize the necessary components
 # world = BulletWorld("DIRECT")
@@ -34,7 +40,7 @@ gripper = HSRBMoveGripperReal()
 # KitchenStateUpdater("/tf", "/iai_kitchen/joint_states")
 rospy.loginfo("Loading done")
 giskardpy.init_giskard_interface()
-rkclient = actionlib.SimpleActionClient('robokudo/query', QueryAction)
+rkclient = actionlib.SimpleActionClient('robokudo/query', QueryAction) # so lassen, ist schneller
 rospy.loginfo("Waiting for action server")
 rkclient.wait_for_server()
 rospy.loginfo("You can start your demo now")
@@ -57,7 +63,8 @@ class Human:
         self.threshold = 5.0  # seconds
 
         # Subscriber to the human pose topic
-        self.human_pose_sub = rospy.Subscriber("/cml_human_pose", PointStamped, self.human_pose_cb)
+        #TODO check if its really pointstamped (it should)
+        self.human_pose_sub = rospy.Subscriber("/human_pose", PointStamped, self.human_pose_cb)
 
         # Timer to check for no message
         self.timer = rospy.Timer(rospy.Duration(1), self.check_for_no_message)
@@ -119,6 +126,7 @@ def first_part(talk_bool):
         talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
         plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func)
+        
         plan.perform()
     except SensorMonitoringCondition:
         img.pub_now(ImageEnum.HI.value)  # hi im toya
@@ -140,21 +148,6 @@ def first_part(talk_bool):
 
         talk.pub_now("Found a Human", talk_bool,False)
         img.pub_now(ImageEnum.HI.value)
-
-        gripper.pub_now("open")
-        rospy.sleep(1)
-        talk.pub_now("I am not able to pick up the bag. Please hand it in", talk_bool,False)
-        rospy.sleep(1)
-
-        talk.pub_now("Push down my Hand, when you are Ready.", talk_bool,False)
-        img.pub_now(ImageEnum.PUSHBUTTONS.value)
-        try:
-            plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-            plan.perform()
-        except SensorMonitoringCondition:
-            talk.pub_now("Closing my Gripper.", talk_bool)
-            img.pub_now(ImageEnum.HI.value)
-            gripper.pub_now("close")
 
 
 
@@ -195,15 +188,33 @@ def cml(step="default"):  # worksme
                     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
                     plan.perform()
                 except SensorMonitoringCondition:
+                    # TODO: bag part
                     gripper.pub_now("open")
-                    talk.pub_now("Driving Back.", talk_bool,False)
+                    rospy.sleep(1)
+                    talk.pub_now("I am not able to pick up the bag. Please hand it in", talk_bool, False)
+                    rospy.sleep(1)
+
+                    talk.pub_now("Push down my Hand, when you are Ready.", talk_bool, False)
+                    img.pub_now(ImageEnum.PUSHBUTTONS.value)
+                    try:
+                        plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                        plan.perform()
+                    except SensorMonitoringCondition:
+                        talk.pub_now("Closing my Gripper.", talk_bool)
+                        img.pub_now(ImageEnum.HI.value)
+                        gripper.pub_now("close")
+
+                    talk.pub_now("Driving Back.", talk_bool, False)
                     img.pub_now(ImageEnum.DRIVINGBACK.value)
+
+                    # giskard fährt Weg selbst zurück
                     giskardpy.cml(True)
                     talk.pub_now("done.", talk_bool,False)
             elif isinstance(e, HumanNotFoundCondition):
                 cml("lost_human")
             # fixme i dont know what to do here
             else:
+                # TODO idk what giskard throws errors types
                 print("idk what happned")
 
 

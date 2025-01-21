@@ -20,13 +20,14 @@ from typing_extensions import List, Union, Callable, Optional, Type
 from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
     LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
-    MoveTCPForceTorqueMotion
+    MoveTCPForceTorqueMotion, GraspingDishwasherHandleMotion, HalfOpeningDishwasherMotion, MoveArmAroundMotion, \
+    FullOpeningDishwasherMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
-from ..datastructures.enums import Arms, Grasp, GripperState
+from ..datastructures.enums import Arms, Grasp, GripperState, GiskardStateFTS
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
 from ..designator import ActionDesignatorDescription
-from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringCondition
+from ..failures import ObjectUnfetchable, ReachabilityFailure, SensorMonitoringCondition, ManipulationFTSCheckNoObject
 from ..helper import multiply_quaternions
 from ..language import Monitor
 from ..local_transformer import LocalTransformer
@@ -420,6 +421,40 @@ class DetectAction(ActionDesignatorDescription):
 
         return DetectActionPerformable(technique=self.technique, state=self.state, object_designator=self.object_designator_description.resolve())
 
+
+class OpenDishwasherAction(ActionDesignatorDescription):
+    """
+    Opens the dishwasher door
+    """
+
+    def __init__(self, handle_name: str, door_name: str, goal_state_half_open: float, goal_state_full_open: float,
+                 arms: List[Arms], resolver=None):
+        """
+        Moves the arm of the robot to open a container.
+
+        :param handle_name: name of the dishwasher handle
+        :param door_name: name of the belonging dishwasher door
+        :param goal_state_half_open: state to open the dishwasher door partially
+        :param goal_state_full_open: state to open the dishwasher door fully
+        :param arms: A list of possible arms that should be used
+        :param resolver: A alternative resolver that returns a performable designator for the lists of possible parameter.
+        """
+        super().__init__(resolver)
+        self.handle_name = handle_name
+        self.door_name = door_name
+        self.goal_state_half_open = goal_state_half_open
+        self.goal_state_full_open = goal_state_full_open
+        self.arms: List[Arms] = arms
+
+    def ground(self) -> OpenDishwasherPerformable:
+        """
+        Default resolver that returns a performable designator with the resolved object description and the first entries
+        from the lists of possible parameter.
+
+        :return: A performable designator
+        """
+        return OpenDishwasherPerformable(self.handle_name, self.door_name, self.goal_state_half_open,
+                                         self.goal_state_full_open, self.arms[0])
 
 
 class OpenAction(ActionDesignatorDescription):
@@ -1041,16 +1076,16 @@ class PickUpActionPerformable(ActionAbstract):
         liftingTm.pose.position.z += 0.03
         World.current_world.add_vis_axis(liftingTm)
         if execute:
-            # if self.object_designator.obj_type != "Metalbowl":
-            #     object_type = "Standard"
-            # else:
-            #     object_type = "Bowl"
-            # try:
-            #     MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, "GraspCarefully",
-            #                             allow_gripper_collision=False).perform()
-            # except ForceTorqueThresholdException:
-
-            MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "Default"
+            else:
+                object_type = "Bowl"
+            try:
+                MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
+                                         allow_gripper_collision=False).perform()
+            except ForceTorqueThresholdException:
+                raise ManipulationFTSCheckNoObject(f"Could not pickup object after checking force-torque values")
+            # MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(arm=self.arm)
         robot.attach(child_object=self.object_designator.world_object, parent_link=tool_frame)
 
@@ -1128,11 +1163,17 @@ class PlaceActionPerformable(ActionAbstract):
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
             # if self.object_designator.obj_type != "Metalbowl":
-            #     object_type = "Standard"
+            #     object_type = "default"
             # else:
             #     object_type = "Bowl"
-            # MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, "Place").perform()
+            # try:
+            #     MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
+            #                              allow_gripper_collision=False).perform()
+            # except ForceTorqueThresholdException:
+            #     raise ManipulationFTSCheckNoObject(f"Could not find an object to pickup after checking force-torque "
+            #                                        f"values")
             MoveTCPMotion(push_baseTm, self.arm).perform()
+
         # if self.object_designator.type == "Metalplate":
         #     loweringTm = push_baseTm
         #     loweringTm.pose.position.z -= 0.08
@@ -1281,6 +1322,58 @@ class DetectActionPerformable(ActionAbstract):
     def perform(self) -> None:
         return DetectingMotion(object_type=self.object_designator.obj_type, technique=self.technique,
                                state=self.state).perform()
+
+
+@dataclass
+class OpenDishwasherPerformable(ActionAbstract):
+    handle_name: str
+    """
+    Name of the handle to grasp for opening
+    """
+
+    door_name: str
+    """
+    Name of the door belonging to the handle
+    """
+
+    goal_state_half_open: float
+    """
+    goal state for opening the door partially
+    """
+
+    goal_state_full_open: float
+    """
+    goal state for opening the door fully
+    """
+
+    arm: Arms
+    """
+    Arm that should be used for opening the container
+    """
+
+    @with_tree
+    def perform(self) -> None:
+        # Grasping the dishwasher handle
+        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
+        GraspingDishwasherHandleMotion(self.handle_name, self.arm).perform()
+
+        # partially opening the dishwasher door
+        MoveGripperMotion(GripperState.CLOSE, self.arm).perform()
+        HalfOpeningDishwasherMotion(self.handle_name, self.goal_state_half_open, self.arm).perform()
+
+        # moves arm around the door to further push it open
+        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
+        MoveArmAroundMotion(self.handle_name, self.arm).perform()
+
+        # pushes the rest of the door open
+        MoveGripperMotion(GripperState.CLOSE, self.arm).perform()
+        FullOpeningDishwasherMotion(self.handle_name, self.door_name, self.goal_state_full_open,
+                                    self.arm).perform()
+
+        ParkArmsAction([self.arm]).resolve().perform()
+        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
+        # plan = talk | park | gripper_open
+        # plan.perform()
 
 
 @dataclass
