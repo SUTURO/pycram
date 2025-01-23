@@ -1162,27 +1162,26 @@ class PlaceActionPerformable(ActionAbstract):
         rospy.logwarn("Pushing now")
         World.current_world.add_vis_axis(push_baseTm)
         if execute:
-            # if self.object_designator.obj_type != "Metalbowl":
-            #     object_type = "default"
-            # else:
-            #     object_type = "Bowl"
-            # try:
-            #     MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
-            #                              allow_gripper_collision=False).perform()
-            # except ForceTorqueThresholdException:
-            #     raise ManipulationFTSCheckNoObject(f"Could not find an object to pickup after checking force-torque "
-            #                                        f"values")
-            MoveTCPMotion(push_baseTm, self.arm).perform()
+            if self.object_designator.obj_type != "Metalbowl":
+                object_type = "Default"
+            else:
+                object_type = "Bowl"
+            try:
+                MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, GiskardStateFTS.PLACE,
+                                         allow_gripper_collision=True).perform()
+            except ForceTorqueThresholdException:
+                raise ManipulationFTSCheckNoObject(f"Could not place object after checking force-torque values")
+            # MoveTCPMotion(push_baseTm, self.arm).perform()
 
-        # if self.object_designator.type == "Metalplate":
+        # if self.object_designator.obj_type == "Metalplate":
         #     loweringTm = push_baseTm
         #     loweringTm.pose.position.z -= 0.08
         #     World.current_world.add_vis_axis(loweringTm)
         #     if execute:
-        #         MoveTCPMotion(loweringTm, self.arm).resolve().perform()
+        #         MoveTCPMotion(loweringTm, self.arm).perform()
         #     # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
         #     rospy.logwarn("sidepush monitoring")
-        #     TalkingMotion("sidepush.").resolve().perform()
+        #     TalkingMotion("sidepush.").perform()
         #     side_push = Pose(
         #         [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.08, push_baseTm.pose.position.z],
         #         [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
@@ -1190,9 +1189,9 @@ class PlaceActionPerformable(ActionAbstract):
         #     try:
         #         plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
         #         plan.perform()
-        #     except (SensorMonitoringCondition):
+        #     except SensorMonitoringCondition:
         #         rospy.logwarn("Open Gripper")
-        #         MoveGripperMotion(motion="open", gripper=self.arm).resolve().perform()
+        #         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
 
         # Finalize the placing by opening the gripper and lifting the arm
         rospy.logwarn("Open Gripper")
