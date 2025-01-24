@@ -1076,16 +1076,18 @@ class PickUpActionPerformable(ActionAbstract):
         liftingTm.pose.position.z += 0.03
         World.current_world.add_vis_axis(liftingTm)
         if execute:
-            if self.object_designator.obj_type != "Metalbowl":
-                object_type = "Default"
+            if self.object_designator.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife", "Cutlery"]:
+                MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
             else:
-                object_type = "Bowl"
-            try:
-                MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
-                                         allow_gripper_collision=False).perform()
-            except ForceTorqueThresholdException:
-                raise ManipulationFTSCheckNoObject(f"Could not pickup object after checking force-torque values")
-            # MoveTCPMotion(liftingTm, self.arm, allow_gripper_collision=False).perform()
+                if self.object_designator.obj_type != "Metalbowl":
+                    object_type = "Default"
+                else:
+                    object_type = "Bowl"
+                try:
+                    MoveTCPForceTorqueMotion(liftingTm, Arms.LEFT, object_type, GiskardStateFTS.GRASP,
+                                             allow_gripper_collision=False).perform()
+                except ForceTorqueThresholdException:
+                    raise ManipulationFTSCheckNoObject(f"Could not pickup object after checking force-torque values")
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(arm=self.arm)
         robot.attach(child_object=self.object_designator.world_object, parent_link=tool_frame)
 
