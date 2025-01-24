@@ -99,7 +99,6 @@ def pickup_object(object: Object):
 
     if object.obj_type in ["Metalbowl", "Cutlery"]:
         grasp = Grasp.TOP
-    try_pick_up(robot, object, grasp)
 
     if object.obj_type == "Metalplate":
         TalkingMotion("Can you please give me the plate on the table.").perform()
@@ -120,6 +119,7 @@ def pickup_object(object: Object):
                                           [0, 0, 0.7, 0.7])]).resolve().perform()
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
+    MoveTorsoAction([0]).resolve().perform()
 
 
 def place_object(object: Object):
@@ -132,18 +132,24 @@ def place_object(object: Object):
     z_pos = x_y_z_pos[2]
 
     if x_pos >= 2.63:
-        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 0.7,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 1,
+                              NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 1,
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+                             NavigatePose.LONG_TABLE.value.pose.orientation)]).resolve().perform()
     else:
-        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 0.75,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
+                              NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+                             NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
-    PlaceAction(object, [Arms.LEFT], [grasp], [Pose([x_pos, y_pos, z_pos])]).resolve().perform()
+    PlaceAction(object, [Pose([x_pos, y_pos, z_pos])],  [grasp], [Arms.LEFT]).resolve().perform()
     # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen
     # drawer when moving to parkArms arm config
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
@@ -151,13 +157,15 @@ def place_object(object: Object):
 
 
 def pickup_and_place(objects_list: list):
+    NavigateAction([Pose([objects_list[0].pose.position.x, robot.get_pose().pose.position.y, 0],
+                         NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
     for value in range(len(objects_list)):
         pickup_object(objects_list[value])
         NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
         place_object(objects_list[value])
         if value + 1 < len(objects_list):
-            NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x,
-                                  objects_list[value + 1].pose.position.y, 0],
+            NavigateAction([Pose([objects_list[value + 1].pose.position.x,
+                                  NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                                  NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
 
 
@@ -174,7 +182,10 @@ def get_pos(obj_type: str):
       """
     x_val = PlacingXPose[obj_type].value
     y_val = PlacingYPose[obj_type].value
-    z_val = PlacingZPose[obj_type].value
+    if obj_type == "Metalplate":
+        z_val = PlacingZPose.METALPLATE.value
+    else:
+        z_val = PlacingZPose.OTHER.value
     return x_val, y_val, z_val
 
 
