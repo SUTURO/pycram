@@ -1,4 +1,6 @@
 from typing import Optional
+
+import rospy
 from geometry_msgs.msg import PointStamped, PoseStamped
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import PointingMotion
@@ -17,7 +19,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
     MoveJointsMotion(["head_tilt_joint"], [0.45]).perform()
     TalkingMotion("i will take a picture of you to recognize you later").perform()
-    rospy.sleep(2.4)
+    rospy.sleep(2)
     TalkingMotion("please look at me").perform()
     rospy.sleep(1.5)
     # remember face
@@ -60,14 +62,20 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
     """
 
     # detect free seat
-    seat = DetectAction(technique='location', state="sofa").resolve().perform()
+    try:
+        seat = DetectAction(technique='location', state="sofa").resolve().perform()
+    except PerceptionObjectNotFound:
+        rospy.logerr("i hate perception lol")
+        return None
     free_seat = False
 
     # loop through all seating options detected by perception
     if not no_sofa:
         for place in seat:
             # found a place that is not occupied
-            if place[1] == 'False':
+            print(place)
+            print(place[1])
+            if place[1] == ' False' or place[1] == 'False':
 
                 pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
                 rospy.loginfo("place: " + str(place))
@@ -81,7 +89,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
                     # move pose more to the left for clear pointing pose
                     pose_in_robot_frame.pose.position.y += 0.4
 
-                elif pose_in_robot_frame.pose.position.y < -0.35:
+                elif pose_in_robot_frame.pose.position.y < -0.15:
                     TalkingMotion("please take a seat to the right from me").perform()
                     # move pose more to the right for clear pointing pose
                     pose_in_robot_frame.pose.position.y -= 0.4
@@ -97,7 +105,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
         rospy.loginfo("find free chairs")
         for place in seat[1]:
             if place[0] == 'chair':
-                if place[1] == 'False':
+                if place[1] == ' False' or place[1] == 'False':
                     pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
                     TalkingMotion("please take a seat on the free chair").perform()
                     free_seat = True
@@ -245,6 +253,9 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
         rospy.sleep(1)
     TalkingMotion(f" This is {human2.name} and their favorite drink is {human2.fav_drink}").perform()
     rospy.sleep(2.2)
+    if human2.interests:
+        TalkingMotion(f" {human2.name} enjoys {human2.interests[0]}").perform()
+    rospy.sleep(2)
     TalkingMotion(f"Hey, {human2.name}").perform()
     rospy.sleep(2)
 
@@ -252,6 +263,9 @@ def introduce(human1: HumanDescription, human2: HumanDescription):
         pub_pose.publish(human1.pose)
         rospy.sleep(1.5)
     TalkingMotion(f" This is {human1.name} and their favorite drink is {human1.fav_drink}").perform()
+    rospy.sleep(2)
+    if human1.interests:
+        TalkingMotion(f" {human1.name} likes {human1.interests[0]}").perform()
 
     rospy.sleep(1)
 
@@ -303,5 +317,63 @@ def describe(human: HumanDescription):
         TalkingMotion(f"you are wearing {human.attributes[3]}").perform()
         rospy.sleep(2.5)
         TalkingMotion("have fun at the party").perform()
+
+
+def check_drink_available(guest: HumanDescription):
+    drinks = DetectAction(technique='drink').resolve().perform()
+    try:
+        robokudo_name = nlp_drink_to_robokudo[guest.fav_drink.strip(" ")]
+        print("found in list")
+    except KeyError:
+        TalkingMotion("i can not find that drink here").perform()
+        return False
+
+    for drink in drinks:
+        if drink[0] == robokudo_name:
+            TalkingMotion("your favorite drink stands on the table").perform()
+            return True
+
+    TalkingMotion("i can not find that drink here").perform()
+    return False
+
+
+hobby_verbs = {
+    "piano": "playing piano",
+    "gardening": "gardening",
+    "chess": "playing chess",
+    "volleyball": "playing volleyball",
+    "photography": "taking photos",
+    "cooking": "cooking",
+    "painting": "painting",
+    "cycling": "cycling",
+    "gaming": "playing games",
+    "reading": "reading",
+    "running": "running",
+    "writing": "writing",
+    "swimming": "swimming",
+    "hiking": "hiking",
+    "fishing": "fishing",
+    "dancing": "dancing",
+    "singing": "singing",
+    "yoga": "doing yoga",
+    "meditation": "meditating",
+    "traveling": "traveling",
+    "drawing": "drawing",
+    "knitting": "knitting",
+    "coding": "coding",
+    "robotics": "building robots",
+    "cooking Italian food": "cooking Italian food",
+    "playing guitar": "playing guitar",
+    "watching movies": "watching movies",
+    "listening to music": "listening to music",
+    "playing soccer": "playing soccer",
+    "building model airplanes": "building model airplanes",
+    "birdwatching": "birdwatching"
+}
+
+nlp_drink_to_robokudo = {
+    "milk": "Milkpack",
+}
+
 
 

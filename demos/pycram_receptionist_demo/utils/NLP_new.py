@@ -97,7 +97,6 @@ class NLP_Helper:
 
         HeadFollowMotion(state="stop").perform()
         DetectAction(technique='human', state="stop").resolve().perform()
-        rospy.sleep(1)
         TalkingMotion("Nice to meet you").perform()
         return guest
 
@@ -192,7 +191,7 @@ class NLP_Helper:
         :param guest: variable that stores favorite drink
         """
         TalkingMotion("What is your favorite drink?").perform()
-        rospy.sleep(2.5)
+        rospy.sleep(2)
         TalkingMotion("please answer me when my display changes").perform()
         rospy.sleep(2.5)
 
@@ -265,7 +264,9 @@ class NLP_Helper:
 
         # store interests
         if hobby_list:
-            guest.add_interests(hobby_list)
+            if hobby_list[0] == 'playing':
+                hobby_list.remove('playing')
+            guest.add_interests(hobby_list[0])
 
         # answer specifically
         toya_text = self.res_loader.predict_response(hobby_list)

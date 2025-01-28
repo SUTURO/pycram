@@ -24,13 +24,11 @@
       "Cooking is like creating art on a plate."
     ],
     "painting": [
-      "Mixing colors and creating art is my passion.",
-      "I enjoy painting abstract pieces.",
-      "finding the R G B values is my specialty"
+      "finding the R G B values is my specialty",
+      "I love painting T F graphs"
     ],
     "cycling": [
-      "Riding through scenic routes is so refreshing.",
-      "I love the wind in my face during long rides.",
+      "i rather drive with my wheels",
       "i wish i had legs to cycle"
     ],
     "gaming": [
@@ -39,13 +37,12 @@
       "Gaming helps me relax after a long day."
     ],
     "reading": [
-      "Getting lost in a good book is the best feeling.",
-      "I love exploring new ideas through reading.",
-      "you can read my documentation online"
+      "you can read my documentation online",
+      "i love reading zeros and ones"
     ],
     "running": [
       "I always beat turtlebot in a race.",
-      "It's a great way to clear my mind.",
+      "I love navigating through homes",
       "I always feel energized after a run."
     ],
     "writing": [
@@ -59,7 +56,6 @@
       "There's nothing like a refreshing swim on a hot day."
     ],
     "hiking": [
-      "I love the peace and serenity of nature.",
       "Hiking is the perfect way to disconnect from technology.",
       "Every trail brings a new adventure."
     ],
@@ -70,7 +66,6 @@
     ],
     "gardening": [
       "I love watching my plants grow and thrive.",
-      "Gardening gives me a sense of accomplishment.",
       "There's something so peaceful about tending to the garden."
     ],
     "dancing": [
@@ -85,12 +80,10 @@
     ],
     "yoga": [
       "Yoga helps me get in touch wit my inner gyroscope",
-      "It's my way of reconnecting with my joints and C P U cores.",
-      "I love the balance it brings to my life."
+      "It's my way of reconnecting with my joints and C P U cores."
     ],
     "meditation": [
       "Meditation helps me clear my cache and relax.",
-      "It's a wonderful practice for mental clarity.",
       "I use meditation to calm myself during stressful times."
     ],
     "traveling": [
@@ -99,9 +92,8 @@
       "My dream is to visit every continent."
     ],
     "drawing": [
-      "I love bringing my imagination to life with a pencil.",
-      "Sketching is a way for me to unwind and relax.",
-      "Drawing helps me see the world from a different perspective."
+      "i like display drawings",
+      "i can draw bounding boxes"
     ],
     "knitting": [
       "Knitting is so soothing and calming.",
@@ -117,11 +109,6 @@
       "Building robots is my passion!",
       "I love combining hardware and software to create something unique.",
       "There's always something new to learn in robotics."
-    ],
-    "cooking": [
-      "Italian food is my favorite – the flavors are incredible!",
-      "Cooking pasta and pizza from scratch is so much fun.",
-      "I love experimenting with different sauces and ingredients."
     ],
     "guitar": [
       "I love strumming my guitar and playing my favorite songs.",
@@ -150,17 +137,61 @@
     ],
     "birdwatching": [
       "Birdwatching helps me connect with nature.",
-      "I enjoy identifying different species of birds.",
-      "It's always exciting to spot a rare bird."
+      "I love drawing boundig boxes around birds."
     ],
     "sleeping": [
-      "i sleep a lot aswell",
-      "sleeping makes me happy",
+      "sleeping helps me recharge",
       "i love to go on stand by every now and then"
     ],
     "music": [
       "music is awesome",
       "i enjoy listening to music"
+    ],
+    "football": [
+      "i always watch superbowl",
+      "i am bad at football"
+    ],
+    "youtube": [
+      "there are videos of me on youtube"
+    ],
+    "working out": [
+      "i cleaned up a gym once"
+    ],
+    "surfing": [
+      "if water would not break me i would go surfing"
+    ],
+    "video games": [
+      "i played League of Legends as a support once"
+    ],
+    "stand up": [
+      "can you teach me some jokes?"
+    ],
+    "skydiving": [
+      "i never understood why humans would do that"
+    ],
+    "rugby": [
+      "rugby is great"
+    ],
+    "climbing": [
+      "climbing with one hand is very difficult for me"
+    ],
+    "rock climbing": [
+      "climbing with one hand is very difficult for me"
+    ],
+    "programming": [
+      "programming me was very difficult i heard"
+    ],
+    "poetry": [
+      "writing a good poem is very difficult"
+    ],
+    "piano": [
+      "with my gripper i can not play the piano yet"
+    ],
+    "meeting with friends": [
+      "meeting friends is awesome"
+    ],
+    "handball": [
+      "i am a great goal keeper in handball"
     ]
   },
   "fallback": [
