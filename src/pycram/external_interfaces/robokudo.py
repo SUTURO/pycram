@@ -1,4 +1,5 @@
 import sys
+import time
 from threading import Lock, RLock
 from typing import Any
 
@@ -94,6 +95,8 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
     client = create_action_client("robokudo/query", QueryAction)
     loginfo("Waiting for action server")
     client.wait_for_server()
+
+
     global human_bool
     global human_pose
     human_bool = False
@@ -123,6 +126,7 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
 
     client.send_goal(goal, done_cb=done_callback)
     client.wait_for_result()
+
     return query_result
 
 
@@ -195,5 +199,5 @@ def query_waving_human() -> Pose:
 
 def query_beverages() -> Any:
     """Query RoboKudo for detecting drinks in the robots field of vision"""
-    return send_query(obj_type='drink')
+    return send_query(obj_type='beverage')
 

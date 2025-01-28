@@ -314,8 +314,15 @@ class HSRBDetectingReal(ProcessModule):
             human_pose = query_human()
             return human_pose
         elif desig.technique == 'drink':
+            print("query drink")
             drinks = query_beverages()
-            return drinks
+            detected_drinks = []
+            for item in drinks.res:
+                drink_and_pose = [item.description[0], item.pose[0]]
+                detected_drinks.append(drink_and_pose)
+
+            print(detected_drinks)
+            return detected_drinks
 
         elif desig.technique == 'waving':
             query_result = query_waving_human()
@@ -332,6 +339,8 @@ class HSRBDetectingReal(ProcessModule):
             res = query_faces_human()
             id_dict = {}
             keys = []
+            if not res:
+                return []
             if res.res:
                 for ele in res.res:
                     id_dict[int(ele.type)] = ele.pose[0]
@@ -352,6 +361,8 @@ class HSRBDetectingReal(ProcessModule):
         elif desig.technique == 'location':
             seat = desig.state
             seat_human_pose = query_specific_region(seat)
+            if not seat_human_pose:
+                return []
 
             if seat == "long_table" or seat == "popcorn_table":
                 loc_list = []
@@ -377,6 +388,8 @@ class HSRBDetectingReal(ProcessModule):
             counter = 0
             # wait for human to come
             # TODO: try catch block
+            if not human_pose_attr:
+                return "False"
             while not human_pose_attr.res and counter < 6:
                 human_pose_attr = query_human_attributes()
                 counter += 1
