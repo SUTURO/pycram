@@ -71,3 +71,7 @@ resources/cached/
 
 # Example checkpoints
 examples/.ipynb_checkpoints/
+
+# knowledge submodule
+src/neem_interface_python/*
+
