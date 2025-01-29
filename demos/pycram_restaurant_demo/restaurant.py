@@ -1,20 +1,21 @@
+from datetime import time
+
+import rospy
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
 
+from demos.pycram_hsrb_real_test_demos.utils.startup import startup
+from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
+from pycram.datastructures.enums import Arms, ImageEnum
+from pycram.datastructures.pose import Pose
 # from pycram.demos.pycram_hsrb_real_test_demos.utils.misc_restaurant import Restaurant, monitor_func
 from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction
 from pycram.designators.motion_designator import TalkingMotion
-from pycram.datastructures.enums import Arms, ImageEnum
 from pycram.designators.object_designator import CustomerDescription
-from pycram.language import Code
 from pycram.failures import HumanNotFoundCondition
-from pycram.datastructures.pose import Pose
+from pycram.language import Code
 from pycram.process_module import real_robot
-from demos.pycram_hsrb_real_test_demos.utils.startup import startup
-from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
-import rospy
-from geometry_msgs.msg import PoseStamped
-
 from pycram.robot_description import RobotDescription
 from pycram.utilities.robocup_utils import pakerino
 
@@ -35,9 +36,7 @@ nlp = nlp_restaurant()
 # Initialize global variable
 global human_pose
 human_pose = None
-order = ('Cola', 2)
-
-
+timeout = 5
 def monitor_found_waving():
     global human_pose
     if human_pose:
@@ -50,14 +49,20 @@ def monitor_found_waving():
 
 def transform_camera_to_x(pose, frame_x):
     """
-    transforms the pose with given frame_x, orientation will be head ori and z is minu 1.3
+    transforms the pose with given frame_x, orientation will be head ori and z is minus 1.3
     """
-    pose.pose.position.z -= 1.3
+    #pose.pose.position.z -= 1.3
+
     pose.header.frame_id = "hsrb/" + frame_x
-    tPm = tf_listener.transformPose("/map", pose)
+    print(pose.header.frame_id)
+    tPm = tf_listener.transform_pose(pose=pose, target_frame="/map")
+    print("Pose map", tPm)
     tPm.pose.position.z = 0
     pan_pose = robot.get_link_pose("head_pan_link")
+    pan_pose.header.frame_id = "/map"
+    print("Pan Pose", pan_pose)
     tPm.pose.orientation = pan_pose.pose.orientation
+
     return tPm
 
 
@@ -70,8 +75,12 @@ def detect_waving():
     # text_to_speech_publisher.pub_now("Please wave you hand. I will come to you", talk)
     human_pose = DetectAction(technique='waving', state='start').resolve().perform()
 
+    #rospy.sleep(0.5)
+    #DetectAction(technique='waving', state='stop').resolve().perform()
+    print("I stopped looking for a human")
 
-def look_around(increase: int, star_pose: PoseStamped, talk):
+
+def look_around(increase: float, star_pose: PoseStamped, talk):
     """
     Function to make Toya look continuous from left to right. It stops if Toya perceives a human.
     :param: increase: The increments in which Toya should look around.
@@ -83,22 +92,31 @@ def look_around(increase: int, star_pose: PoseStamped, talk):
 
     def looperino():
         global human_pose
-        for x in range(-100, 100, increase):
-            angle = x / 10
+        x = -10.0
+        while x <= 10.0:
             look_pose = Pose([tmp_x, tmp_y, tmp_z],
                              frame="hsrb/" + RobotDescription.current_robot_description.base_link)
             look_pose_in_map = tf_listener.transformPose("/map", look_pose)
             look_point_in_map = look_pose_in_map.pose.position
             # The only variable that needs to be updated is the x variable of the point
             LookAtAction(
-                [Pose([look_point_in_map.x + angle, look_point_in_map.y,
+                [Pose([look_point_in_map.x + x, look_point_in_map.y,
                        0.8])]).resolve().perform()
-            print(angle)
-            print(look_point_in_map.x)
+            tmp_variable = Pose([look_point_in_map.x, look_point_in_map.y, 0.8])
+            rospy.sleep(1.5)
+           # human_pose = DetectAction(technique='waving', state='start').resolve().perform().wait_for(timeout=0.5)
+            # if int(time.time()) - start_time == timeout:
+            #     print("hehe i want to look somewhere else")
+            #     DetectAction(technique='waving', state='start').resolve().perform()
+            #     image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
             if human_pose: break
+            #else: DetectAction( state='stop').resolve().perform()
+            rospy.sleep(1.5)
+            #human_pose = DetectAction(technique='waving', state='stop').resolve().perform()
+            x += increase
 
     # Executes in paralel and breaks if human bool gets true
-    plan = Code(detect_waving) | Code(looperino)
+    plan = Code(looperino)|  Code(detect_waving)
     plan.perform()
 
 
@@ -129,43 +147,51 @@ def demo(step: int):
         if step <= 1:
             # text_to_speech_publisher.pub_now("Starting Restaurant Demo.", talk)
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
-            look_around(50, start_pose, talk)
+            look_around(2.5, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
-            drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
-            print("Drive Pose", drive_pose)
+            print(human_pose)
+            # head_rgbd_sensor_rgb_frame
             if human_pose is not None:
+
+                drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
+                print("Drive Pose", drive_pose)
                 image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
                 customerCounter += 1
                 customer = CustomerDescription(customerCounter, drive_pose)
             marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
-            move.pub_now(navpose=drive_pose)
+            #move.pub_now(navpose=drive_pose)
             rospy.sleep(1)
 
         if step <= 2:  # Order step
             image_switch_publisher.pub_now(ImageEnum.ORDER.value)
             MoveTorsoAction([0.1]).resolve().perform()
+            LookAtAction([Pose([robot.pose.position.x, robot.pose.position.y, 0.8])])
             rospy.sleep(1)
-            print("nlp start")
-            # Timmi = CustomerDescription(id=1, pose=robot.get_pose())
+            Timmi = CustomerDescription(id=1, pose=robot.get_pose())
             nlp.get_order(customer=customer)
-            rospy.sleep(2)
             print(customer.order)
+            rospy.sleep(2)
             if customer.order is not None:
-                nlp.confirm_order(customer.order)
+                test = nlp.confirm_order(customer=customer, order=customer.order)
+                print(test)
             # image_switch_publisher.pub_now(ImageEnum.TALK.value)
         if step <= 3:  # Drive back step
             TalkingMotion("I will drive back now and return with your order").perform()
             image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
             MoveTorsoAction([0]).resolve().perform()
+            rospy.sleep(2)
             move.pub_now(navpose=kitchenPose)
             rospy.sleep(2)
 
             TalkingMotion(
-                f"Please prepare the following order for customer {customer.id}. {customer.order[1]} {customer.order[0]}, please").perform()
+                f"Please prepare the following order for customer {customer.id}. {customer.order[0][1]} {customer.order[0][0]}, please").perform()
             rospy.sleep(2)
         if step <= 4:
-            TalkingMotion("Please confirm to me, that the order").perform()
 
+            nlp.order_ready()
+            move.pub_now(navpose=customer.pose)
+            TalkingMotion("Here is your order. Please signal if you took your order.").perform()
+            print("demo-done")
 
     # # Present the order
     #   TalkingMotion(f"The customer with the ID {customer.id} wants to order {customer.order[1]} {customer.order[0]}").perform()
