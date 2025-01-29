@@ -55,32 +55,34 @@ class NavigatePose(Enum):
     LONG_TABLE = Pose([1.7, 0.8, 0], [0, 0, 1, 0])
 
 
+#TODO: x + 0.19, y -0.02
+
 class PlacingXPose(Enum):
     """
     Differentiate the x pose for placing
     """
-    CUTLERY = 2.37  # 2.376
-    SPOON = 2.37  # 2.376
-    FORK = 2.37  # 2.376
-    PLASTICKNIFE = 2.37  # 2.376
-    KNIFE = 2.37  # 2.376
-    METALBOWL = 2.71  # 2.83
-    METALMUG = 2.67  # 2.79
-    METALPLATE = 2.68  # 2.8
+    CUTLERY = 2.56  # 2.376
+    SPOON = 2.56  # 2.376
+    FORK = 2.56  # 2.376
+    PLASTICKNIFE = 2.56  # 2.376
+    KNIFE = 2.56  # 2.376
+    METALBOWL = 2.9  # 2.83
+    METALMUG = 2.86  # 2.79
+    METALPLATE = 2.87  # 2.8
 
 
 class PlacingYPose(Enum):
     """
     Differentiate the y pose for placing
     """
-    CUTLERY = -2.57  # -1.59 # mitte
-    SPOON = -2.57  # -1.59
-    FORK = -2.57  # -1.59
-    PLASTICKNIFE = -2.57  # -1.59
-    KNIFE = -2.57  # -1.59
-    METALBOWL = -2.78  # -1.73
-    METALMUG = -2.8  # -1.75
-    METALPLATE = -2.7  # -1.65
+    CUTLERY = -2.59  # -1.59 # mitte
+    SPOON = -2.59  # -1.59
+    FORK = -2.59  # -1.59
+    PLASTICKNIFE = -2.59  # -1.59
+    KNIFE = -2.59  # -1.59
+    METALBOWL = -2.64 # -1.73
+    METALMUG = -2.59  # -1.75
+    METALPLATE = -2.72  # -1.65
 
 
 class PlacingZPose(Enum):
@@ -88,7 +90,7 @@ class PlacingZPose(Enum):
     Differentiate the z pose for placing
     """
     METALPLATE = 0.488
-    OTHER = 0.48
+    OTHER = 0.5
 
 
 def pickup_object(object: Object):
@@ -108,16 +110,17 @@ def pickup_object(object: Object):
         TalkingMotion("Grasping.").perform()
 
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-    elif object.obj_type == "Cutlery" and object.pose.position.y > table_pose + 0.125:
-        # change object x pose if the grasping pose is too far in the table
-        object.pose.position.y -= 0.1
+    else:
+        if object.obj_type == "Cutlery" and object.pose.position.y > table_pose + 0.125:
+            # change object x pose if the grasping pose is too far in the table
+            object.pose.position.y -= 0.1
 
-    TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
-    try_pick_up(robot, object, grasp)
+        TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
+        try_pick_up(robot, object, grasp)
+
     NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                            robot.get_pose().pose.position.y - 0.6, 0],
                                           [0, 0, 0.7, 0.7])]).resolve().perform()
-
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveTorsoAction([0]).resolve().perform()
 
@@ -136,14 +139,14 @@ def place_object(object: Object):
                               NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 1,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
                              NavigatePose.LONG_TABLE.value.pose.orientation)]).resolve().perform()
     else:
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
                               NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.65, 0],
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
                              NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
     TalkingMotion("Placing").perform()
@@ -263,7 +266,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
     # failure handling part 2
     final_sorted_obj = sorted_obj + new_sorted_obj
     if len(final_sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-        NavigateAction(NavigatePose.POPCORN_TABLE.value).resolve().perform()
+        NavigateAction([NavigatePose.POPCORN_TABLE.value]).resolve().perform()
 
         print("second Check")
         for value in final_sorted_obj:

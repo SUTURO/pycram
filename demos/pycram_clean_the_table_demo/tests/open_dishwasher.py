@@ -4,6 +4,7 @@ from demos.pycram_serve_breakfast_demo.utils.misc import get_bowl, sort_objects,
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
+from pycram.external_interfaces import giskard
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
@@ -41,4 +42,5 @@ dishwasher_main_name = "sink_area_dish_washer_main"
 with (real_robot):
     ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
     NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
-    OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
+    # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
+    giskard.dishwasher_test(handle_name, 'sink_area_dish_washer_door_joint', door_name)
