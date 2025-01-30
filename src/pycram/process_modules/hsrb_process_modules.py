@@ -308,6 +308,7 @@ class HSRBDetectingReal(ProcessModule):
 
         # ToDo: at the moment perception ignores searching for a specific object type so we do that as well on real
         if desig.state == "stop":
+            print("I am here")
             stop_query()
             return "stopped"
         elif desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
@@ -732,6 +733,14 @@ class HSRBFullOpenDishwasherReal(ProcessModule):
                                             goal_state=designator.goal_state_full_open, special_door=True)
 
 
+class HSRBMoveArmDownForceTorqueReal(ProcessModule):
+    """Moves the arm of the robot down until reaching Force torque values"""
+
+    def _execute(self, designator: MoveArmDownForceTorqueMotion) -> Any:
+        giskard.arm_down_ft(down_distance=designator.down_distance, object_type=designator.object_type,
+                            speed_multi=designator.speed_multi)
+
+
 ###########################################################
 ########## HSRB MANAGER ###############
 ###########################################################
@@ -762,6 +771,7 @@ class HSRBManager(ProcessModuleManager):
         self._pointing_lock = Lock()
         self._open_door_lock = Lock()
         self._grasp_handle_lock = Lock()
+        self._move_arm_down_lock = Lock()
 
     def navigate(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
@@ -802,6 +812,12 @@ class HSRBManager(ProcessModuleManager):
             return HSRBMoveTCPForceTorqueReal(self._move_tcp_ft_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBMoveTCPForceTorqueReal(self._move_tcp_ft_lock)
+
+    def move_arm_down(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBMoveArmDownForceTorqueReal(self._move_arm_down_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBMoveArmDownForceTorqueReal(self._move_arm_down_lock)
 
     def move_arm_joints(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:

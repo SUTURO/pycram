@@ -21,7 +21,7 @@ from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
     LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
     MoveTCPForceTorqueMotion, GraspingDishwasherHandleMotion, HalfOpeningDishwasherMotion, MoveArmAroundMotion, \
-    FullOpeningDishwasherMotion
+    FullOpeningDishwasherMotion, MoveArmDownForceTorqueMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState, GiskardStateFTS
 from ..datastructures.pose import Pose
@@ -252,7 +252,7 @@ class PlaceAction(ActionDesignatorDescription):
     def __init__(self,
                  object_designator_description: Union[ObjectDesignatorDescription, ObjectDesignatorDescription.Object],
                  target_locations: List[Pose], grasps: List[Grasp],
-                 arms: List[Arms], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
+                 arms: List[Arms], with_force_torque: List[bool], resolver=None, ontology_concept_holders: Optional[List[Thing]] = None):
         """
         Create an Action Description to place an object
 
@@ -272,6 +272,7 @@ class PlaceAction(ActionDesignatorDescription):
 
         if self.soma:
             self.init_ontology_concepts({"placing": self.soma.Placing})
+        self.with_force_torque: List[bool] = with_force_torque
 
     def ground(self) -> PlaceActionPerformable:
         """
@@ -282,7 +283,8 @@ class PlaceAction(ActionDesignatorDescription):
         obj_desig = self.object_designator_description if isinstance(self.object_designator_description,
                                                                      ObjectDesignatorDescription.Object) else self.object_designator_description.resolve()
 
-        return PlaceActionPerformable(obj_desig, self.arms[0], self.grasps[0], self.target_locations[0])
+        return PlaceActionPerformable(obj_desig, self.arms[0], self.grasps[0], self.target_locations[0],
+                                      self.with_force_torque[0])
 
 
 class NavigateAction(ActionDesignatorDescription):
@@ -1127,6 +1129,11 @@ class PlaceActionPerformable(ActionAbstract):
     """
     orm_class: Type[ActionAbstract] = field(init=False, default=ORMPlaceAction)
 
+    """
+    Pose in the world at which the object should be placed
+    """
+    with_force_torque: bool = True
+
     @with_tree
     def perform(self) -> None:
         lt = LocalTransformer()
@@ -1134,8 +1141,14 @@ class PlaceActionPerformable(ActionAbstract):
         robot = World.robot
         oTm = self.target_location
 
-        if self.grasp == Grasp.TOP:
-            oTm.pose.position.z += 0.05
+        if self.with_force_torque:
+            if self.grasp == Grasp.TOP:
+                oTm.pose.position.z += 0.12
+            else:
+                oTm.pose.position.z += 0.2
+        else:
+            if self.grasp == Grasp.TOP:
+                oTm.pose.position.z += 0.05
 
         # Determine the grasp orientation and transform the pose to the base link frame
         grasp_rotation = RobotDescription.current_robot_description.grasps[self.grasp]
@@ -1151,61 +1164,61 @@ class PlaceActionPerformable(ActionAbstract):
         if execute:
             MoveTCPMotion(oTmG, self.arm).perform()
 
-        tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(self.arm)
-        push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
-        if robot.name == "hsrb":
-            z = 0.03
-            if self.grasp == Grasp.TOP:
-                z = 0.07
-            push_base.pose.position.z += z
-        # todo: make this for other robots
-        push_baseTm = lt.transform_pose(push_base, "map")
-
-        rospy.logwarn("Pushing now")
-        World.current_world.add_vis_axis(push_baseTm)
-        if execute:
+        if self.with_force_torque:
             if self.object_designator.obj_type != "Metalbowl":
                 object_type = "Default"
             else:
                 object_type = "Bowl"
             try:
-                MoveTCPForceTorqueMotion(push_baseTm, Arms.LEFT, object_type, GiskardStateFTS.PLACE,
-                                         allow_gripper_collision=True).perform()
+                MoveArmDownForceTorqueMotion(down_distance=0.3, object_type=object_type, speed_multi=0.1)
             except ForceTorqueThresholdException:
                 raise ManipulationFTSCheckNoObject(f"Could not place object after checking force-torque values")
-            # MoveTCPMotion(push_baseTm, self.arm).perform()
+        else:
+            tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(self.arm)
+            push_base = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
+            if robot.name == "hsrb":
+                z = 0.03
+                if self.grasp == Grasp.TOP:
+                    z = 0.07
+                push_base.pose.position.z += z
+            # todo: make this for other robots
+            push_baseTm = lt.transform_pose(push_base, "map")
 
-        # if self.object_designator.obj_type == "Metalplate":
-        #     loweringTm = push_baseTm
-        #     loweringTm.pose.position.z -= 0.08
-        #     World.current_world.add_vis_axis(loweringTm)
-        #     if execute:
-        #         MoveTCPMotion(loweringTm, self.arm).perform()
-        #     # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
-        #     rospy.logwarn("sidepush monitoring")
-        #     TalkingMotion("sidepush.").perform()
-        #     side_push = Pose(
-        #         [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.08, push_baseTm.pose.position.z],
-        #         [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
-        #          push_baseTm.orientation.w])
-        #     try:
-        #         plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
-        #         plan.perform()
-        #     except SensorMonitoringCondition:
-        #         rospy.logwarn("Open Gripper")
-        #         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
+            rospy.logwarn("Pushing now")
+            World.current_world.add_vis_axis(push_baseTm)
+            if execute:
+                MoveTCPMotion(push_baseTm, self.arm).perform()
+
+            if self.object_designator.obj_type == "Metalplate":
+                loweringTm = push_baseTm
+                loweringTm.pose.position.z -= 0.08
+                World.current_world.add_vis_axis(loweringTm)
+                if execute:
+                    MoveTCPMotion(loweringTm, self.arm).perform()
+                # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
+                rospy.logwarn("sidepush monitoring")
+                TalkingMotion("sidepush.").perform()
+                side_push = Pose(
+                    [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.08, push_baseTm.pose.position.z],
+                    [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
+                     push_baseTm.orientation.w])
+                try:
+                    plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
+                    plan.perform()
+                except SensorMonitoringCondition:
+                    rospy.logwarn("Open Gripper")
+                    MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
 
         # Finalize the placing by opening the gripper and lifting the arm
         rospy.logwarn("Open Gripper")
         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
         robot.detach(self.object_designator.world_object)
         rospy.logwarn("Lifting now")
-        liftingTm = push_baseTm
+        liftingTm = oTmG
         liftingTm.pose.position.z += 0.08
         World.current_world.add_vis_axis(liftingTm)
         if execute:
             MoveTCPMotion(liftingTm, self.arm).perform()
-
 
 @dataclass
 class NavigateActionPerformable(ActionAbstract):

@@ -4,15 +4,17 @@ import threading
 from threading import Lock, RLock
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
+from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3, Point
 from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
+from giskardpy_ros.ros1 import tfwrapper as tf
 from typing_extensions import List, Dict, Callable, Optional
 
 from ..datastructures.dataclasses import MeshVisualShape
 from ..datastructures.enums import JointType, ObjectType, Arms, GiskardStateFTS
 from ..datastructures.pose import Pose
 from ..datastructures.world import World
+from ..failures import HumanNotFoundCondition
 from ..robot_description import RobotDescription
 from ..ros.data_types import Time
 from ..ros.logging import logwarn, loginfo_once
@@ -924,14 +926,62 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
 @init_giskard_interface
 def cml(drive_back):
-    try:
         print("in cml")
         giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=False, point_cloud_laser_topic_name=None,
                                           clear_path=True,
                                           laser_avoidance_angle_cutout=np.pi/5)
         giskard_exe = giskard_wrapper.execute()
-    except:
-        if giskard_exe.error.code == 2:
-            print("works fine")
-        else:
-            print("cml error")
+        print("done")
+
+        # if giskard_exe.error.code == 2:
+        #     print("works fine")
+        # else:
+        #     print("cml error")
+
+@init_giskard_interface
+@thread_safe
+def arm_down_ft(down_distance: float = 0.3, object_type: str = 'Default', speed_multi: float = 0.1):
+    goal_point = PointStamped()
+    goal_point.header.frame_id = 'hand_gripper_tool_frame'
+
+    handle_retract_direction = Vector3Stamped()
+    handle_retract_direction.header.frame_id = 'base_link'
+    handle_retract_direction.vector.z = -down_distance
+
+    base_retract = tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
+
+    goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
+
+    ft_placing = giskard_wrapper.monitors.add_force_torque(threshold_enum=GiskardStateFTS.PLACE.value,
+                                                           object_type=object_type)
+
+    tip_normal_z = Vector3Stamped()
+    tip_normal_z.header.frame_id = 'hand_gripper_tool_frame'
+    tip_normal_z.vector.z = 1
+
+    goal_normal_z = tf.transform_vector('map', tip_normal_z)
+
+    tip_normal_y = Vector3Stamped()
+    tip_normal_y.header.frame_id = 'hand_gripper_tool_frame'
+    tip_normal_y.vector.y = 1
+
+    goal_normal_y = tf.transform_vector('map', tip_normal_y)
+
+    giskard_wrapper.motion_goals.add_align_planes(root_link='map', tip_link='hand_gripper_tool_frame',
+                                                  goal_normal=goal_normal_z, tip_normal=tip_normal_z,
+                                                  reference_angular_velocity=(0.5 * speed_multi), name='z-axis align')
+    giskard_wrapper.motion_goals.add_align_planes(root_link='map', tip_link='hand_gripper_tool_frame',
+                                                  goal_normal=goal_normal_y, tip_normal=tip_normal_y,
+                                                  reference_angular_velocity=(0.5 * speed_multi), name='y-axis align')
+
+    giskard_wrapper.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='hand_gripper_tool_frame',
+                                                                 goal_point=goal_point,
+                                                                 name='move object down',
+                                                                 reference_velocity=(0.2 * speed_multi),
+                                                                 end_condition=ft_placing)
+    sleep = giskard_wrapper.monitors.add_sleep(7)
+
+    giskard_wrapper.monitors.add_cancel_motion(f'not {ft_placing} and {sleep} ',
+                                               ForceTorqueThresholdException('object not placed'))
+    giskard_wrapper.monitors.add_end_motion(start_condition=f'{ft_placing}')
+    giskard_wrapper.execute()

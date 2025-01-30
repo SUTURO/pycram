@@ -52,6 +52,30 @@ class MoveMotion(BaseMotion):
 
         return motion
 
+@dataclass
+class MoveArmDownForceTorqueMotion(BaseMotion):
+    """
+    Moves the arm of the robot down until reaching force-torque values
+    """
+
+    down_distance: float
+    """
+    the distance the robots arm goes down 
+    """
+    object_type: str
+    """
+    The Type of the object for force torque
+    """
+    speed_multi: float
+    """
+    The Speed the arm moves with
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.move_arm_down().execute(self)
+
 
 @dataclass
 class MoveTCPMotion(BaseMotion):
