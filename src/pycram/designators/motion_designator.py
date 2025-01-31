@@ -52,6 +52,7 @@ class MoveMotion(BaseMotion):
 
         return motion
 
+
 @dataclass
 class MoveArmDownForceTorqueMotion(BaseMotion):
     """
@@ -75,6 +76,12 @@ class MoveArmDownForceTorqueMotion(BaseMotion):
     def perform(self):
         pm_manager = ProcessModuleManager.get_manager()
         return pm_manager.move_arm_down().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
 
 
 @dataclass
