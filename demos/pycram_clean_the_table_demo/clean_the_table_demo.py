@@ -1,4 +1,6 @@
 from typing_extensions import Optional
+
+from pycram.external_interfaces import giskard
 from pycram.failures import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
@@ -48,7 +50,7 @@ apart_desig = BelieveObject(names=["kitchen"])
 
 # TODO: Enum for navigating
 class NavigatePose(Enum):
-    DISHWASHER_CLOSED = Pose([2.65, -2.1, 0], [0, 0, -1, 1])
+    DISHWASHER_CLOSED = Pose([2.75, -2.1, 0], [0, 0, -1, 1])
     DISHWASHER = Pose([2.65, -1.85, 0], [0, 0, -1, 1])
     SHELF = Pose([4.5, 3.95, 0], [0, 0, 0, 1])
     POPCORN_TABLE = Pose([1.95, 4, 0], [0, 0, 0.7, 0.7])
@@ -91,6 +93,21 @@ class PlacingZPose(Enum):
     """
     METALPLATE = 0.488
     OTHER = 0.5
+
+
+def turn_around():
+    if robot.get_pose().pose.orientation == NavigatePose.POPCORN_TABLE.value.pose.orientation:
+        NavigateAction([Pose(robot.get_pose().pose.position,
+                             NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
+    elif robot.get_pose().pose.orientation == NavigatePose.DISHWASHER.value.pose.orientation:
+        NavigateAction([Pose(robot.get_pose().pose.position,
+                             NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
+    elif robot.get_pose().pose.orientation == NavigatePose.SHELF.value.pose.orientation:
+        NavigateAction([Pose(robot.get_pose().pose.position,
+                             NavigatePose.LONG_TABLE.value.pose.orientation)]).resolve().perform()
+    elif robot.get_pose().pose.orientation == NavigatePose.LONG_TABLE.value.pose.orientation:
+        NavigateAction([Pose(robot.get_pose().pose.position,
+                             NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
 
 def pickup_object(object: Object):
@@ -142,10 +159,10 @@ def place_object(object: Object):
                               NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
                              NavigatePose.LONG_TABLE.value.pose.orientation)]).resolve().perform()
     else:
-        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 0.105,
                               NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
-        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 1.05,
+        NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 0.65,
                               NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
                              NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
@@ -164,9 +181,15 @@ def pickup_and_place(objects_list: list):
                          NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
     for value in range(len(objects_list)):
         pickup_object(objects_list[value])
+        # turn around
+        NavigateAction([Pose(robot.get_pose().pose.position,
+                             NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
         place_object(objects_list[value])
         if value + 1 < len(objects_list):
+            # turn around
+            NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
+                                 NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
             NavigateAction([Pose([objects_list[value + 1].pose.position.x,
                                   NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                                  NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -203,21 +226,21 @@ def navigate_and_detect(location_name: NavigatePose):
 
     if location_name == NavigatePose.SHELF:
         NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
-        MoveTorsoAction([0.2]).resolve().perform()
-        object_desig = try_detect(Pose([5.3, 3.9, 0.21], [0, 0, 0, 1]))
+        MoveTorsoAction([0.12]).resolve().perform()
+        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 3.9, 0.21], [0, 0, 0, 1]))
         objects_list = get_objects(object_desig)
     elif location_name == NavigatePose.POPCORN_TABLE:
         NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x - 0.4,
                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                              NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
-        MoveTorsoAction([0.2]).resolve().perform()
-        object_desig1 = try_detect(Pose([1.55, 4.9, 0.35], [0, 0, 0.7, 0.7]))
+        MoveTorsoAction([0.12]).resolve().perform()
+        object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list1 = get_objects(object_desig1)
         NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                              NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
-        MoveTorsoAction([0.2]).resolve().perform()
-        object_desig2 = try_detect(Pose([2.55, 4.9, 0.35], [0, 0, 0.7, 0.7]))
+        MoveTorsoAction([0.12]).resolve().perform()
+        object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list2 = get_objects(object_desig2)
         objects_list = []
         for object in objects_list1 + objects_list2:
@@ -341,7 +364,8 @@ with (real_robot):
     NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
     MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
-    OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
+    giskard.dishwasher_test(handle_name, 'sink_area_dish_washer_door_joint', door_name)
+    # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
 
     TalkingMotion("Please pull out the lower rack").perform()
 

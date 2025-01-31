@@ -110,11 +110,12 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Objec
         PickUpAction(obj, [Arms.LEFT], [grasps]).resolve().perform()
     except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
         TalkingMotion("Try pick up again").perform()
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
-        NavigateAction([Pose([4.5, 3.95, 0], [0, 0, 0, 1])]).resolve().perform()
+        NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         # try to detect the object again
-        LookAtAction(targets=[Pose([obj.pose.position.x, obj.pose.position.y, 0.21], [0, 0, 0, 1])]).resolve().perform()
+        LookAtAction(targets=[Pose([obj.pose.position.x, obj.pose.position.y, 0.21], [0, 0, 0.7, 0.7])]).resolve().perform()
         object_desig = DetectAction(technique='all').resolve().perform()
         new_object = sort_objects(object_desig, [obj.obj_type])[0]
         # second try to pick up the object
@@ -135,7 +136,7 @@ def step_back(robot: BulletWorld.robot):
     steps back, parks arms and opens gripper
     """
     NavigateAction(
-        [Pose([robot.get_pose().pose.position.x - 0.3, robot.get_pose().pose.position.y, 0],
-              [0, 0, 0, 1])]).resolve().perform()
+        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, 0],
+              robot.get_pose().pose.orientation)]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()

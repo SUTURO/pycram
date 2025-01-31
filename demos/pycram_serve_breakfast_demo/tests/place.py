@@ -37,10 +37,10 @@ with (real_robot):
     # TalkingMotion("Starting demo").perform()
     # rospy.loginfo("Starting demo")
     ParkArmsAction([Arms.LEFT]).resolve().perform()
-    MoveTorsoAction([0.4]).resolve().perform()
+    MoveTorsoAction([0.2]).resolve().perform()
 
-    pickup = "popcorn_table"
-    placing = "none"
+    pickup = "long_table"
+    placing = "long_table"
 
     if pickup == "shelf":
         # shelf pickup
@@ -63,7 +63,10 @@ with (real_robot):
 
     object_desig = DetectAction(technique='all').resolve().perform()
     print(object_desig)
-    obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Cerealbox"])
+    obj_list = []
+    for value in object_desig.values():
+        obj_list.append(value)
+    # obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Milkpack"])
     PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
 
     if pickup == "shelf":
@@ -95,14 +98,14 @@ with (real_robot):
         #################################################################
         # NavigateAction(target_locations=[Pose([3.9, 1.9, 0], [0, 0, 1, 0])]).resolve().perform()
         # NavigateAction(target_locations=[Pose([1.8, 1.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
-        NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        NavigateAction(target_locations=[Pose([1.4, 4.2, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
 
         # PlaceGivenObjectAction(object_types=["Spoon"], arms=[Arms.LEFT],
         #                        target_locations=[Pose([1.4, 4.8, 0.775], [0, 0, 0.7, 0.7])],
         #                        grasps=[Grasp.TOP], on_table=True).resolve().perform()
         #TODO: change z + grasp
-        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([1.4, 4.8, 0.775], [0, 0, 0.7, 0.7])],
-                    grasps=[Grasp.TOP], arms=[Arms.LEFT]).resolve().perform()
+        PlaceAction(obj_list[0], [Pose([1.45, 4.8, 0.713])], [Grasp.FRONT], [Arms.LEFT],
+                    with_force_torque=[True]).resolve().perform()
         NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         # MoveTorsoAction([0]).resolve().perform()
@@ -117,8 +120,8 @@ with (real_robot):
         # long table placing
         ##################################################################
         NavigateAction(target_locations=[Pose([4.5, 4.9, 0], [0, 0, 1, 0])]).resolve().perform()
-        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([3.6, 4.9, 0.818])],
-                    grasps=[Grasp.TOP], arms=[Arms.LEFT]).resolve().perform()
+        PlaceAction(object_designator_description=obj_list[0], target_locations=[Pose([3.6, 4.9, 0.72])],
+                    grasps=[Grasp.FRONT], arms=[Arms.LEFT], with_force_torque=[True]).resolve().perform()
         #################################################################
 
 
