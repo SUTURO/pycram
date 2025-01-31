@@ -92,6 +92,34 @@ class nlp_restaurant:
         real_msg = [re.sub('\W+', '', m) for m in new_tmp]
         return real_msg
 
+    def took_order(self):
+        """ Checks if the customer took their order.
+        :param: data: Affirm or deny
+        return: Bool
+        """
+        HeadFollowMotion(state='start').perform()
+
+        TalkingMotion("Here is your order. Please say yes if you took your order after my display changes.").perform()
+        rospy.sleep(2.5)
+        image_switch_publisher.pub_now(ImageEnum.TALK.value)
+        print("nlp start")
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2.3)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+            if int(time.time()) - start_time == timeout:
+                rospy.logwarn("Guest needs to repeat")
+                image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+        self.callback = False
+        if self.response[0] == "<CONFIRM>":
+            return True
+        elif self.response[0]=="<DENY<":
+            return False
+
     def save_order(self, data):
         """
         Creates a list of tuples based on the data input of NLP.
@@ -108,10 +136,13 @@ class nlp_restaurant:
 
         :param: order: The order of the current customer
         """
-        print("Confirm oder", order)
         if len(order) == 1:
-            TalkingMotion(f"Do you want to order {order[0][1]} {order[0][0]}?").perform()
-            rospy.sleep(2.5)
+            HeadFollowMotion(state='start').perform()
+
+            TalkingMotion(f"Do you want to order {order[0][1]} {order[0][0]}? Please confirm with a yes or no after my display changes").perform()
+            rospy.sleep(1)
+            image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
             print("nlp start")
             self.nlp_pub.publish("start listening")
             rospy.sleep(2.3)
@@ -127,24 +158,15 @@ class nlp_restaurant:
                 return True
             else:
                 self.get_order(customer=customer)
+        else:
+            HeadFollowMotion(state='start').perform()
+            TalkingMotion(f"Do you want to order").perform()
+            for n in order:
+                 TalkingMotion(f"{n[0][1]} {n[0][0]} and").perform()
+            TalkingMotion("Confirm your order, after my display changes").perform()
+            rospy.sleep(1)
+            image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
-        # else:
-        #     for n in order:
-        #         TalkingMotion(f"Do you want to order {n[1]} {n[0]}?").perform()
-        #
-           # start_time = time.time()
-           # while not self.callback:
-           #     rospy.sleep(1)
-
-            #    if int(time.time()) - start_time == timeout:
-             #       rospy.logwarn("Guest needs to repeat")
-              #      image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
-
-            #self.callback = False
-            #print(self.response)
-            #if self.response[0] == "<Hobbies>":
-             #   print(self.response)
-            #print(self.confirmation)
 
     def get_order(self, customer: CustomerDescription):
         """
@@ -153,7 +175,8 @@ class nlp_restaurant:
         """
         global order
         TalkingMotion("Welcome, what can I get for you? Please come close to me and order when my display changes").perform()
-        rospy.sleep(4)
+        rospy.sleep(3.5)
+        HeadFollowMotion(state='start').perform()
 
 
         print("nlp start")
