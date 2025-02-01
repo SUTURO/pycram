@@ -39,6 +39,7 @@ pose_dict = OrderedDict()
 global human_pose
 human_pose = None
 timeout = 10
+customers = list()
 
 # Pose required because of multiple customers
 kitchen_pose = Pose([3.8, 3.2, 0.75], [0,0,-0.7, 0.64])
@@ -75,7 +76,6 @@ def look_around(increase: float, star_pose: PoseStamped, talk):
     tmp_y = star_pose.pose.position.y
     tmp_z = star_pose.pose.position.z
     x = -10.0
-    tries = 0
     while x <= 10.0:
         look_pose = Pose([tmp_x, tmp_y, tmp_z],
                          frame="hsrb/" + RobotDescription.current_robot_description.base_link)
@@ -104,7 +104,6 @@ def look_around(increase: float, star_pose: PoseStamped, talk):
 def demo(step: int):
     global customer
     customerCounter = 0
-    customers = list()
     with real_robot:
         talk = True
         start_pose = robot.get_pose()
@@ -147,11 +146,11 @@ def demo(step: int):
             print(customer.order)
             rospy.sleep(2)
             if customer.order is not None:
-                test = nlp.confirm_order(customer=customer, order=customer.order)
-                print(test)
+                nlp.confirm_order(customer=customer, order=customer.order)
             # image_switch_publisher.pub_now(ImageEnum.TALK.value)
         if step <= 3:  # Drive back step
             TalkingMotion("I will drive back now and return with your order").perform()
+            rospy.sleep(2.5)
             image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
             MoveTorsoAction([0]).resolve().perform()
             rospy.sleep(2)
