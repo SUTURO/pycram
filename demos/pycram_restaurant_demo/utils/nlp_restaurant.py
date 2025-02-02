@@ -32,6 +32,40 @@ class nlp_restaurant:
         self.callback = False
         self.image_switch_publisher = ImageSwitchPublisher()
 
+    # Methods to prepare the received nlp data for further processing
+
+    def split_response(self, data):
+        """
+        Removes all symbols that are not letters.
+        :param: data: The response as a split list
+        :return: A clean list
+        """
+        new_tmp = [n.strip() for n in data]
+        real_msg = [re.sub('\W+', '', m) for m in new_tmp]
+        return real_msg
+    def split_number_word(self, input, numbers):
+        """
+        Because sometimes NLP returns the order and number in a combined string, we need
+        to split the string into two parts.
+        :param: input: The input string
+        :param: numbers: The numbers to split
+        :return: A clean list
+        """
+        return [(input_str[len(number):], options[number]) for input_str in input for number in numbers if input_str.startswith(number) if number in options ]
+
+    def save_order(self, data):
+        """
+        Creates a list of tuples based on the data input of NLP.
+        :param: data: The list of received order
+        :return: A list of tuples
+        """
+        tuple_order = [(x, options[y]) for x, y in zip(data, data[1:]) if y in options]
+        for num in numbers:
+            if num in tuple_order[0][0]:
+                nlp_fallback = self.split_number_word(tuple_order, numbers)
+                return nlp_fallback
+        return tuple_order
+
     def data_cb(self, data):
         """
         function to receive data from nlp via /nlp_out topic
@@ -74,19 +108,31 @@ class nlp_restaurant:
             return True
         elif self.response[0] == "<DENY>":
             rospy.sleep(4)
+        else:
+            tries = 0
+            while tries < 2:
+                rospy.sleep(2.3)
+
+                self.nlp_pub.publish("start")
+                self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
+                start_time_rep = time.time()
+                while not self.callback:
+                    rospy.sleep(1)
+                    if int(time.time() - start_time_rep) == timeout:
+                        rospy.logwarn("guest needs to repeat")
+                        self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+                        rospy.sleep(2)
+                if self.response[0] == "<CONFIRM>":
+                    return True
+                else:
+                    rospy.sleep(2)
+                    tries += 1
 
 
 
 
-    def split_response(self, data):
-        """
-        Removes all symbols that are not letters.
-        :param: data: The response as a split list
-        :return: A clean list
-        """
-        new_tmp = [n.strip() for n in data]
-        real_msg = [re.sub('\W+', '', m) for m in new_tmp]
-        return real_msg
+
 
     def took_order(self):
         """ Checks if the customer took their order.
@@ -118,29 +164,6 @@ class nlp_restaurant:
         elif self.response[0]=="<DENY<":
             return False
 
-    def split_number_word(self, input, numbers):
-        """
-        Because sometimes NLP returns the order and number in a combined string, we need
-        to split the string into two parts.
-        :param: input: The input string
-        :param: numbers: The numbers to split
-        :return: A clean list
-        """
-        return [(input_str[len(number):], options[number]) for input_str in input for number in numbers if input_str.startswith(number) if number in options ]
-
-
-    def save_order(self, data):
-        """
-        Creates a list of tuples based on the data input of NLP.
-        :param: data: The list of received order
-        :return: A list of tuples
-        """
-        tuple_order = [(x, options[y]) for x, y in zip(data, data[1:]) if y in options]
-        for num in numbers:
-            if num in tuple_order[0][0]:
-                nlp_fallback = self.split_number_word(tuple_order, numbers)
-                return nlp_fallback
-        return tuple_order
 
     def confirm_order(self, customer: CustomerDescription, order: [(str, int)]):
         """
