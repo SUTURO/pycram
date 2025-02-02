@@ -69,7 +69,6 @@ def look_around(increase: float, star_pose: PoseStamped, talk):
     """
 
 
-#    def looperino():
     global human_pose
     human_pose = None
     tmp_x = star_pose.pose.position.x
@@ -83,7 +82,6 @@ def look_around(increase: float, star_pose: PoseStamped, talk):
         look_point_in_map = look_pose_in_map.pose.position
         try:
             human_pose = DetectAction(technique='waving', state='start').resolve().perform()
-            print(human_pose)
         except pycram.failures.PerceptionObjectNotFound:
             print("oh no, no waving human was found")
         if human_pose:
@@ -107,7 +105,7 @@ def demo(step: int):
     with real_robot:
         talk = True
         start_pose = robot.get_pose()
-        # TalkingMotion("start demo").perform()
+        TalkingMotion("start restaurant demo").perform()
 
         if step <= 0:
             config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
@@ -117,15 +115,11 @@ def demo(step: int):
             ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
-            # text_to_speech_publisher.pub_now("Starting Restaurant Demo.", talk)
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
             look_around(4, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
-            # head_rgbd_sensor_rgb_frame
             if human_pose is not None:
-
                 drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
-                print("Drive Pose", drive_pose)
                 image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
                 customerCounter += 1
                 customer = CustomerDescription(customerCounter, drive_pose)
@@ -147,30 +141,32 @@ def demo(step: int):
             rospy.sleep(2)
             if customer.order is not None:
                 nlp.confirm_order(customer=customer, order=customer.order)
-            # image_switch_publisher.pub_now(ImageEnum.TALK.value)
         if step <= 3:  # Drive back step
+            rospy.sleep(2)
             TalkingMotion("I will drive back now and return with your order").perform()
             rospy.sleep(2.5)
             image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
             MoveTorsoAction([0]).resolve().perform()
             rospy.sleep(2)
-            move.pub_now(navpose=kitchen_pose)
+            order_kitchen_pose = Pose([kitchen_pose.pose.position.x, kitchen_pose.pose.position.y, kitchen_pose.pose.position.z],[0,0,-0.7, 3.16])
+
+            move.pub_now(navpose=order_kitchen_pose)
             rospy.sleep(2)
 
             TalkingMotion(
                 f"Please prepare the following order for customer {customer.id}").perform()
-            rospy.sleep(1)
+            rospy.sleep(2.5)
             TalkingMotion(f"{customer.order[0][1]} and {customer.order[0][0]}, please").perform()
             rospy.sleep(3)
+            nlp.order_ready()
+
         if step <= 4:
 
-            nlp.order_ready()
             rospy.sleep(2.5)
             move.pub_now(navpose=customer.pose)
             rospy.sleep(2.5)
             nlp.took_order()
-            order_kitchen_pose = Pose([kitchen_pose.pose.position.x, kitchen_pose.pose.position.y, kitchen_pose.pose.position.z],[0,0,-0.7, 0.64])
-            move.pub_now(navpose=order_kitchen_pose)
+            move.pub_now(navpose=kitchen_pose)
             while len(customers) <= 2:
                 print(len(customers))
                 demo(0)
