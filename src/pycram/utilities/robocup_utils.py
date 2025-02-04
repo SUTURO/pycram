@@ -180,6 +180,21 @@ class TextToSpeechPublisher():
                     break
 
                     
+class TextToImagePublisher:
+    def __init__(self, topic='/text_to_image', queue_size=10):
+        """
+        Initializes the TextToImagePublisher with a ROS publisher.
+
+        :param topic: The ROS topic to publish text to generate an image. Default is '/text_to_image'.
+        :param queue_size: The size of the message queue for the publisher. Default is 10.
+        """
+        self.pub = rospy.Publisher(topic, String, queue_size=queue_size, latch=True)
+
+    def pub_now(self, text):
+        self.pub.publish(text)
+
+        loginfo(f"Image generated for: {text}")
+
 
 class ImageSwitchPublisher:
     """
