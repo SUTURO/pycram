@@ -95,3 +95,47 @@ def try_detect(pose: Pose, technique: Optional[str] = None):
     except PerceptionObjectNotFound:
         object_desig = {}
     return object_desig
+
+
+def object_found(obj_dict: dict, obj_name: str) -> bool:
+    """
+    checks if an object is in the dictionary or not
+    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
+    :param obj_name: the object being checked
+    :return: if the object has been found
+    """
+    if len(obj_dict) == 0:
+        return False
+    for value in obj_dict.values():
+        if value.obj_type == obj_name:
+            return True
+    return False
+
+
+def get_object(obj_dict: dict, obj_name: str):
+    """
+    checks if an object is in the dictionary or not
+    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
+    :param obj_name: the object being checked
+    :return: if the object has been found
+    """
+    if len(obj_dict) == 0:
+        return None
+    for value in obj_dict.values():
+        if value.obj_type == obj_name:
+            return value
+    return None
+
+
+def get_bowl(obj_dict: dict):
+    """
+    searches in a dictionary of objects for a bowl and returns it
+    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
+    :return: the found bowl or None
+    """
+    if len(obj_dict) == 0:
+        return None
+    for value in obj_dict.values():
+        if value.obj_type == "Metalbowl":
+            return value
+    return None

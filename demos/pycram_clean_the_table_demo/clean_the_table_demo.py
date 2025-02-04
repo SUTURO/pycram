@@ -7,7 +7,7 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
-from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up
+from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up, sort_objects
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
@@ -25,7 +25,7 @@ LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
 table_pose = 4.7
 
 # name of the dishwasher handle and dishwasher door
-handle_name = "sink_area_dish_washer_door_handle"
+handle_name = "iai_kitchen/sink_area_dish_washer_door_handle"
 door_name = "sink_area_dish_washer_door"
 
 # Intermediate positions for a safer navigation
@@ -63,14 +63,14 @@ class PlacingXPose(Enum):
     """
     Differentiate the x pose for placing
     """
-    CUTLERY = 2.56  # 2.376
-    SPOON = 2.56  # 2.376
-    FORK = 2.56  # 2.376
-    PLASTICKNIFE = 2.56  # 2.376
-    KNIFE = 2.56  # 2.376
-    METALBOWL = 2.9  # 2.83
-    METALMUG = 2.86  # 2.79
-    METALPLATE = 2.87  # 2.8
+    CUTLERY = 2.64  # 2.376
+    SPOON = 2.64  # 2.376
+    FORK = 2.64  # 2.376
+    PLASTICKNIFE = 2.64  # 2.376
+    KNIFE = 2.64  # 2.376
+    METALBOWL = 2.95  # 2.83
+    METALMUG = 2.91  # 2.79
+    METALPLATE = 2.92  # 2.8
 
 
 class PlacingYPose(Enum):
@@ -113,10 +113,11 @@ def turn_around():
 def pickup_object(object: Object):
     global table_pose, CUTLERY
     grasp = Grasp.FRONT
-    if object.obj_type in CUTLERY:
-        object.obj_type = "Cutlery"
 
-    if object.obj_type in ["Metalbowl", "Cutlery"]:
+    object_pose = object.pose.position
+    print(object_pose)
+
+    if object.obj_type in CUTLERY or object.obj_type == "Metalbowl":
         grasp = Grasp.TOP
 
     if object.obj_type == "Metalplate":
@@ -128,48 +129,71 @@ def pickup_object(object: Object):
 
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
     else:
-        if object.obj_type == "Cutlery" and object.pose.position.y > table_pose + 0.125:
-            # change object x pose if the grasping pose is too far in the table
-            object.pose.position.y -= 0.1
-
+        if object.obj_type in CUTLERY: # and object.pose.position.y > table_pose + 0.125:
+            object.pose.position.z = 0.71
+        # change object x pose if the grasping pose is too far in the table
+        # object.pose.position.y -= 0.1
+        if object.obj_type == "Metalbowl":
+            object.pose.position.z = 0.72
         TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
         try_pick_up(robot, object, grasp)
 
-    NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
-                                           robot.get_pose().pose.position.y - 0.6, 0],
-                                          [0, 0, 0.7, 0.7])]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
+    NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
+                                           robot.get_pose().pose.position.y - 0.3, 0],
+                                          [0, 0, 0.7, 0.7])]).resolve().perform()
     MoveTorsoAction([0]).resolve().perform()
+    if object.obj_type == "Metalplate":
+        MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
+
+    if object.obj_type in CUTLERY:
+        MoveTorsoAction([0.12]).resolve().perform()
+        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35],
+                                       NavigatePose.POPCORN_TABLE.value.pose.orientation))
+        if object_found(object_desig, str(object.obj_type)):
+            new_object = get_object(object_desig, str(object.obj_type))
+            try_pick_up(robot, new_object, grasp)
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
+                                                   robot.get_pose().pose.position.y - 0.3, 0],
+                                                  [0, 0, 0.7, 0.7])]).resolve().perform()
+            MoveTorsoAction([0]).resolve().perform()
 
 
 def place_object(object: Object):
-    if object.obj_type == "Metalplate" or object.obj_type == "Metalbowl":
-        MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
     x_y_z_pos = get_pos(str(object.obj_type).upper())
 
     x_pos = x_y_z_pos[0]
     y_pos = x_y_z_pos[1]
     z_pos = x_y_z_pos[2]
 
-    if x_pos >= 2.63:
+    if x_pos >= 2.65:
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 1,
                               NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x + 1,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.5, 0],
                              NavigatePose.LONG_TABLE.value.pose.orientation)]).resolve().perform()
     else:
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 0.105,
                               NavigatePose.DISHWASHER.value.pose.position.y, 0],
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         NavigateAction([Pose([NavigatePose.DISHWASHER.value.pose.position.x - 0.65,
-                              NavigatePose.DISHWASHER.value.pose.position.y - 0.55, 0],
+                              NavigatePose.DISHWASHER.value.pose.position.y - 0.5, 0],
                              NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
-    PlaceAction(object, [Pose([x_pos, y_pos, z_pos])],  [grasp], [Arms.LEFT]).resolve().perform()
+    PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT],
+                [False]).resolve().perform()
+
+    # if object.obj_type == "Metalplate":
+    #     PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])],
+    #                            [grasp], False)
+    # else:
+    #     PlaceAction(object, [Pose([x_pos, y_pos, z_pos])],  [grasp], [Arms.LEFT],
+    #             [False]).resolve().perform()
     # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen
     # drawer when moving to parkArms arm config
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
@@ -295,15 +319,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
         for value in final_sorted_obj:
             # remove all objects that were seen and transported so far
             if value.obj_type in wished_sorted_obj_list:
-                if value.obj_type == "Cutlery":
-                    if "Spoon" in wished_sorted_obj_list:
-                        wished_sorted_obj_list.remove("Fork")
-                    elif "Fork" in wished_sorted_obj_list:
-                        wished_sorted_obj_list.remove("Spoon")
-                    elif "Plasticknife" in wished_sorted_obj_list:
-                        wished_sorted_obj_list.remove("Plasticknife")
-                else:
-                    wished_sorted_obj_list.remove(value.obj_type)
+                wished_sorted_obj_list.remove(value.obj_type)
 
         for val in range(len(wished_sorted_obj_list)):
             grasp = Grasp.FRONT
@@ -372,11 +388,15 @@ with (real_robot):
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
+    NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
+                         NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
+
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
     # sort objects based on distance and which we like to keep
-    sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
+    # sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
+    sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
 
     # picking up and placing objects
     pickup_and_place(sorted_obj)
