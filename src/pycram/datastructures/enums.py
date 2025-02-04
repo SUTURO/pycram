@@ -181,6 +181,7 @@ class ImageEnum(Enum):
     SOFA = 17
     INSPECT = 18
     CHAIR = 37
+    GENERATED_TEXT = 40
 
 
 class VirtualMobileBaseJointName(Enum):
