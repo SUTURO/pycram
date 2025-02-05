@@ -59,17 +59,27 @@ def demo(step: int):
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
         # MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # door_pre = Pose([2.2, -0.9, 0])
         # NavigateAction([door_pre]).resolve().perform()
-        offset = Vector3()
-        offset.z = -0.015
+        #offset = Vector3()
+        #offset.z = -0.015
         #offset.y = -0.03
         # grasp_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset)
-        GraspHandleMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset).perform()
-        MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-        DoorOpenMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside").perform()
+        # GraspHandleMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside", offset).perform()
+        # MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+        # DoorOpenMotion("iai_kitchen/iai_kitchen:arena:door_handle_inside").perform()
         # open_doorhandle("iai_kitchen/iai_kitchen:arena:door_handle_inside")
+        giskard.door_open_ft(handle_name="iai_kitchen/iai_kitchen:arena:door_handle_inside",
+                             tip='hand_gripper_tool_frame',
+                             handle_turn_limit=0.5  ,
+                             hinge_turn_limit=-0.8,
+                             handle_length=0.1,
+                             ref_speed=0.3,
+                             pre_grasp_distance=-0.1,
+                             grasp_into_distance=0.15,
+                             handle_retract_distance=0.075,
+                             offset_leftright=-0.015)
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 

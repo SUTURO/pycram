@@ -52,6 +52,7 @@ class NLP_Helper:
         # look for human and position higher
         DetectAction(technique='human').resolve().perform()
         rospy.sleep(1)
+        MoveJointsMotion(["arm_flex_joint"], [-0.25]).perform()
         MoveJointsMotion(["torso_lift_joint"], [0.2]).perform()
 
         # look at guest and introduce

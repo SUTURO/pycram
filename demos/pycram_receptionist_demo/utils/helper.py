@@ -63,6 +63,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
 
     # detect free seat
     try:
+        print("before")
         seat = DetectAction(technique='location', state="sofa").resolve().perform()
     except PerceptionObjectNotFound:
         rospy.logerr("i hate perception lol")
@@ -103,7 +104,8 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
                 break
     else:
         rospy.loginfo("find free chairs")
-        for place in seat[1]:
+        for place in seat:
+            print("place " + str(place))
             if place[0] == 'chair':
                 if place[1] == ' False' or place[1] == 'False':
                     pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
@@ -124,7 +126,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
         rospy.loginfo("found seat")
         return pose_guest
     else:
-        TalkingMotion("no free seat detected").perform()
+        TalkingMotion("still searching seat").perform()
 
     return free_seat
 
@@ -168,13 +170,13 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                 break
 
             elif counter == 2:
-                TalkingMotion("please look at me").perform()
+                TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2.5)
 
             elif counter == 3:
                 # look to the side to find faces
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                TalkingMotion("please look at me").perform()
+                TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2.5)
 
             human_dict = DetectAction(technique='human', state='face').resolve().perform()

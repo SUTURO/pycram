@@ -3,6 +3,7 @@ from demos.pycram_receptionist_demo.utils.helper import *
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
+from pycram.language import Code
 from pycram.process_module import real_robot
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
@@ -51,7 +52,7 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 0.3, 0.75])
 look_drinks = Pose([2.3, 4.7, 0.55])
-look_person_drinks = Pose([1.9, 3.8, 1])
+look_person_drinks = Pose([1.9, 4, 1])
 nav_pose_to_drink = Pose([2, 0.6, 0], orientation=[0, 0, 0.7, 0.7])
 nav_pose_to_couch = Pose([2.2, 3.3, 0], orientation=[0, 0, -0.7, 0.7])
 greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
@@ -64,10 +65,9 @@ def demo(step: int):
         rospy.loginfo("start demo at step " + str(step))
 
         # set neutral pose
-        image_switch_publisher.pub_now(ImageEnum.HI.value)
+        # image_switch_publisher.pub_now(ImageEnum.HI.value)
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
 
         if step <= 1:
             # greet first guest
@@ -143,7 +143,7 @@ def demo(step: int):
                 elif counter == 2:
                     # look to the side to find face
                     MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                    TalkingMotion("please look at me").perform()
+                    TalkingMotion("sitting people please look at me").perform()
                     rospy.sleep(1.5)
 
                 if counter == 5:
@@ -166,7 +166,11 @@ def demo(step: int):
                 # look to the side to find seat
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
-                guest1.set_pose(guest_pose)
+                if guest_pose:
+                    guest1.set_pose(guest_pose)
+                else:
+                    TalkingMotion("i am sorry i can not find a seat")
+                    guest1.set_pose(guest_pose)
             else:
                 guest1.set_pose(guest_pose)
 
@@ -174,6 +178,8 @@ def demo(step: int):
             # introduce sitting people
             TalkingMotion("i will go back to the entrance to assist other guests").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            rospy.logerr("stop now")
+            rospy.sleep(6)
 
         if step <= 9:
             # go back to start-pose
@@ -190,6 +196,7 @@ def demo(step: int):
             TalkingMotion("i will show you around").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
+            NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
         if step <= 9:
@@ -241,7 +248,11 @@ def demo(step: int):
             if not guest_pose:
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
-                guest2.set_pose(guest_pose)
+                if guest_pose:
+                    guest1.set_pose(guest_pose)
+                else:
+                    TalkingMotion("i am sorry i can not find a seat")
+                    guest1.set_pose(guest_pose)
             else:
                 guest2.set_pose(guest_pose)
 

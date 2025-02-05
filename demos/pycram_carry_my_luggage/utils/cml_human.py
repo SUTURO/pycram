@@ -11,24 +11,23 @@ class Human:
 
     def __init__(self):
         self.human_pose = Fluent()
-        print("Fluent checko")
 
         self.last_msg_time = time.time()
-        print("lst msgs checko")
 
-        self.threshold = 5.0  # seconds
+        self.threshold = 3.0  # seconds
 
         # Subscriber to the human pose topic
         #TODO check if its really pointstamped (it should)
         self.human_pose_sub = rospy.Subscriber("/human_pose", PointStamped, self.human_pose_cb)
-        print("lst msgs checko")
 
         # Timer to check for no message
-        self.timer = rospy.Timer(rospy.Duration(1), self.check_for_no_message)
+        self.timer = rospy.Timer(period=rospy.Duration(1), callback=self.check_for_no_message)
 
     def check_for_no_message(self):
         current_time = time.time()
+        print("Timer")
         if (current_time - self.last_msg_time) > self.threshold:
+            print("human lost")
             self.human_pose.set_value(False)
 
     def human_pose_cb(self, HumanPoseMsg):
