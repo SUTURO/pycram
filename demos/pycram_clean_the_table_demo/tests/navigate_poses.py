@@ -40,11 +40,15 @@ dishwasher_main_name = "sink_area_dish_washer_main"
 
 
 class NavigatePose(Enum):
-    DISHWASHER_CLOSED = Pose([2.75, -2.1, 0], [0, 0, -1, 1])
-    DISHWASHER = Pose([2.65, -1.85, 0], [0, 0, -1, 1])
-    SHELF = Pose([4.5, 3.95, 0], [0, 0, 0, 1])
-    TRESSE = Pose([1.95, 4, 0], [0, 0, 0.7, 0.7])
-    LONG_TABLE = Pose([1.7, 0.8, 0], [0, 0, 1, 0])
+    DOOR = Pose([-1.58, 0, 0], [0, 0, 0, 1])
+    CORRIDOR = Pose([3.32, 1.04, 0], [0, 0, 0.7, 0.7])
+    MIDDLE_OF_TABLE = Pose([4.49, 5.22, 0], [0, 0, -0.7, 0.7]) # +- 0.2 for left/ right on x
+    BEFORE_KITCHEN = Pose([1.67, 6.15, 0], [0, 0, 0.7, 0.7])
+    IN_KITCHEN = Pose([1.27, 8.66, 0], [0, 0, 0, 1])
+    DISHWASHER_CLOSED = Pose([4.55, 8.75, 0], [0, 0, -0.7, 0.7])
+    DISHWASHER_RIGHT = Pose([4.55, 8.75, 0], [0, 0, 0, 1])
+    # DISHWASHER_LEFT = Pose([4.55, 8.75, 0], [0, 0, 1, 0])
+    SHELF = Pose([4.62, 5.95, 0], [0, 0, 0, 1])
 
 
 class NavigateOrientation(Enum):
