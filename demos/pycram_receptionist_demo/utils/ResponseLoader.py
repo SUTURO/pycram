@@ -14,7 +14,6 @@ class ResponseLoader:
                 self.data = json.load(file)
                 print("Data loaded successfully.")
         except FileNotFoundError:
-            print(self.json_file)
             raise FileNotFoundError(f"JSON file {self.json_file} not found.")
 
     def predict_response(self, hobby_list):
@@ -22,8 +21,6 @@ class ResponseLoader:
         if self.data is None:
             raise ValueError("Data not loaded. Call `load_data()` first.")
 
-        # test for hobby in json
-        # print(eval(hobby_list))
         if not hobby_list:
             return random.choice(self.data['fallback'])
 
@@ -34,7 +31,16 @@ class ResponseLoader:
                 answered = True
                 return random.choice(responses)
                 break
+
         if not answered:
-            print("in fallback!")
-            # unknown interest
-            return random.choice(self.data['fallback'])
+            print("verb correction")
+            for hobby in hobby_list:
+                hobby = self.data['verb_correction'][hobby]
+                if hobby in self.data['hobbies']:
+                    responses = self.data['hobbies'][hobby]
+                    answered = True
+                    return random.choice(responses)
+                    break
+
+        # unknown interest
+        return random.choice(self.data['fallback'])
