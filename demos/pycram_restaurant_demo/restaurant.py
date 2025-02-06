@@ -1,3 +1,4 @@
+import math
 from datetime import time
 from collections import OrderedDict
 import rospy
@@ -7,6 +8,7 @@ from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 
 import pycram.failures
+from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -80,27 +82,28 @@ def look_around(increase: float, star_pose: PoseStamped, talk):
     tmp_x = star_pose.pose.position.x
     tmp_y = star_pose.pose.position.y
     tmp_z = star_pose.pose.position.z
-    x = -10.0
-    while x <= 10.0:
-        look_pose = Pose([tmp_x, tmp_y, tmp_z],
-                         frame="hsrb/" + RobotDescription.current_robot_description.base_link)
-        look_pose_in_map = tf_listener.transformPose("/map", look_pose)
-        look_point_in_map = look_pose_in_map.pose.position
+    x = -0.5
+    while x <= 0.5:
+        # look_pose = Pose([tmp_x, tmp_y, tmp_z],
+        #                  frame="hsrb/" + RobotDescription.current_robot_description.base_link)
+        # look_pose_in_map = tf_listener.transformPose("/map", look_pose)
+        # look_point_in_map = look_pose_in_map.pose.position
+        MoveJointsMotion(["head_pan_joint"], [x]).perform()
         try:
             human_pose = DetectAction(technique='waving', state='start').resolve().perform()
         except pycram.failures.PerceptionObjectNotFound:
             print("oh no, no waving human was found")
         if human_pose:
             break
-        else:
-            new_pose = Pose([look_point_in_map.x , look_point_in_map.y + x,
-                   0.8])
-            LookAtAction([new_pose]).resolve().perform()
-            rospy.sleep(1.5)
+        # else:
+        #     new_pose = Pose([look_point_in_map.x , look_point_in_map.y + x,
+        #            0.8])
+        #     LookAtAction([new_pose]).resolve().perform()
+        #     rospy.sleep(1.5)
 
         x += increase
-        if x == 10.0:
-            x = -10.0
+        if x == 0.5:
+            x = -0.5
 
 def monitor_func():
     """
@@ -129,10 +132,7 @@ def confirmation():
     except SensorMonitoringCondition:
         print("done")
         image_switch_publisher.pub_now(ImageEnum.HI.value)
-
-        #TalkingMotion("i will start driving now").perform()
         rospy.sleep(2)
-        print("done")
         return
 def demo(step: int):
     global customer, customerCounter, kitchen_pose, human_pose
@@ -140,8 +140,17 @@ def demo(step: int):
         talk = True
         start_pose = robot.get_pose()
         kitchen_pose = start_pose
-        #confirmation()
-        #TalkingMotion("start restaurant demo").perform()
+        TalkingMotion("start restaurant demo").perform()
+        if len(customers) == 0:
+            TalkingMotion("Please place the Basket in my gripper and push down my gripper ").perform()
+            image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
+            try:
+                plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                plan.perform()
+            except SensorMonitoringCondition:
+                TalkingMotion("Closing my Gripper.").perform()
+                image_switch_publisher.pub_now(ImageEnum.HI.value)
+                MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
 
         if step <= 0:
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
@@ -149,29 +158,15 @@ def demo(step: int):
             #config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
             #                      'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
             #pakerino(config=config_for_placing)
-            MoveTorsoAction([0.15]).resolve().perform()
+            MoveTorsoAction([0.2]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
+            TalkingMotion("Please wave, so that I can perceive you").perform()
 
         if step <= 1:
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
-           # look_around(4, start_pose, talk)
+            look_around(0.5, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
-            MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-            try:
-                human_pose = DetectAction(technique='waving', state='start').resolve().perform()
-                print(human_pose)
-            except pycram.failures.PerceptionObjectNotFound:
-                print("No human found")
-            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            try:
-                human_pose = DetectAction(technique='waving', state='start').resolve().perform()
-            except pycram.failures.PerceptionObjectNotFound:
-                print("No human found")
-            MoveJointsMotion(["head_pan_joint"], [0.3]).perform()
-            try:
-                human_pose = DetectAction(technique='waving', state='start').resolve().perform()
-            except pycram.failures.PerceptionObjectNotFound:
-                print("No human found")
+
             if human_pose is not None:
                 drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
                 image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
@@ -202,7 +197,10 @@ def demo(step: int):
             image_switch_publisher.pub_now(ImageEnum.DRIVINGBACK.value)
             MoveTorsoAction([0]).resolve().perform()
             rospy.sleep(2)
-            order_kitchen_pose = Pose([kitchen_pose.pose.position.x, kitchen_pose.pose.position.y, kitchen_pose.pose.position.z],[0,0,-0.7, 3.16])
+
+            oX, oY, oTheta = kitchen_pose.orientation
+            inverted_theta = (oTheta + math.pi) % (2 * math.pi)
+            order_kitchen_pose = Pose([kitchen_pose.pose.position.x, kitchen_pose.pose.position.y, kitchen_pose.pose.position.z],[oX,oY,-0.7, inverted_theta])
 
             move.pub_now(navpose=order_kitchen_pose)
 
@@ -210,23 +208,26 @@ def demo(step: int):
             if len(customer.order) == 1:
                 TalkingMotion(f"Please prepare the order {customer.order[0][1]} {customer.order[0][0]}").perform()
                 rospy.sleep(2)
-            elif len(customer.order) > 2:
+            elif len(customer.order) >= 2:
                 TalkingMotion("Please prepare the following order").perform()
                 for n in customer.order:
                     TalkingMotion(f"{n[1]}{n[0]}").perform()
-            TalkingMotion(f"Please push down my gripper, if the order is prepared").perform()
+            TalkingMotion(f"Please push down my gripper, if the order is prepared and my display changed").perform()
+            rospy.sleep(1)
             confirmation()
-            #nlp.give_order(order=customer.order)
 
             rospy.sleep(3)
-            nlp.order_ready()
             TalkingMotion("I will bring the order to the customer now").perform()
         if step <= 4:
 
             rospy.sleep(2.5)
             move.pub_now(navpose=customer.pose)
             rospy.sleep(2.5)
-            nlp.took_order()
+            TalkingMotion("Here is your order").perform()
+            rospy.sleep(2)
+            TalkingMotion("Please push down my gripper, if you took your order and my display changed").perform()
+            rospy.sleep(2)
+            confirmation()
             move.pub_now(navpose=kitchen_pose)
             while len(customers) <= 2:
                 print(len(customers))

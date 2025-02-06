@@ -7,7 +7,7 @@ from pycram.designators.motion_designator import PointingMotion
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 
-look_couch = Pose([3.8, 0.3, 0.75])
+look_couch = Pose([4.9, -2.4, 0.75])
 
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
@@ -78,30 +78,32 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
             print(place[1])
             if place[1] == ' False' or place[1] == 'False':
 
-                pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
-                rospy.loginfo("place: " + str(place))
+                if not float(place[2])-4.62 < 0.25:
 
-                # transform poses to find out position relative to robot
-                lt = LocalTransformer()
-                pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
+                    pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
+                    rospy.loginfo("place: " + str(place))
 
-                if pose_in_robot_frame.pose.position.y > 0.25:
-                    TalkingMotion("please take a seat to the left from me").perform()
-                    # move pose more to the left for clear pointing pose
-                    pose_in_robot_frame.pose.position.y += 0.4
+                    # transform poses to find out position relative to robot
+                    lt = LocalTransformer()
+                    pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
 
-                elif pose_in_robot_frame.pose.position.y < -0.15:
-                    TalkingMotion("please take a seat to the right from me").perform()
-                    # move pose more to the right for clear pointing pose
-                    pose_in_robot_frame.pose.position.y -= 0.4
+                    if pose_in_robot_frame.pose.position.y > 0.25:
+                        TalkingMotion("please take a seat to the left from me").perform()
+                        # move pose more to the left for clear pointing pose
+                        pose_in_robot_frame.pose.position.y += 0.6
 
-                else:
-                    TalkingMotion("please take a seat in front of me").perform()
+                    elif pose_in_robot_frame.pose.position.y < -0.15:
+                        TalkingMotion("please take a seat to the right from me").perform()
+                        # move pose more to the right for clear pointing pose
+                        pose_in_robot_frame.pose.position.y -= 0.6
 
-                # get pose in map
-                pose_in_map = lt.transform_pose(pose_in_robot_frame, "map")
-                free_seat = True
-                break
+                    else:
+                        TalkingMotion("please take a seat in front of me").perform()
+
+                    # get pose in map
+                    pose_in_map = lt.transform_pose(pose_in_robot_frame, "map")
+                    free_seat = True
+                    break
     else:
         rospy.loginfo("find free chairs")
         for place in seat:
@@ -175,7 +177,7 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
 
             elif counter == 3:
                 # look to the side to find faces
-                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                 TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2.5)
 
@@ -206,7 +208,7 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
         except PerceptionObjectNotFound:
             counter += 1
             if counter == 3:
-                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                 TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
 
@@ -322,7 +324,12 @@ def describe(human: HumanDescription):
 
 
 def check_drink_available(guest: HumanDescription):
-    drinks = DetectAction(technique='drink').resolve().perform()
+
+    try:
+        drinks = DetectAction(technique='drink').resolve().perform()
+    except PerceptionObjectNotFound:
+        TalkingMotion("i can not find that drink here").perform()
+        return False
     try:
         robokudo_name = nlp_drink_to_robokudo[guest.fav_drink.strip(" ")]
         print("found in list")
@@ -375,6 +382,8 @@ hobby_verbs = {
 
 nlp_drink_to_robokudo = {
     "milk": "Milkpack",
+    "red boys": "RedBullCan",
+    "red boi": "RedBullCan"
 }
 
 

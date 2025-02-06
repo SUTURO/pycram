@@ -26,9 +26,9 @@ def demo(step: int):
             print("start demo")
             start_pose = robot.get_pose()
             print(start_pose)
-            # ParkArmsAction([Arms.LEFT]).resolve().perform()
-            TalkingMotion("beep boop").perform()
-            #MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            #TalkingMotion("beep boop").perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
@@ -128,16 +128,16 @@ def demo_start(human: Human):
     """
     try:
 
-        #TalkingMotion("Starting Carry my Luggage demo.").perform()
+        TalkingMotion("Starting Carry my Luggage demo.").perform()
         img.pub_now(ImageEnum.HI.value)  # hi im toya
-        #TalkingMotion("Push down my Hand, when you are Ready.").perform()
+        TalkingMotion("Push down my Hand, when you are Ready.").perform()
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
         plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func)
         plan.perform()
     except SensorMonitoringCondition:
         img.pub_now(ImageEnum.HI.value)
 
-        #TalkingMotion("Looking for a human").perform()
+        TalkingMotion("Looking for a human").perform()
         DetectAction(technique='human').resolve().perform()
         img.pub_now(ImageEnum.SEARCH.value)
         goal_msg = QueryGoal()
