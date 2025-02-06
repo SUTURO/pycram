@@ -1,6 +1,8 @@
 import rospy
 from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from geometry_msgs.msg import PoseStamped
+
+from demos.pycram_serve_breakfast_demo.serve_breakfast_intern_go import NavigatePose, try_detect
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.failures import EnvironmentUnreachable, GripperClosedCompletely
@@ -115,10 +117,10 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Objec
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
-        NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        NavigateAction([Pose([NavigatePose.SHELF.value.pose.position.x, NavigatePose.SHELF.value.pose.position.y, 0],
+                             NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
         # try to detect the object again
-        LookAtAction(targets=[Pose([obj.pose.position.x, obj.pose.position.y, 0.21], [0, 0, 0.7, 0.7])]).resolve().perform()
-        object_desig = DetectAction(technique='all').resolve().perform()
+        object_desig = try_detect(Pose([5.45, 5.95, 0.21], NavigatePose.SHELF.value.pose.orientation))
         new_object = sort_objects(object_desig, [obj.obj_type])[0]
         # second try to pick up the object
         try:
@@ -138,7 +140,7 @@ def step_back(robot: BulletWorld.robot):
     steps back, parks arms and opens gripper
     """
     NavigateAction(
-        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, 0],
+        [Pose([robot.get_pose().pose.position.x - 0.3, robot.get_pose().pose.position.y, 0],
               robot.get_pose().pose.orientation)]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()

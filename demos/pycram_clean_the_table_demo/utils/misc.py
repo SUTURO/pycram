@@ -1,6 +1,8 @@
 from typing_extensions import Optional
+
+from demos.pycram_clean_the_table_demo.clean_the_table_intern_go import NavigatePose
 from pycram.designators.action_designator import *
-from pycram.failures import PerceptionObjectNotFound
+from pycram.failures import PerceptionObjectNotFound, EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
 
 wished_sorted_obj_list_clean_the_table = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
@@ -139,3 +141,46 @@ def get_bowl(obj_dict: dict):
         if value.obj_type == "Metalbowl":
             return value
     return None
+
+
+def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
+    """
+    Picking up any object with failure handling.
+    :param robot: the robot
+    :param obj: the object that should be picked up
+    :param grasps: how to pick up the object
+    """
+    try:
+        PickUpAction(obj, [Arms.LEFT], [grasps]).resolve().perform()
+    except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
+        TalkingMotion("Try pick up again").perform()
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        # after failed attempt to pick up the object, the robot moves 30cm back on x pose
+        step_back(robot)
+        NavigateAction([Pose([robot.get_pose().pose.position.x, NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0],
+                             NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
+        # try to detect the object again
+        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35], [0, 0, -0.7, 0.7]))
+        new_object = sort_objects_euclidian(robot, object_desig, [obj.obj_type])[0]
+        # second try to pick up the object
+        try:
+            TalkingMotion("try again").perform()
+            PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
+        # ask for human interaction if it fails a second time
+        except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
+            step_back(robot)
+            TalkingMotion(f"Can you please give me the {obj.obj_type} in the shelf?").perform()
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            rospy.sleep(4)
+            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+
+
+def step_back(robot: BulletWorld.robot):
+    """"
+    steps back, parks arms and opens gripper
+    """
+    NavigateAction(
+        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y + 0.3, 0],
+              robot.get_pose().pose.orientation)]).resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
