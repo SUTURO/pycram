@@ -11,40 +11,37 @@ from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
-from pycram.utilities.robocup_utils import StartSignalWaiter
+from pycram.utilities.robocup_utils import StartSignalWaiter, ImageSwitchPublisher
 import rospy
 
 start_signal = StartSignalWaiter()
 # Initialize the Bullet world for simulation
 fts = ForceTorqueSensor(robot_name='hsrb')
 world = BulletWorld()
-print("1")
 # Visualization Marker Publisher for ROS
 v = VizMarkerPublisher()
-print("2")
 # Create and configure the robot object
 robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
 RobotStateUpdater("/tf", "/giskard_joint_states")
-# image_switch_publisher = ImageSwitchPublisher()
-print("3")
+img = ImageSwitchPublisher()
 # Create environmental objects
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
-print("4")
 pose1 = Pose(position=[3.2, 0.8, 0], orientation=[0, 0, 0.7, 0.7])
-pose2 = Pose(position=[3.2, 6, 0])
-pose3 = Pose(position=[1.35, 6, 0])
+pose2 = Pose(position=[3.2, 6, 0], orientation=[0, 0, -1, 0])
+pose3 = Pose(position=[1.35, 6, 0], orientation=[0, 0, 0.7, 0.7])
 pose4 = Pose(position=[1.35, 8.7, 0])
-inspection_pose = Pose(position=[2.35, 8.33, 0])
-end = Pose(position=[2.8, 3.8, 0])
+inspection_pose = Pose(position=[2.5, 8.7, 0])
+back_pose1 = Pose(position=[1.35, 8.7, 0], orientation=[0, 0, -0.7, 0.7])
+back_pose2 = Pose(position=[1.35, 6.1, 0], orientation=[0, 0, 1, 0])
+back_pose3 = Pose(position=[3, 6, 0], orientation=[0, 0, -0.7, 0.7])
+end = Pose(position=[2.9, -0.5, 0], orientation=[0, 0, -0.7, 0.7])
 
 
 def demo(step: int):
     with real_robot:
-        # img.pub_now(ImageEnum.HI.value)
+        img.pub_now(ImageEnum.HI.value)
         start_signal.wait_for_startsignal()
-        # while not start_signal.fluent:
-        #     print("door closed")
-        #     rospy.sleep(1)
+
 
 
         if step <= 1:
@@ -54,7 +51,7 @@ def demo(step: int):
 
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-            # demo_start()
+
             TalkingMotion("Starting Inspection").perform()
             NavigateAction([pose1]).resolve().perform()
             NavigateAction([pose2]).resolve().perform()
@@ -63,9 +60,11 @@ def demo(step: int):
             NavigateAction([pose4]).resolve().perform()
             NavigateAction([inspection_pose]).resolve().perform()
             TalkingMotion("i will drive back now").perform()
-            NavigateAction([pose4]).resolve().perform()
-            NavigateAction([pose3]).resolve().perform()
+            NavigateAction([back_pose1]).resolve().perform()
+            NavigateAction([back_pose2]).resolve().perform()
+            NavigateAction([back_pose3]).resolve().perform()
             NavigateAction([end]).resolve().perform()
+            TalkingMotion("this is the end of my navigation").perform()
 
 
 
