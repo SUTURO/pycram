@@ -198,5 +198,87 @@
     "That sounds interesting!",
     "Oh, that must be fun!",
     "I haven't tried that before, but it sounds fascinating!"
-  ]
+  ],
+  "verb_correction": {
+    "program": [
+      "programming"
+    ],
+    "surf": [
+      "surfing"
+    ],
+    "draw": [
+      "drawing"
+    ],
+    "paint": [
+      "painting"
+    ],
+    "cycle": [
+      "cycling"
+    ],
+    "game": [
+      "gaming"
+    ],
+    "read": [
+      "reading"
+    ],
+    "run": [
+      "running"
+    ],
+    "write": [
+      "writing"
+    ],
+    "swim": [
+      "swimming"
+    ],
+    "hike": [
+      "hiking"
+    ],
+    "fish": [
+      "fishing"
+    ],
+    "garden": [
+      "gardening"
+    ],
+    "dance": [
+      "dancing"
+    ],
+    "sing": [
+      "singing"
+    ],
+    "meditate": [
+      "meditating"
+    ],
+    "travel": [
+      "traveling"
+    ],
+    "knit": [
+      "knitting"
+    ],
+    "code": [
+      "coding"
+    ],
+    "build": [
+      "building"
+    ],
+    "birdwatch": [
+      "birdwatching"
+    ],
+    "sleep": [
+      "sleeping"
+    ],
+    "work out": [
+      "working out"
+    ],
+    "climb": [
+      "climbing"
+    ],
+    "rock climb": [
+      "rock climbing"
+    ],
+    "meet with friends": [
+      "meeting with friends"
+    ]
+}
+
+
 }

@@ -269,6 +269,10 @@ class NLP_Helper:
                 hobby_list.remove('playing')
             guest.add_interests(hobby_list[0])
 
+        for indx in range(len(hobby_list)):
+            hobby_list[indx] = hobby_list[indx].lower()
+
+
         # answer specifically
         toya_text = self.res_loader.predict_response(hobby_list)
         print(toya_text)
