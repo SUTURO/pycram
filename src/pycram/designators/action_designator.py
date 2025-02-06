@@ -1041,8 +1041,8 @@ class PickUpActionPerformable(ActionAbstract):
                 if self.object_designator.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
                     special_knowledge_offset.pose.position.y -= 0.05
                 if self.object_designator.obj_type == "Metalbowl":
-                    special_knowledge_offset.pose.position.y -= 0.085
-                    special_knowledge_offset.pose.position.x += 0.03
+                    special_knowledge_offset.pose.position.y -= 0.065
+                    special_knowledge_offset.pose.position.x += 0.045
 
         push_base = special_knowledge_offset
         # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge

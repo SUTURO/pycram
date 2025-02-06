@@ -8,7 +8,6 @@ from pycram.language import Code
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
-from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up, sort_objects
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
@@ -54,11 +53,11 @@ apart_desig = BelieveObject(names=["kitchen"])
 class NavigatePose(Enum):
     DOOR = Pose([-1.58, 0, 0], [0, 0, 0, 1])
     CORRIDOR = Pose([3.32, 1.04, 0], [0, 0, 0.7, 0.7])
-    KITCHEN_TABLE = Pose([4.49, 5.22, 0], [0, 0, -0.7, 0.7])  # +- 0.2 for left/ right on x
+    KITCHEN_TABLE = Pose([4.49, 5.34, 0], [0, 0, -0.7, 0.7])  # +- 0.2 for left/ right on x
     BEFORE_KITCHEN = Pose([1.67, 6.15, 0], [0, 0, 0.7, 0.7])
     IN_KITCHEN = Pose([1.27, 8.66, 0], [0, 0, 0, 1])
     DISHWASHER_CLOSED = Pose([4.55, 8.75, 0], [0, 0, -0.7, 0.7])
-    DISHWASHER_RIGHT = Pose([4.55, 8.75, 0], [0, 0, 0, 1])
+    DISHWASHER_RIGHT = Pose([3.83, 8.4, 0], [0, 0, 0, 1])
     # DISHWASHER_LEFT = Pose([4.55, 8.75, 0], [0, 0, 1, 0])
     SHELF = Pose([4.62, 5.95, 0], [0, 0, 0, 1])
 
@@ -91,7 +90,6 @@ class PlacingYPose(Enum):
     METALPLATE = 8.25  # -1.65
 
 
-
 def pickup_object(object: Object):
     global table_pose, CUTLERY
     grasp = Grasp.FRONT
@@ -101,6 +99,9 @@ def pickup_object(object: Object):
 
     if object.obj_type in CUTLERY or object.obj_type == "Metalbowl":
         grasp = Grasp.TOP
+        MoveTorsoAction([0.4]).resolve().perform()
+    else:
+        MoveTorsoAction([0.2]).resolve().perform()
 
     if object.obj_type == "Metalplate":
         TalkingMotion("Can you please give me the plate on the table.").perform()
@@ -118,15 +119,13 @@ def pickup_object(object: Object):
         if object.obj_type == "Metalbowl":
             object.pose.position.z = 0.76
         TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
-        try_pick_up(robot, object, grasp)
+        try_pick_up_c(robot, object, grasp)
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                            robot.get_pose().pose.position.y + 0.3, 0],
                                           NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
     MoveTorsoAction([0]).resolve().perform()
-    if object.obj_type == "Metalplate":
-        MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
 
     if object.obj_type in CUTLERY:
         MoveTorsoAction([0.12]).resolve().perform()
@@ -134,7 +133,8 @@ def pickup_object(object: Object):
                                        NavigatePose.KITCHEN_TABLE.value.pose.orientation))
         if object_found(object_desig, str(object.obj_type)):
             new_object = get_object(object_desig, str(object.obj_type))
-            try_pick_up(robot, new_object, grasp)
+            MoveTorsoAction([0.4]).resolve().perform()
+            try_pick_up_c(robot, new_object, grasp)
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                                    robot.get_pose().pose.position.y + 0.3, 0],
@@ -151,7 +151,10 @@ def place_object(object: Object):
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
-    PlaceAction(object, [Pose([x_pos, y_pos, 0,7])], [grasp], [Arms.LEFT], [False]).resolve().perform()
+    MoveTorsoAction([0.3]).resolve().perform()
+
+    PlaceAction(object, [Pose([x_pos, y_pos, 0.7])], [grasp], [Arms.LEFT],
+                [False]).resolve().perform()
 
     # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen
     # drawer when moving to parkArms arm config
@@ -206,16 +209,16 @@ def navigate_and_detect(location_name: NavigatePose):
     :return: tupel of State and dictionary of found objects in the FOV
     """
     TalkingMotion("Navigating").perform()
-    # Navigate out of kitchen area
-    NavigateAction([Pose(NavigatePose.IN_KITCHEN.value.pose.position,
-                         NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
-    NavigateAction([Pose(NavigatePose.BEFORE_KITCHEN.value.pose.position,
-                         NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
+    # # Navigate out of kitchen area
+    # NavigateAction([Pose(NavigatePose.IN_KITCHEN.value.pose.position,
+    #                      NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
+    # NavigateAction([Pose(NavigatePose.BEFORE_KITCHEN.value.pose.position,
+    #                      NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
 
     if location_name == NavigatePose.SHELF:
         NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
         MoveTorsoAction([0.2]).resolve().perform()
-        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 5.925, 0.21], 
+        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 5.925, 0.21],
                                        NavigatePose.SHELF.value.pose.orientation))
         objects_list = get_objects(object_desig)
     elif location_name == NavigatePose.KITCHEN_TABLE:
@@ -224,7 +227,7 @@ def navigate_and_detect(location_name: NavigatePose):
                               NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0],
                              NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
-        object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35], 
+        object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35],
                                         NavigatePose.KITCHEN_TABLE.value.pose.orientation))
         objects_list1 = get_objects(object_desig1)
 
@@ -233,7 +236,7 @@ def navigate_and_detect(location_name: NavigatePose):
                               NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0],
                              NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
-        object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35], 
+        object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35],
                                         NavigatePose.KITCHEN_TABLE.value.pose.orientation))
         objects_list2 = get_objects(object_desig2)
         objects_list = []
@@ -311,8 +314,6 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
             NavigateAction([NavigatePose.IN_KITCHEN.value]).resolve().perform()
             NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
 
-            if wished_sorted_obj_list[val] == "Metalplate" or wished_sorted_obj_list[val] == "Metalbowl":
-                MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
             x_y_z_pos = get_pos(wished_sorted_obj_list[val].upper())
 
             x_pos = x_y_z_pos[0]
@@ -356,6 +357,7 @@ def monitor_func():
 
 # Main interaction sequence with real robot
 with (real_robot):
+    """
     try:
         plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
         plan.perform()
@@ -370,6 +372,7 @@ with (real_robot):
         NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
+        MoveJointsMotion(["arm_roll_joint"], [0]).perform()
         giskard.dishwasher_test(handle_name, 'sink_area_dish_washer_door_joint', door_name)
         # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
 
@@ -377,19 +380,20 @@ with (real_robot):
 
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+    """
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    # detect objects
+    object_desig_list = navigate_and_detect(NavigatePose.KITCHEN_TABLE)
 
-        # detect objects
-        object_desig_list = navigate_and_detect(NavigatePose.KITCHEN_TABLE)
+    # sort objects based on distance and which we like to keep
+    sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
+    # sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
 
-        # sort objects based on distance and which we like to keep
-        # sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
-        sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
+    # picking up and placing objects
+    pickup_and_place(sorted_obj)
 
-        # picking up and placing objects
-        pickup_and_place(sorted_obj)
+    new_obj_desig = failure_handling1(sorted_obj)
+    failure_handling2(sorted_obj, new_obj_desig)
 
-        new_obj_desig = failure_handling1(sorted_obj)
-        failure_handling2(sorted_obj, new_obj_desig)
-
-        rospy.loginfo("Done!")
-        TalkingMotion("Done").perform()
+    rospy.loginfo("Done!")
+    TalkingMotion("Done").perform()

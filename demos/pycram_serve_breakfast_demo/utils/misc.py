@@ -1,8 +1,6 @@
 import rospy
 from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from geometry_msgs.msg import PoseStamped
-
-from demos.pycram_serve_breakfast_demo.serve_breakfast_intern_go import NavigatePose, try_detect
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.failures import EnvironmentUnreachable, GripperClosedCompletely
@@ -117,10 +115,9 @@ def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Objec
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
-        NavigateAction([Pose([NavigatePose.SHELF.value.pose.position.x, NavigatePose.SHELF.value.pose.position.y, 0],
-                             NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
+        NavigateAction([Pose([4.62, 5.95, 0], [0, 0, 0, 1])]).resolve().perform()
         # try to detect the object again
-        object_desig = try_detect(Pose([5.45, 5.95, 0.21], NavigatePose.SHELF.value.pose.orientation))
+        object_desig = try_detect(Pose([5.45, 5.95, 0.21], [0, 0, 0, 1]))
         new_object = sort_objects(object_desig, [obj.obj_type])[0]
         # second try to pick up the object
         try:
@@ -144,3 +141,22 @@ def step_back(robot: BulletWorld.robot):
               robot.get_pose().pose.orientation)]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+
+
+def try_detect(pose: Pose, technique: Optional[str] = None):
+    """
+    lets the robot looks on a pose and perceive objects or free spaces
+    :param pose: the pose that the robot looks to
+    :param technique: if location should be detected or not
+    :return: tupel of State and dictionary of found objects in the FOV
+    """
+    LookAtAction(targets=[pose]).resolve().perform()
+    TalkingMotion("Perceiving").perform()
+    try:
+        if technique == "location":
+            object_desig = DetectAction(technique='location', state='popcorn_table').resolve().perform()
+        else:
+            object_desig = DetectAction(technique='all').resolve().perform()
+    except PerceptionObjectNotFound:
+        object_desig = {}
+    return object_desig
