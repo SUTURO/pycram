@@ -27,22 +27,24 @@ img = ImageSwitchPublisher()
 # Create environmental objects
 apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 pose1 = Pose(position=[3.2, 0.8, 0], orientation=[0, 0, 0.7, 0.7])
-pose2 = Pose(position=[3.2, 6, 0], orientation=[0, 0, -1, 0])
+pose2 = Pose(position=[3.2, 6, 0], orientation=[0, 0, 1, 0])
 pose3 = Pose(position=[1.35, 6, 0], orientation=[0, 0, 0.7, 0.7])
 pose4 = Pose(position=[1.35, 8.7, 0])
 inspection_pose = Pose(position=[2.5, 8.7, 0])
 back_pose1 = Pose(position=[1.35, 8.7, 0], orientation=[0, 0, -0.7, 0.7])
-back_pose2 = Pose(position=[1.35, 6.1, 0], orientation=[0, 0, 1, 0])
+back_pose2 = Pose(position=[1.35, 6.1, 0], orientation=[0, 0, 0, 1])
 back_pose3 = Pose(position=[3, 6, 0], orientation=[0, 0, -0.7, 0.7])
 end = Pose(position=[2.9, -0.5, 0], orientation=[0, 0, -0.7, 0.7])
 
 
 def demo(step: int):
     with real_robot:
+        # start_pose = robot.get_pose()
+        # print(start_pose)
         img.pub_now(ImageEnum.HI.value)
+
         start_signal.wait_for_startsignal()
-
-
+        # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
         if step <= 1:
             print("start")
@@ -62,6 +64,7 @@ def demo(step: int):
             TalkingMotion("i will drive back now").perform()
             NavigateAction([back_pose1]).resolve().perform()
             NavigateAction([back_pose2]).resolve().perform()
+            TalkingMotion("my name is toya").perform()
             NavigateAction([back_pose3]).resolve().perform()
             NavigateAction([end]).resolve().perform()
             TalkingMotion("this is the end of my navigation").perform()

@@ -46,28 +46,28 @@ guest2 = HumanDescription("Sarah", fav_drink="Juice")
 guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright top'])
 
 # important poses
-couch_pose_semantik = Pose(position=[2.7, -2.1, 0], orientation=[0, 0, 1, 0])
+couch_pose_semantik = Pose(position=[2.7, -2.1, 0], orientation=[0, 0, 0, 1])
 look_couch = Pose([4.9, -2.4, 0.75])
-look_drinks = Pose([1, -3.7, 0.65])
+look_drinks = Pose([1, -3.8, 0.65])
 # look_person_drinks = Pose([1.9, 4, 1])
 # nav_pose_to_drink = Pose([2, 0.6, 0], orientation=[0, 0, 0.7, 0.7])
 # nav_pose_to_couch = Pose([2.2, 3.3, 0], orientation=[0, 0, -0.7, 0.7])
 greet_guest_pose = Pose(position=[2.3, 0, 0], orientation=[0, 0, -1, 0])
-beverage_pose = Pose(position=[2.18, -4, 0], orientation=[0, 0, 0.7, 0.7])
+beverage_pose = Pose(position=[2.3, -4, 0], orientation=[0, 0, 0.7, 0.7])
 
 
 def demo(step: int):
     with (real_robot):
 
         rospy.loginfo("start demo at step " + str(step))
-        NavigateAction([greet_guest_pose]).resolve().perform()
 
         # set neutral pose
-        # image_switch_publisher.pub_now(ImageEnum.HI.value)
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
+            NavigateAction([greet_guest_pose]).resolve().perform()
             # greet first guest
             nlp.welcome_guest(guest1)
 
@@ -142,7 +142,7 @@ def demo(step: int):
 
                 elif counter == 2:
                     # look to the side to find face
-                    MoveJointsMotion(["head_pan_joint"], [-0.4]).perform()
+                    MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                     TalkingMotion("sitting people please look at me").perform()
                     rospy.sleep(1.5)
 
@@ -164,7 +164,7 @@ def demo(step: int):
             guest_pose = detect_point_to_seat(robot)
             if not guest_pose:
                 # look to the side to find seat
-                MoveJointsMotion(["head_pan_joint"], [-0.4]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 if guest_pose:
                     guest1.set_pose(guest_pose)
@@ -213,7 +213,6 @@ def demo(step: int):
             rospy.sleep(1.5)
 
             TalkingMotion("let me see if your favorite drink is available").perform()
-            MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             LookAtAction([look_drinks]).resolve().perform()
             check_drink_available(guest2)
@@ -250,7 +249,7 @@ def demo(step: int):
             LookAtAction([look_couch]).resolve().perform()
             guest_pose = detect_point_to_seat(robot)
             if not guest_pose:
-                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 if guest_pose:
                     guest1.set_pose(guest_pose)

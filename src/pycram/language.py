@@ -610,6 +610,7 @@ class Code(Language):
         return child_state, child_result
 
     def interrupt(self) -> None:
-        raise NotImplementedError
+        if giskard.giskard_wrapper:
+            giskard.giskard_wrapper.interrupt()
 
 

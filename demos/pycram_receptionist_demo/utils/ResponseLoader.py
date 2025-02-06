@@ -35,12 +35,12 @@ class ResponseLoader:
         if not answered:
             print("verb correction")
             for hobby in hobby_list:
-                hobby = self.data['verb_correction'][hobby]
-                if hobby in self.data['hobbies']:
-                    responses = self.data['hobbies'][hobby]
-                    answered = True
-                    return random.choice(responses)
-                    break
+                if hobby in self.data['verb_correction']:
+                    hobby = self.data['verb_correction'][hobby]
+                    if hobby in self.data['hobbies']:
+                        responses = self.data['hobbies'][hobby]
+                        return random.choice(responses)
+                        break
 
         # unknown interest
         return random.choice(self.data['fallback'])
