@@ -22,10 +22,12 @@ def sort_objects(obj_dict: dict, wished_sorted_obj_list: list):
 
     for value in obj_dict.values():
         object_type = value.obj_type
-        if value.obj_type in ["Mueslibox", "Cornybox", "Cerealbox", "Crackerbox"]:
+        if value.obj_type in ["Mueslibox", "Cornybox", "Cerealbox", "Crackerbox", "MuesliboxVitalis"]:
             object_type = "Cerealbox"
         if value.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
             object_type = "Spoon"
+        if value.obj_type in ["Milkpack", "Milkpackja", "MilkpackLactoseFree"]:
+            object_type = "Milkpack"
         if object_type in wished_sorted_obj_list:
             tuples_list.append((value, wished_sorted_obj_list.index(object_type)))
     sorted_objects = [x[0] for x in sorted(tuples_list, key=lambda index: index[1])]
