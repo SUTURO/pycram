@@ -181,6 +181,7 @@ def place_objects(first_placing: bool, objects_list: list, index: int, grasp: Gr
                                NavigatePose.KITCHEN_TABLE.value.pose.orientation).resolve().perform()
                 angle = 115
                 try:
+                    MoveTorsoAction([0.4]).resolve().perform()
                     if robot.get_pose().pose.position.x > bowl.pose.position.x:
                         direction = "right"
                     else:
@@ -202,6 +203,7 @@ def place_objects(first_placing: bool, objects_list: list, index: int, grasp: Gr
                         NavigateAction([bowl.pose.position.x, NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0],
                                        NavigatePose.KITCHEN_TABLE.value.pose.orientation).resolve().perform()
                         try:
+                            MoveTorsoAction([0.4]).resolve().perform()
                             if robot.get_pose().pose.position.x > bowl.pose.position.x:
                                 direction = "right"
                             else:
@@ -233,22 +235,19 @@ def place_objects(first_placing: bool, objects_list: list, index: int, grasp: Gr
     else:
         MoveTorsoAction([0.2]).resolve().perform()
     if first_placing:
-        PlaceAction(objects_list[index], [Pose([x_pos, NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0.75])],
-                    [grasp], [Arms.LEFT], [True]).resolve().perform()
+        PlaceAction(objects_list[index], [Pose([x_pos, 4.6, 0.75])], [grasp], [Arms.LEFT], [True]).resolve().perform()
     else:
-        PlaceGivenObjectAction([object_type], [Arms.LEFT],
-                               [Pose([x_pos, NavigatePose.KITCHEN_TABLE.value.pose.position.y, 0.75])],
-                               [grasp]).resolve().perform()
+        PlaceGivenObjectAction([object_type], [Arms.LEFT], [Pose([x_pos, 4.6, 0.75])], [grasp]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     if object_type == "Metalbowl":
-        x_pos -= 0.6
+        x_pos -= 0.4
     else:
-        x_pos -= 0.25
+        x_pos -= 0.3
     # navigates back if a next object exists
     if index + 1 < len(objects_list):
         NavigateAction(
-            [Pose([NavigatePose.SHELF.value.pose.position.x - 0.8, NavigatePose.SHELF.value.pose.position.y, 0],
-                 NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
+            [Pose([NavigatePose.SHELF.value.pose.position.x - 1, NavigatePose.SHELF.value.pose.position.y, 0],
+                  NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
         NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
 
 
@@ -275,6 +274,19 @@ def remove_objects(value):
         elif "Cronybox" in wished_sorted_obj_list:
             print("deleted Cronybox")
             wished_sorted_obj_list.remove("Cronybox")
+        elif "MuesliboxVitalis" in wished_sorted_obj_list:
+            print("deleted MuesliboxVitalis")
+            wished_sorted_obj_list.remove("MuesliboxVitalis")
+    if value.obj_type == "Milkpack":
+        if "Milkpack" in wished_sorted_obj_list:
+            print("deleted Milkpack")
+            wished_sorted_obj_list.remove("Milkpack")
+        elif "Milkpackja" in wished_sorted_obj_list:
+            print("deleted Milkpackja")
+            wished_sorted_obj_list.remove("Milkpackja")
+        elif "MilkpackLactoseFree" in wished_sorted_obj_list:
+            print("deleted MilkpackLactoseFree")
+            wished_sorted_obj_list.remove("MilkpackLactoseFree")
 
 
 def monitor_func():
@@ -289,76 +301,76 @@ def monitor_func():
 
 
 with (real_robot):
-    # try:
-    #     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-    #     plan.perform()
-    # except SensorMonitoringCondition:
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    try:
+        plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+        plan.perform()
+    except SensorMonitoringCondition:
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
 
-    # navigate from door to shelf
-    # NavigateAction([NavigatePose.DOOR.value]).resolve().perform()
-    # NavigateAction([NavigatePose.CORRIDOR.value]).resolve().perform()
-    # NavigateAction([Pose([NavigatePose.CORRIDOR.value.pose.position.x,
-    #                       NavigatePose.SHELF.value.pose.position.y, 0],
-    #                      NavigatePose.CORRIDOR.value.pose.orientation)])
-    NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
-
-    # perceive objects
-    MoveTorsoAction([0.2]).resolve().perform()
-    obj_desig = try_detect(Pose([5.45, 5.925, 0.21],
-                                NavigatePose.SHELF.value.pose.orientation))
-    sorted_obj = sort_objects(obj_desig, wished_sorted_obj_list)
-    print(sorted_obj[0].obj_type)
-    if sorted_obj[0].obj_type != "Metalbowl":
-        # navigate to shelf
+        # navigate from door to shelf
+        NavigateAction([NavigatePose.DOOR.value]).resolve().perform()
+        NavigateAction([NavigatePose.CORRIDOR.value]).resolve().perform()
+        NavigateAction([Pose([NavigatePose.CORRIDOR.value.pose.position.x,
+                              NavigatePose.SHELF.value.pose.position.y, 0],
+                             NavigatePose.CORRIDOR.value.pose.orientation)])
         NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
-        bowl_obj_desig = try_detect(Pose([5.45, 5.925, 0.21],
-                                         NavigatePose.SHELF.value.pose.orientation))
-        sorted_obj = sort_objects(bowl_obj_desig, wished_sorted_obj_list)
-        if sorted_obj[0].obj_type != "Metalbowl":
-            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-            TalkingMotion(f"Can you please give me the Metalbowl in the shelf?").perform()
-            rospy.sleep(4)
-            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-            place_objects(False, ["Metalbowl"], 0, Grasp.TOP)
-            # navigate_to(4.3, 4.9, "shelf")
-    pickup_and_place_objects(sorted_obj)
 
-    # failure handling part 1
-    new_sorted_obj = []
-    print(f"length of sorted obj: {len(sorted_obj)}")
-    # if not all needed objects found, the robot will perceive and pick up and
-    # place new-found objects again.
-    if len(sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-        print("first Check")
-        for value in sorted_obj:
-            # remove objects that were seen and transported so far
-            remove_objects(value)
-        TalkingMotion("Navigating").perform()
-        NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
+        # perceive objects
         MoveTorsoAction([0.2]).resolve().perform()
-        new_object_desig = try_detect(Pose([5.45, 5.925, 0.21],
-                                           NavigatePose.SHELF.value.pose.orientation))
-        new_sorted_obj = sort_objects(new_object_desig, wished_sorted_obj_list)
-        pickup_and_place_objects(new_sorted_obj)
-        # failure handling part 2
-        final_sorted_obj = sorted_obj + new_sorted_obj
-        if len(final_sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-            try_detect(Pose([5.45, 5.925, 0.21],
-                            NavigatePose.SHELF.value.pose.orientation))
-            print("second Check")
-            for value in final_sorted_obj:
-                # remove all objects that were seen and transported so far
-                remove_objects(value)
-            for val in range(len(wished_sorted_obj_list)):
-                grasp = Grasp.FRONT
-                if wished_sorted_obj_list[val] in (["Metalbowl"] + CUTLERY):
-                    grasp = Grasp.TOP
-                print(f"next object is: {wished_sorted_obj_list[val]}")
-                TalkingMotion(f"Can you please give me the {wished_sorted_obj_list[val]} "
-                              f"in the shelf?").perform()
+        obj_desig = try_detect(Pose([5.45, 5.925, 0.21],
+                                    NavigatePose.SHELF.value.pose.orientation))
+        sorted_obj = sort_objects(obj_desig, wished_sorted_obj_list)
+        print(sorted_obj[0].obj_type)
+        if sorted_obj[0].obj_type != "Metalbowl":
+            # navigate to shelf
+            NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
+            bowl_obj_desig = try_detect(Pose([5.45, 5.925, 0.21],
+                                             NavigatePose.SHELF.value.pose.orientation))
+            sorted_obj = sort_objects(bowl_obj_desig, wished_sorted_obj_list)
+            if sorted_obj[0].obj_type != "Metalbowl":
+                MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+                TalkingMotion(f"Can you please give me the Metalbowl in the shelf?").perform()
                 rospy.sleep(4)
                 MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-                place_objects(False, wished_sorted_obj_list, val, grasp)
-    rospy.loginfo("Done!")
-    TalkingMotion("Done").perform()
+                place_objects(False, ["Metalbowl"], 0, Grasp.TOP)
+                # navigate_to(4.3, 4.9, "shelf")
+        pickup_and_place_objects(sorted_obj)
+
+        # failure handling part 1
+        new_sorted_obj = []
+        print(f"length of sorted obj: {len(sorted_obj)}")
+        # if not all needed objects found, the robot will perceive and pick up and
+        # place new-found objects again.
+        if len(sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
+            print("first Check")
+            for value in sorted_obj:
+                # remove objects that were seen and transported so far
+                remove_objects(value)
+            TalkingMotion("Navigating").perform()
+            NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
+            MoveTorsoAction([0.2]).resolve().perform()
+            new_object_desig = try_detect(Pose([5.45, 5.925, 0.21],
+                                               NavigatePose.SHELF.value.pose.orientation))
+            new_sorted_obj = sort_objects(new_object_desig, wished_sorted_obj_list)
+            pickup_and_place_objects(new_sorted_obj)
+            # failure handling part 2
+            final_sorted_obj = sorted_obj + new_sorted_obj
+            if len(final_sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
+                try_detect(Pose([5.45, 5.925, 0.21],
+                                NavigatePose.SHELF.value.pose.orientation))
+                print("second Check")
+                for value in final_sorted_obj:
+                    # remove all objects that were seen and transported so far
+                    remove_objects(value)
+                for val in range(len(wished_sorted_obj_list)):
+                    grasp = Grasp.FRONT
+                    if wished_sorted_obj_list[val] in (["Metalbowl"] + CUTLERY):
+                        grasp = Grasp.TOP
+                    print(f"next object is: {wished_sorted_obj_list[val]}")
+                    TalkingMotion(f"Can you please give me the {wished_sorted_obj_list[val]} "
+                                  f"in the shelf?").perform()
+                    rospy.sleep(4)
+                    MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+                    place_objects(False, wished_sorted_obj_list, val, grasp)
+        rospy.loginfo("Done!")
+        TalkingMotion("Done").perform()

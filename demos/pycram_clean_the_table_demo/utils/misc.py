@@ -157,6 +157,7 @@ def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Obj
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
         NavigateAction([Pose([robot.get_pose().pose.position.x, 5.34, 0], [0, 0, -0.7, 0.7])]).resolve().perform()
+        MoveTorsoAction([0.12]).resolve().perform()
         # try to detect the object again
         object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35], [0, 0, -0.7, 0.7]))
         new_object = sort_objects_euclidian(robot, object_desig, [obj.obj_type])[0]
