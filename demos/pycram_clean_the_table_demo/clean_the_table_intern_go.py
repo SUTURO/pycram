@@ -357,7 +357,6 @@ def monitor_func():
 
 # Main interaction sequence with real robot
 with (real_robot):
-    """
     try:
         plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
         plan.perform()
@@ -371,29 +370,29 @@ with (real_robot):
         NavigateAction([NavigatePose.IN_KITCHEN.value]).resolve().perform()
         NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
-        MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
-        MoveJointsMotion(["arm_roll_joint"], [0]).perform()
-        giskard.dishwasher_test(handle_name, 'sink_area_dish_washer_door_joint', door_name)
+        # MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
+        # MoveJointsMotion(["arm_roll_joint"], [0]).perform()
+        # giskard.dishwasher_test(handle_name, 'sink_area_dish_washer_door_joint', door_name)
+
         # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
 
-        TalkingMotion("Please pull out the lower rack").perform()
+        TalkingMotion("Can you please open the dishwasher and pull out the lower rack").perform()
 
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-    """
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    # detect objects
-    object_desig_list = navigate_and_detect(NavigatePose.KITCHEN_TABLE)
 
-    # sort objects based on distance and which we like to keep
-    sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
-    # sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
+        # detect objects
+        object_desig_list = navigate_and_detect(NavigatePose.KITCHEN_TABLE)
 
-    # picking up and placing objects
-    pickup_and_place(sorted_obj)
+        # sort objects based on distance and which we like to keep
+        sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
+        # sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
 
-    new_obj_desig = failure_handling1(sorted_obj)
-    failure_handling2(sorted_obj, new_obj_desig)
+        # picking up and placing objects
+        pickup_and_place(sorted_obj)
 
-    rospy.loginfo("Done!")
-    TalkingMotion("Done").perform()
+        new_obj_desig = failure_handling1(sorted_obj)
+        failure_handling2(sorted_obj, new_obj_desig)
+
+        rospy.loginfo("Done!")
+        TalkingMotion("Done").perform()
