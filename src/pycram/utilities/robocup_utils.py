@@ -1,7 +1,7 @@
 import actionlib
 import rospy
 from actionlib_msgs.msg import GoalStatusArray
-from sensor_msgs.msg import LaserScan, JointState
+from sensor_msgs.msg import LaserScan, JointState, Image
 from sound_play.msg import SoundRequestActionGoal, SoundRequest
 from std_msgs.msg import Int32
 from tmc_control_msgs.msg import GripperApplyEffortActionGoal
@@ -179,7 +179,7 @@ class TextToSpeechPublisher():
                     self.pub.publish(goal_msg)
                     break
 
-                    
+
 class TextToImagePublisher:
     def __init__(self, topic='/head_display/text_to_image', queue_size=10):
         """
@@ -313,3 +313,102 @@ class GraspListener:
 # image_switch_publisher = ImageSwitchPublisher()
 # image_switch_publisher.publish_image_switch(12)
 # Publishing and latching message. Press ctrl-C to terminate.
+
+
+def get_robokudo_annotator_topic(annotator_name: str, is_rwpipeline_path=True):
+    """
+    Returns the whole ROS topic for a given annotator output name of robokudo.
+
+    Note: It does not check if the topic actually exists. The name is just appended.
+    """
+    if is_rwpipeline_path:
+        return f"/robokudo/RWPipeline/{annotator_name}/output_image"
+
+    return annotator_name
+
+
+class ImageSendPublisher:
+    """
+    Publishes images to a specific ROS topic and manages a subscriber to receive and process image messages.
+
+    This class is designed to handle image publication and dynamically manage a subscriber based on the provided topic.
+    """
+
+    def __init__(self, pub_topic='/head_display/save_image', sub_topic = None, kill_sub_after_pub=False):
+        """
+        Initializes the ImageSendPublisher.
+
+        Sets up a publisher for the topic '/head_display/save_image' and initializes internal variables
+        for subscriber management.
+        """
+        self.kill_sub_after_pub = kill_sub_after_pub
+
+        self.pub_topic = pub_topic
+        self.pub = rospy.Publisher(pub_topic, Image, queue_size=10)
+        self.sub_topic = sub_topic
+        self.sub = None
+
+        self.data = None
+
+        self.i = 0
+
+        rospy.loginfo("Initialized ImagePublisher")
+
+    def set_subscriber(self, topic_name: str, activate=True):
+        """
+        Configures and activates a subscriber to a specified topic.
+
+        topic_name: The name of the ROS topic to subscribe to for receiving image messages.
+        """
+        rospy.loginfo(f"Setting subscriber to topic: {topic_name}")
+        self.sub_topic = topic_name
+
+        if activate:
+            self.activate_subscriber()
+
+    def publish_image(self, image: Image):
+        """
+        Publishes an image to the configured topic and deactivates the subscriber.
+
+        image: The image message to be published.
+        """
+
+        self.pub.publish(image)
+
+        # Wait for published message
+        rospy.sleep(0.1)
+
+        if self.kill_sub_after_pub:
+            self.deactivate_subscriber()
+
+        rospy.loginfo("Published image")
+
+    def activate_subscriber(self):
+        """
+        Activates a subscriber for the previously set topic if no subscriber is currently active.
+        """
+
+        if self.sub_topic is None:
+            rospy.logwarn(f"Cant create a Subscriber for topic: {self.sub_topic}")
+
+        if self.sub is None:
+            self.sub = rospy.Subscriber(self.sub_topic, Image, callback=self.publish_image, queue_size=1)
+            rospy.loginfo(f"Activated subscriber for topic: {self.sub_topic}")
+        else:
+            rospy.logwarn(f"Subscriber already active for topic: {self.sub_topic}")
+
+    def deactivate_subscriber(self):
+        """
+        Deactivates and unregisters the current subscriber if one is active.
+        """
+        if self.sub is not None:
+            self.sub.unregister()
+            self.sub = None
+            rospy.loginfo("Deactivated subscriber")
+        else:
+            rospy.logwarn("No active subscriber to deactivate")
+
+# Example usage:
+# annotator_topic = get_robokudo_annotator_topic("YoloAnnotator")
+# image_send_publisher = ImageSendPublisher()
+# image_send_publisher.set_subscriber(annotator_topic)
