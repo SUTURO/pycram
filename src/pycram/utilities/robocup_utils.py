@@ -181,7 +181,7 @@ class TextToSpeechPublisher():
 
                     
 class TextToImagePublisher:
-    def __init__(self, topic='/text_to_image', queue_size=10):
+    def __init__(self, topic='/head_display/text_to_image', queue_size=10):
         """
         Initializes the TextToImagePublisher with a ROS publisher.
 
