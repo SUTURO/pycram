@@ -12,7 +12,7 @@ from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
 
 # Initialize the Bullet world for simulation
-world = BulletWorld()
+world = BulletWorld(WorldMode.GUI)
 
 # Visualization Marker Publisher for ROS
 v = VizMarkerPublisher()
@@ -22,7 +22,7 @@ robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose(
 # Update robot state
 RobotStateUpdater("/tf", "/giskard_joint_states")
 
-#robot.set_color([0.5, 0.5, 0.9, 1])
+# robot.set_color([0.5, 0.5, 0.9, 1])
 
 # TODO: change urdf
 # Create environmental objects
@@ -31,16 +31,19 @@ apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2024_1.urdf")
 # Define orientation for objects
 object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
 
+pre_pick_place_config = {'arm_flex_joint': 0.0, 'arm_roll_joint': 0, 'wrist_flex_joint': -1.5,
+                         'wrist_roll_joint': 0.0}
 
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
     # TalkingMotion("Starting demo").perform()
     # rospy.loginfo("Starting demo")
     ParkArmsAction([Arms.LEFT]).resolve().perform()
+
     MoveTorsoAction([0.2]).resolve().perform()
 
-    pickup = "long_table"
-    placing = "long_table"
+    pickup = "popcorn_table"
+    placing = "None"
 
     if pickup == "shelf":
         # shelf pickup
@@ -67,6 +70,9 @@ with (real_robot):
     for value in object_desig.values():
         obj_list.append(value)
     # obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Milkpack"])
+
+    MoveJointsMotion(list(pre_pick_place_config.keys()), list(pre_pick_place_config.values())).perform()
+
     PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
 
     if pickup == "shelf":
@@ -103,7 +109,7 @@ with (real_robot):
         # PlaceGivenObjectAction(object_types=["Spoon"], arms=[Arms.LEFT],
         #                        target_locations=[Pose([1.4, 4.8, 0.775], [0, 0, 0.7, 0.7])],
         #                        grasps=[Grasp.TOP], on_table=True).resolve().perform()
-        #TODO: change z + grasp
+        # TODO: change z + grasp
         PlaceAction(obj_list[0], [Pose([1.45, 4.8, 0.713])], [Grasp.FRONT], [Arms.LEFT],
                     with_force_torque=[True]).resolve().perform()
         NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
@@ -124,14 +130,11 @@ with (real_robot):
                     grasps=[Grasp.FRONT], arms=[Arms.LEFT], with_force_torque=[True]).resolve().perform()
         #################################################################
 
-
     ###################################### OPEN DISHWASHER ##################################
     # NavigateAction(target_locations=[Pose([2.65, -2.25, 0], [0, 0, -1, 1])]).resolve().perform()
     # ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
     # Opendishwasher
     ########################################################################################
-
-
 
     ####################################### Demo Start #####################################
     # navigate from door to dishwasher
@@ -145,10 +148,9 @@ with (real_robot):
     # navigate_to(1.63, y, "popcorn table")
     # navigate_to(2.45, y, "popcorn table")
 
-
     # try_pick_up(robot, obj_list[0], "front")
     # Move back
     # NavigateAction(target_locations=[Pose([1.45, 5, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
     # PlaceAction(obj_list[0], ["left"], ["front"],
-                # [Pose([3.4, 5.8, 0.78])]).resolve().perform()
+    # [Pose([3.4, 5.8, 0.78])]).resolve().perform()
