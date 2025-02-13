@@ -1,10 +1,11 @@
 import sys
 import time
 from threading import Lock, RLock
-from typing import Any
+from typing import Any, Union
 
 import rospy
 
+from ..datastructures.enums import RobokudoAnnotator, Demos
 from ..ros.action_lib import create_action_client
 from ..ros.logging import logwarn, loginfo, loginfo_once
 from ..ros.ros_tools import get_node_names
@@ -95,7 +96,6 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
     client = create_action_client("robokudo/query", QueryAction)
     loginfo("Waiting for action server")
     client.wait_for_server()
-
 
     global human_bool
     global human_pose
@@ -201,3 +201,30 @@ def query_beverages() -> Any:
     """Query RoboKudo for detecting drinks in the robots field of vision"""
     return send_query(obj_type='beverage')
 
+
+def create_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos]) -> List[str]:
+    if not annotators:
+        logwarn("No annotators or demo preset provided for annotator names")
+        return []
+
+    annotator_result = []
+    if isinstance(annotators, List):
+        list_is_robokudo_annotator = [isinstance(an, RobokudoAnnotator) for an in annotators]
+
+        if all(list_is_robokudo_annotator):
+            annotator_result: List[RobokudoAnnotator] = annotators
+
+    if isinstance(annotators, Demos):
+        demo_name = annotators.name
+
+        if annotators == Demos.STORING_GROCERIES:
+            annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
+        else:
+            logwarn(f"Demo {demo_name} does not have assigned annotators yet")
+            return []
+
+        loginfo(f"Setting preset for: {demo_name}")
+
+    annotator_strings: List[str] = [ann.value for ann in annotator_result]
+
+    return annotator_strings

@@ -291,3 +291,11 @@ class MultiverseJointCMD(MultiverseJointProperty):
             return MultiverseJointCMD.PRISMATIC_JOINT_CMD
         else:
             raise UnsupportedJointType(joint_type)
+
+
+class RobokudoAnnotator(Enum):
+    YOLOANNOTATOR = "YoloAnnotator"
+
+
+class Demos(Enum):
+    STORING_GROCERIES = auto()
