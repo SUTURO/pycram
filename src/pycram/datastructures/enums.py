@@ -295,7 +295,11 @@ class MultiverseJointCMD(MultiverseJointProperty):
 
 class RobokudoAnnotator(Enum):
     YOLOANNOTATOR = "YoloAnnotator"
+    WAVING = "HumanWavingAnnotator"
 
 
 class Demos(Enum):
     STORING_GROCERIES = auto()
+    RECEPTIONIST = auto()
+    CLEAN_THE_TABLE = auto()
+    RESTAURANT = auto()
