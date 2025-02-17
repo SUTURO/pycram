@@ -315,18 +315,6 @@ class GraspListener:
 # Publishing and latching message. Press ctrl-C to terminate.
 
 
-def get_robokudo_annotator_topic(annotator_name: str, is_rwpipeline_path=True):
-    """
-    Returns the whole ROS topic for a given annotator output name of robokudo.
-
-    Note: It does not check if the topic actually exists. The name is just appended.
-    """
-    if is_rwpipeline_path:
-        return f"/robokudo/RWPipeline/{annotator_name}/output_image"
-
-    return annotator_name
-
-
 class ImageSendPublisher:
     """
     Publishes images to a specific ROS topic and manages a subscriber to receive and process image messages.
@@ -409,6 +397,8 @@ class ImageSendPublisher:
             rospy.logwarn("No active subscriber to deactivate")
 
 # Example usage:
-# annotator_topic = get_robokudo_annotator_topic("YoloAnnotator")
-# image_send_publisher = ImageSendPublisher()
-# image_send_publisher.set_subscriber(annotator_topic)
+# annotators = get_used_annotator_list(Demos.STORING_GROCERIES)
+# isp = ImageSendPublisher(sub_topic=annotators[0])
+## OTHERWISE:
+# isp = ImageSendPublisher()
+# isp.set_subscriber(annotators[0])

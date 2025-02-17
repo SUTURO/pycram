@@ -202,7 +202,18 @@ def query_beverages() -> Any:
     return send_query(obj_type='beverage')
 
 
-def create_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos]) -> List[str]:
+def get_annotator_topic(annotator_name: str, is_rwpipeline_path=True) -> str:
+    """
+    Returns the whole ROS topic for a given annotator output name of robokudo.
+
+    Note: It does not check if the topic actually exists. The name is just appended.
+    """
+    if is_rwpipeline_path:
+        return f"/robokudo/RWPipeline/{annotator_name}/output_image"
+
+    return annotator_name
+
+def get_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos], as_topic_names=True) -> List[str]:
     if not annotators:
         logwarn("No annotators or demo preset provided for annotator names")
         return []
@@ -226,5 +237,9 @@ def create_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos]
         loginfo(f"Setting preset for: {demo_name}")
 
     annotator_strings: List[str] = [ann.value for ann in annotator_result]
+
+    if as_topic_names:
+        annotator_topics = [get_annotator_topic(annotator) for annotator in annotator_strings]
+        annotator_strings = annotator_topics
 
     return annotator_strings
