@@ -213,6 +213,22 @@ def get_annotator_topic(annotator_name: str, is_rwpipeline_path=True) -> str:
 
     return annotator_name
 
+def get_annotators_of_demo(demo: Demos):
+    demo_name = demo.name
+    if demo == Demos.STORING_GROCERIES:
+        annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
+    elif demo == Demos.RECEPTIONIST:
+        annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
+    elif demo == Demos.CLEAN_THE_TABLE:
+        annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
+    elif demo == Demos.RESTAURANT:
+        annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.WAVING]
+    else:
+        logwarn(f"Demo {demo_name} does not have assigned annotators yet")
+        return []
+
+    return annotator_result
+
 def get_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos], as_topic_names=True) -> List[str]:
     if not annotators:
         logwarn("No annotators or demo preset provided for annotator names")
@@ -226,15 +242,8 @@ def get_used_annotator_list(annotators: Union[List[RobokudoAnnotator], Demos], a
             annotator_result: List[RobokudoAnnotator] = annotators
 
     if isinstance(annotators, Demos):
-        demo_name = annotators.name
-
-        if annotators == Demos.STORING_GROCERIES:
-            annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
-        else:
-            logwarn(f"Demo {demo_name} does not have assigned annotators yet")
-            return []
-
-        loginfo(f"Setting preset for: {demo_name}")
+        loginfo(f"Setting preset for: {annotators.name}")
+        annotator_result = get_annotators_of_demo(annotators)
 
     annotator_strings: List[str] = [ann.value for ann in annotator_result]
 
