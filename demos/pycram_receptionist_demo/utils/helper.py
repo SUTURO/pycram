@@ -1,14 +1,15 @@
-from typing import Optional
-
-import rospy
 from geometry_msgs.msg import PointStamped, PoseStamped
+
+from pycram.datastructures.enums import ImageEnum
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import PointingMotion
 from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
+from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
 
 look_couch = Pose([4.9, -2.4, 0.75])
-
+text_to_img_publisher = TextToImagePublisher()
+img = ImageSwitchPublisher()
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     """
@@ -341,9 +342,21 @@ def check_drink_available(guest: HumanDescription):
         if drink[0] == robokudo_name:
             TalkingMotion("your favorite drink stands on the table").perform()
             return True
+        if robokudo_name == "Milkpack":
+            if drink[0] == "MilkpackLactoseFree":
+                TalkingMotion("your favorite drink stands on the table").perform()
+                return True
 
     TalkingMotion("i can not find that drink here").perform()
     return False
+
+
+def display_info(info: str):
+    text_to_img_publisher.pub_now(info)
+    rospy.sleep(1)
+    img.pub_now(ImageEnum.GENERATED_TEXT.value)
+    img.pub_now(ImageEnum.GENERATED_TEXT.value)
+
 
 
 hobby_verbs = {
@@ -383,7 +396,11 @@ hobby_verbs = {
 nlp_drink_to_robokudo = {
     "milk": "Milkpack",
     "red boys": "RedBullCan",
-    "red boi": "RedBullCan"
+    "red boi": "RedBullCan",
+    "red bull": "RedBullCan",
+    "milk1": "MilkpackLactoseFree",
+    "cola": "Colacan",
+    "red oil": "RedBullCan"
 }
 
 
