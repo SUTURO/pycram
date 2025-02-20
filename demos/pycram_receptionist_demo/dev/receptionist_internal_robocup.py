@@ -69,6 +69,7 @@ def demo(step: int):
         if step <= 1:
             NavigateAction([greet_guest_pose]).resolve().perform()
             # greet first guest
+            MoveJointsMotion(["head_tilt_joint"], [0.3]).perform()
             nlp.welcome_guest(guest1)
 
         if step <= 2:
@@ -81,21 +82,20 @@ def demo(step: int):
 
         if step <= 3:
             # guide to drinking area
-            # NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
             TalkingMotion("here you can get yourself a drink").perform()
             MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            MoveJointsMotion(["arm_flex_joint"], [-0.25]).perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            # LookAtAction([look_person_drinks]).resolve().perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.4]).perform()
+
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             rospy.sleep(1.5)
             nlp.get_fav_drink(guest1)
 
         if step <= 4:
-            # ParkArmsAction([Arms.LEFT]).resolve().perform()
             TalkingMotion("let me see if your favorite drink is available").perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             LookAtAction([look_drinks]).resolve().perform()
@@ -103,9 +103,10 @@ def demo(step: int):
             check_drink_available(guest1)
             rospy.sleep(2)
             TalkingMotion("i love cleaning up this table").perform()
-            rospy.sleep(1.5)
+            rospy.sleep(1)
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            # LookAtAction([look_person_drinks]).resolve().perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.4]).perform()
+
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             TalkingMotion("what do you do in your free time?").perform()
@@ -121,7 +122,7 @@ def demo(step: int):
             DetectAction(technique='human', state="stop").resolve().perform()
             TalkingMotion("please step out of the way and follow me").perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            # NavigateAction([nav_pose_to_couch]).resolve().perform()
+
             NavigateAction([couch_pose_semantik]).resolve().perform()
 
         if step <= 6:
@@ -178,15 +179,13 @@ def demo(step: int):
             # introduce sitting people
             TalkingMotion("i will go back to the entrance to assist other guests").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-            rospy.logerr("stop now")
-            rospy.sleep(6)
 
         if step <= 9:
             # go back to start-pose
             NavigateAction([greet_guest_pose]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             TalkingMotion("waiting for new guest").perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.4]).perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 9:
@@ -196,16 +195,14 @@ def demo(step: int):
             TalkingMotion("i will show you around").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
-            # NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
         if step <= 9:
             TalkingMotion("here you can get a drink").perform()
-            rospy.sleep(1.5)
+            MoveJointsMotion(["arm_flex_joint"], [-0.25]).perform()
             MoveJointsMotion(["torso_lift_joint"], [0.07]).perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-            # LookAtAction([look_person_drinks]).resolve().perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.4]).perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
 
@@ -217,12 +214,10 @@ def demo(step: int):
             LookAtAction([look_drinks]).resolve().perform()
             check_drink_available(guest2)
             rospy.sleep(2)
-            # LookAtAction([look_person_drinks]).resolve().perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.4]).perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
-            rospy.sleep(2)
             TalkingMotion("i love cleaning up this table").perform()
             rospy.sleep(1.5)
             TalkingMotion("what do you do in your free time?").perform()
@@ -236,7 +231,7 @@ def demo(step: int):
             rospy.sleep(1.5)
             DetectAction(technique='human', state="stop").resolve().perform()
             TalkingMotion("please step out of the way and follow me").perform()
-            MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
             # NavigateAction([nav_pose_to_couch]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
             TalkingMotion("welcome to the living room").perform()
