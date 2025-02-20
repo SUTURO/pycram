@@ -4,6 +4,7 @@ import rospy
 # import rosprolog_client
 from geometry_msgs.msg import PoseStamped
 from neem_interface_python import rosprolog_client
+import interf_q
 
 # ros_client = rosprolog_client.Prolog()
 
@@ -11,7 +12,6 @@ prolog = rosprolog_client.Prolog()
 
 
 class PrologInterface():
-
     def __init__(self) -> None:
         self.PlanningKnowledge = InterfacePlanningKnowledge()
 
@@ -34,9 +34,10 @@ class InterfacePlanningKnowledge:
         # print("3.ID:", id_part)
 
         # check if a fav drink already exists
-        query_check = "fav_drink(" + name_part + ", X)."
+        query_check = "fav_drink('" + name_part + "', X)."
+        print("query sent: " + query_check)
         check_for_drink = prolog.once(query_check)
-        print("query" + str(check_for_drink))
+        print("query " + str(check_for_drink))
 
         if check_for_drink == []:
 
@@ -433,8 +434,10 @@ def crop_plus(string):
 
 
 
-testobj = InterfacePlanningKnowledge()
-testobj.save_person_and_drink("Peter", "Tea")
-rospy.sleep(2)
-testobj.do_we_know_u("Peter")
+#testobj = InterfacePlanningKnowledge()
+#testobj.save_person_and_drink("Peter", "Tea")
+#rospy.sleep(2)
+#testobj.do_we_know_u("Peter")
+test = interf_q.InterfacePlanningKnowledge()
+test.save_person_and_drink("Alina", "Coffee")
 print("dooooone")
