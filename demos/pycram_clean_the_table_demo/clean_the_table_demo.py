@@ -15,6 +15,8 @@ from pycram.world_concepts.world_object import Object
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
 
+DRINKS = ["Redbullcan", "Milkpack", "Milkpackja", "Cola"]
+
 # Wished objects for the Demo
 wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
 
@@ -136,6 +138,10 @@ def pickup_object(object: Object):
         if object.obj_type == "Metalbowl":
             object.pose.position.z = 0.72
         TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
+        if grasp == Grasp.TOP:
+            MoveTorsoAction([0.8]).resolve().perform()
+        else:
+            MoveTorsoAction([0.4]).resolve().perform()
         try_pick_up(robot, object, grasp)
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
@@ -183,10 +189,12 @@ def place_object(object: Object):
                              NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
 
     TalkingMotion("Placing").perform()
+    # turn gripper for better placing
+    if object.obj_type == "Metalmug" or object.obj_type == "Metalbowl":
+        MoveJointsMotion(["wrist_roll_joint"], [-3]).perform()
     grasp = Grasp.FRONT
 
-    PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT],
-                [False]).resolve().perform()
+    PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT], [False]).resolve().perform()
 
     # if object.obj_type == "Metalplate":
     #     PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])],
@@ -208,8 +216,13 @@ def pickup_and_place(objects_list: list):
         # turn around
         NavigateAction([Pose(robot.get_pose().pose.position,
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
-        NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
-        place_object(objects_list[value])
+        if objects_list[value].obj_type in DRINKS:
+            # Navigate to trash can pose
+            NavigateAction([Pose()]).resolve().perform()
+            throw_object(objects_list[value])
+        else:
+            NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
+            place_object(objects_list[value])
         if value + 1 < len(objects_list):
             # turn around
             NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
@@ -220,7 +233,16 @@ def pickup_and_place(objects_list: list):
 
 
 # TODO: implement function for droping objects in trash can
-# def throw_object():
+def throw_object(obj: Object):
+    # navigate to perceive pose
+    NavigateAction([Pose()]).resolve().perform()
+    obj_desig = try_detect(Pose())
+    trash = get_object(obj_desig, "Trash")
+    # navigate to drop pose (trash can)
+    NavigateAction([Pose()]).resolve().perform()
+    PlaceAction(obj, [Pose([trash.pose.position.x, trash.pose.position.y, 0.54])], [Grasp.FRONT],
+                [Arms.LEFT], [False]).resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
 
 
 def get_pos(obj_type: str):
