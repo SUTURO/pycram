@@ -1,9 +1,3 @@
-import time
-
-from geometry_msgs.msg import PoseStamped
-from giskardpy.data_types.exceptions import ExecutionException
-
-import pycram.external_interfaces.giskard as giskardpy
 from demos.pycram_carry_my_luggage.utils.cml_helper import *
 from demos.pycram_carry_my_luggage.utils.cml_human import Human
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
@@ -13,8 +7,11 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot
 import rospy
 
+from pycram.utilities.robocup_utils import TextToImagePublisher
+
 # Initialize the necessary components
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot = startup()
+text_to_img_publisher = TextToImagePublisher()
 human = Human()
 start_pose = Pose([1, 1, 0])
 first_timer_pose = None
@@ -22,7 +19,6 @@ second_timer_pose = None
 start_time = time.time()
 timeout1 = 15
 timeout2 = 25
-# Timer to check for no message
 
 
 def demo(step: int):
@@ -33,18 +29,23 @@ def demo(step: int):
         if step <= 1:
             rospy.sleep(1)
             print("start demo")
+            # TalkingMotion("Push down my Hand, when we arrived.").perform()
 
             # store pose to drive back to
             start_pose = robot.get_pose()
             print("###########################")
             print(start_pose)
             print("###########################")
+            text_to_img_publisher.pub_now("Push Down my Gripper")
+            img.pub_now(ImageEnum.GENERATED_TEXT.value)
+
 
             # move robot in starting position
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
             MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+            #
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
             # wait for human and hand to be pushed down
@@ -65,12 +66,14 @@ def demo(step: int):
 
             except SensorMonitoringCondition:
                 TalkingMotion("We have arrived.").perform()
-                img.pub_now(ImageEnum.PUSHBUTTONS.value)
+                text_to_img_publisher.pub_now("please hand the bag in my gripper")
                 rospy.sleep(1)
                 MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+                img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("I am not able to pick up the bag. Please hand it in my gripper").perform()
+                text_to_img_publisher.pub_now("when the bag is handed in push down my gripper")
                 rospy.sleep(4)
-
+                img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("please put the bag in my gripper and push down my gripper").perform()
                 # TODO: Timer einbauen? falls gripper nicht gedrückt wird
 
@@ -102,6 +105,7 @@ def monitor_func():
     # print(der.wrench.force.x)
     if abs(der.wrench.force.x) > 10.30:
         rospy.logwarn("sensor exception")
+        MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
         return SensorMonitoringCondition
     if not first_timer_pose:
         if int(time.time() - start_time) >= timeout1:
@@ -221,6 +225,7 @@ def monitor_func_no_timer():
     der = fts.get_last_value()
     if abs(der.wrench.force.x) > 10.30:
         rospy.logwarn("sensor exception, gripper pushed")
+        MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
         return SensorMonitoringCondition
 
     return False

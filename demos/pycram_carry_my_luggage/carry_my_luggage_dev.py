@@ -50,7 +50,7 @@ def demo(step: int):
                 rospy.sleep(1)
                 MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
                 TalkingMotion("I am not able to pick up the bag. Please hand it in").perform()
-                # MoveGripperMotion(GripperState.OPEN, Arms.LEFT)
+                MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
                 rospy.sleep(2)
 
                 TalkingMotion("please place the bag in my gripper and push down my gripper ").perform()
