@@ -10,7 +10,7 @@ class Human:
     """
 
     def __init__(self):
-        self.human_pose = Fluent()
+        self.human_pose = False
 
         self.last_msg_time = time.time()
 
@@ -38,7 +38,8 @@ class Human:
         """
         self.last_msg_time = time.time()
 
-        if HumanPoseMsg:
-            self.human_pose.set_value(True)
-        else:
-            self.human_pose.set_value(False)
+        self.human_pose = True
+        # if HumanPoseMsg:
+          #   self.human_pose.set_value(True)
+        # else:
+          #  self.human_pose.set_value(False)

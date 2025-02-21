@@ -1,5 +1,4 @@
-from demos.pycram_carry_my_luggage.utils.cml_helper import *
-from demos.pycram_carry_my_luggage.utils.cml_human import Human
+import pycram.external_interfaces.giskard as giskardpy
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
@@ -7,11 +6,37 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot
 import rospy
 
-from pycram.utilities.robocup_utils import TextToImagePublisher
+from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
 
 # Initialize the necessary components
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot = startup()
 text_to_img_publisher = TextToImagePublisher()
+img = ImageSwitchPublisher()
+fts = ForceTorqueSensor(robot_name='hsrb')
+rkclient = create_action_client('robokudo/query', QueryAction)
+rospy.loginfo("Waiting for action server")
+rkclient.wait_for_server()
+rospy.loginfo("You can start your demo now")
+
+class Human:
+    """
+    Class that represents humans. This class does not spawn a human in a simulation.
+    """
+
+    def __init__(self):
+        self.human_pose = False
+
+        # Subscriber to the human pose topic
+        self.human_pose_sub = rospy.Subscriber("/human_pose", PointStamped, self.human_pose_cb)
+
+    def human_pose_cb(self, HumanPoseMsg):
+        """
+        Callback function for human_pose Subscriber.
+        Sets the attribute human_pose when someone (e.g. Perception/Robokudo) publishes on the topic.
+        :param HumanPoseMsg: received message
+        """
+        self.human_pose = True
+
 human = Human()
 start_pose = Pose([1, 1, 0])
 first_timer_pose = None
@@ -23,13 +48,16 @@ timeout2 = 25
 
 def demo(step: int):
     global start_time
+    global start_pose
+    global first_timer_pose
+    global  second_timer_pose
     with (real_robot):
+        TalkingMotion("Starting Carry my Luggage demo.").perform()
         img.pub_now(ImageEnum.HI.value)
 
         if step <= 1:
             rospy.sleep(1)
             print("start demo")
-            # TalkingMotion("Push down my Hand, when we arrived.").perform()
 
             # store pose to drive back to
             start_pose = robot.get_pose()
@@ -41,12 +69,12 @@ def demo(step: int):
 
 
             # move robot in starting position
-            ParkArmsAction([Arms.LEFT]).resolve().perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
-            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-            #
-            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            # ParkArmsAction([Arms.LEFT]).resolve().perform()
+            # MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
+            # MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+            # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+            # #
+            # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
             # wait for human and hand to be pushed down
             demo_start(human)
@@ -76,8 +104,6 @@ def demo(step: int):
                 img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("please put the bag in my gripper and push down my gripper").perform()
                 # TODO: Timer einbauen? falls gripper nicht gedrückt wird
-
-                img.pub_now(ImageEnum.PUSHBUTTONS.value)
                 try:
                     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func_no_timer)
                     plan.perform()
@@ -88,6 +114,19 @@ def demo(step: int):
                     if step <= 3:
                         # drive back starting with last recorded pose
                         drive_back_move_base(start_pose, first_timer_pose, second_timer_pose)
+            except giskardpy.ExecutionException:
+                TalkingMotion("Wait").perform()
+                rospy.sleep(1)
+                TalkingMotion("i lost sight of you").perform()
+                rospy.sleep(1)
+                TalkingMotion("Please come back").perform()
+                rospy.sleep(1)
+                TalkingMotion("i will start following you again when you push my gripper").perform()
+                display_info("step in front of me and push my gripper")
+                MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
+                MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+                demo_start(human)
+                demo(2)
 
 
 def monitor_func():
@@ -126,6 +165,12 @@ def monitor_func():
 
     return False
 
+def display_info(info: str):
+    text_to_img_publisher.pub_now(info)
+    rospy.sleep(1)
+    img.pub_now(ImageEnum.GENERATED_TEXT.value)
+    img.pub_now(ImageEnum.GENERATED_TEXT.value)
+
 
 def drive_back_move_base(start_pose, first_pose, second_pose):
     """
@@ -141,7 +186,11 @@ def drive_back_move_base(start_pose, first_pose, second_pose):
         get_orientation(second_pose, first_pose)
         # drive to the closest known pose
         NavigateAction([second_pose]).resolve().perform()
+        print("second pose:")
+        print(second_pose)
     if first_pose:
+        print("first pose:")
+        print(first_pose)
         get_orientation(first_pose, start_pose)
         NavigateAction([first_pose]).resolve().perform()
 
@@ -186,8 +235,6 @@ def demo_start(human: Human):
     """
     global start_time
     try:
-
-        TalkingMotion("Starting Carry my Luggage demo.").perform()
         img.pub_now(ImageEnum.HI.value)
         TalkingMotion("Push down my Hand, when you are Ready.").perform()
         img.pub_now(ImageEnum.PUSHBUTTONS.value)
@@ -198,19 +245,23 @@ def demo_start(human: Human):
         img.pub_now(ImageEnum.HI.value)
 
         TalkingMotion("Looking for a human").perform()
-        DetectAction(technique='human').resolve().perform()
+        human.human_pose = False
         img.pub_now(ImageEnum.SEARCH.value)
         goal_msg = QueryGoal()
-        rkclient.send_goal(goal_msg)
+        x = rkclient.send_goal(goal_msg)
+        print(x)
         rospy.loginfo("Waiting for human to be detected")
-        no_human = True
-        while no_human:
+        start_time = time.time()
+        timeout = 5
+        timeout2 = 15
 
-            if human.human_pose.wait_for(timeout=5):
-                no_human = False
-            else:
-                TalkingMotion("Looking for a human, please step in front of me").perform()
+        while not human.human_pose:
+            if time.time() - start_time >= timeout:
                 rkclient.send_goal(goal_msg)
+            if time.time() - start_time >= timeout2:
+                TalkingMotion("please step in front of me").perform()
+                start_time = time.time()
+
 
         TalkingMotion("Found a Human").perform()
         img.pub_now(ImageEnum.HI.value)
@@ -225,10 +276,13 @@ def monitor_func_no_timer():
     der = fts.get_last_value()
     if abs(der.wrench.force.x) > 10.30:
         rospy.logwarn("sensor exception, gripper pushed")
-        MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+        #MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
         return SensorMonitoringCondition
 
     return False
+
+
+
 
 
 demo(0)
