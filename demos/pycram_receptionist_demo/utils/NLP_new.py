@@ -98,7 +98,7 @@ class NLP_Helper:
 
         HeadFollowMotion(state="stop").perform()
         DetectAction(technique='human', state="stop").resolve().perform()
-        TalkingMotion("Nice to meet you").perform()
+        TalkingMotion(f"Nice to meet you {guest.name}").perform()
         return guest
 
     def name_repeat(self):
@@ -218,6 +218,8 @@ class NLP_Helper:
             guest.set_drink(self.response[2])
         else:
             guest.set_drink(self.drink_repeat())
+        # TalkingMotion(f"your favorite drink is {guest.fav_drink}").perform()
+
 
     def drink_repeat(self):
         """
@@ -276,4 +278,6 @@ class NLP_Helper:
         # answer specifically
         toya_text = self.res_loader.predict_response(hobby_list)
         print(toya_text)
+        if guest.interests:
+            TalkingMotion(f"you like {guest.interests[0]}").perform()
         TalkingMotion(toya_text).perform()

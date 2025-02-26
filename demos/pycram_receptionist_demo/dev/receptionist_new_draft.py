@@ -63,7 +63,7 @@ def demo(step: int):
     with (real_robot):
 
         rospy.loginfo("start demo at step " + str(step))
-        NavigateAction([greet_guest_pose]).resolve().perform()
+        # NavigateAction([greet_guest_pose]).resolve().perform()
 
         # set neutral pose
         # image_switch_publisher.pub_now(ImageEnum.HI.value)
@@ -73,6 +73,7 @@ def demo(step: int):
         if step <= 1:
             # greet first guest
             nlp.welcome_guest(guest1)
+            display_info(f"guest name is: {guest1.name}")
 
         if step <= 2:
             # perceive attributes of guest
@@ -94,10 +95,11 @@ def demo(step: int):
             HeadFollowMotion(state="start").perform()
             rospy.sleep(1.5)
             nlp.get_fav_drink(guest1)
+            display_info(f"guest favorite drink is: {guest1.fav_drink}")
 
         if step <= 4:
             # ParkArmsAction([Arms.LEFT]).resolve().perform()
-            TalkingMotion("let me see if your favorite drink is available").perform()
+            TalkingMotion(f"let me see if {guest1.fav_drink} is available").perform()
             MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             LookAtAction([look_drinks]).resolve().perform()
@@ -113,6 +115,8 @@ def demo(step: int):
             rospy.sleep(1.5)
 
             nlp.store_and_answer_hobby(guest1)
+            if guest1.interests:
+                display_info(f"guest interest: {guest1.interests[0]}")
 
         if step <= 5:
             # lead to living room
@@ -193,23 +197,25 @@ def demo(step: int):
         if step <= 9:
             # greet second guest and lead to living room
             nlp.welcome_guest(guest2)
+            display_info(f"guest name is: {guest1.name}")
+
             MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             TalkingMotion("i will show you around").perform()
-            rospy.sleep(1.5)
+            rospy.sleep(1)
             TalkingMotion("please step out of the way and follow me").perform()
             NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
         if step <= 9:
             TalkingMotion("here you can get a drink").perform()
-            rospy.sleep(1.5)
             MoveJointsMotion(["torso_lift_joint"], [0.07]).perform()
             LookAtAction([look_person_drinks]).resolve().perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
 
             nlp.get_fav_drink(guest2)
-            rospy.sleep(1.5)
+            display_info(f"guest favorite drink is: {guest1.fav_drink}")
+            rospy.sleep(1)
 
             TalkingMotion("let me see if your favorite drink is available").perform()
             MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
@@ -226,6 +232,7 @@ def demo(step: int):
             TalkingMotion("what do you do in your free time?").perform()
             rospy.sleep(1.5)
             nlp.store_and_answer_hobby(guest2)
+            display_info(f"guest interest: {guest1.interests[0]}")
 
         if step <= 10:
             # lead to living room
