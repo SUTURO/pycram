@@ -4,17 +4,21 @@ import threading
 from threading import Lock, RLock
 
 import numpy as np
+import rospy
+import tf
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3, Point
-from giskardpy.data_types.exceptions import ForceTorqueThresholdException
+from giskardpy.data_types.exceptions import PreemptedException, \
+    ObjectForceTorqueThresholdException, ExecutionException
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
-from giskardpy_ros.ros1 import tfwrapper as tf
+from giskardpy_ros.ros1 import tfwrapper as giskard_tf
 from typing_extensions import List, Dict, Callable, Optional
 
 from ..datastructures.dataclasses import MeshVisualShape
 from ..datastructures.enums import JointType, ObjectType, Arms, GiskardStateFTS
-from ..datastructures.pose import Pose
+from ..datastructures.pose import Pose, Transform
 from ..datastructures.world import World
-from ..failures import HumanNotFoundCondition
+from ..process_module import real_robot
 from ..robot_description import RobotDescription
 from ..ros.data_types import Time
 from ..ros.logging import logwarn, loginfo_once
@@ -102,7 +106,8 @@ def initial_adding_objects() -> None:
     """
     groups = giskard_wrapper.world.get_group_names()
     for obj in World.current_world.objects:
-        if obj is World.robot or obj is World.current_world.get_prospection_object_for_object(World.robot):
+        if obj is World.robot or obj is World.current_world.get_prospection_object_for_object(
+                World.robot) or obj.obj_type == ObjectType.ENVIRONMENT:
             continue
         name = obj.name
         if name not in groups:
@@ -132,20 +137,24 @@ def sync_worlds() -> None:
     add_gripper_groups()
     world_object_names = set()
     for obj in World.current_world.objects:
-        if obj.name != RobotDescription.current_robot_description.name and obj.obj_type != ObjectType.ROBOT and len(
-                obj.link_name_to_id) != 1:
+        if (obj.name != RobotDescription.current_robot_description.name and \
+                obj.obj_type != ObjectType.ROBOT and
+                obj.obj_type != ObjectType.ENVIRONMENT and len(obj.link_name_to_id) != 1):
             world_object_names.add(obj.name)
         if obj.name == RobotDescription.current_robot_description.name or obj.obj_type == ObjectType.ROBOT:
             joint_config = obj.get_positions_of_all_joints()
-            non_fixed_joints = list(filter(lambda joint: joint.type != JointType.FIXED, obj.joints.values()))
+            non_fixed_or_mimic_joints = list(
+                filter(lambda joint: joint.type != JointType.FIXED and not joint.mimic_of, obj.joints.values()))
             # todo: fix for hsrb
-            # joint_config_filtered = {joint.name: joint_config[joint.name] for joint in non_fixed_joints}
+            joint_config_filtered = {joint.name: joint_config[joint.name] for joint in non_fixed_or_mimic_joints}
 
             # giskard_wrapper.monitors.add_set_seed_configuration(joint_config_filtered,
-            # RobotDescription.current_robot_description.name)
-            giskard_wrapper.monitors.add_set_seed_odometry(_pose_to_pose_stamped(obj.get_pose()),
-                                                           RobotDescription.current_robot_description.name)
+            #                                                     RobotDescription.current_robot_description.name)
+            # done = giskard_wrapper.monitors.add_set_seed_odometry(_pose_to_pose_stamped(obj.get_pose()),
+            #                                                       RobotDescription.current_robot_description.name)
+            # giskard_wrapper.monitors.add_end_motion(start_condition=done)
     giskard_object_names = set(giskard_wrapper.world.get_group_names())
+    # giskard_wrapper.execute()
     robot_name = {RobotDescription.current_robot_description.name}
     if not world_object_names.union(robot_name).issubset(giskard_object_names):
         giskard_wrapper.world.clear()
@@ -515,7 +524,7 @@ def fully_open_dishwasher_door(handle_name: str, door_name: str) -> 'MoveResult'
 @init_giskard_interface
 @thread_safe
 def achieve_open_container_goal(tip_link: str, environment_link: str, goal_state: Optional[float] = None,
-                                   special_door: Optional[bool] = False) -> 'MoveResult':
+                                special_door: Optional[bool] = False) -> 'MoveResult':
     """
     Tries to open a container in an environment, this only works if the container was added as a URDF. This goal assumes
     that the handle was already grasped. Can only handle container with 1 DOF
@@ -533,7 +542,7 @@ def achieve_open_container_goal(tip_link: str, environment_link: str, goal_state
         giskard_wrapper.motion_goals.add_open_container(tip_link, environment_link)
     else:
         giskard_wrapper.motion_goals.add_open_container(tip_link, environment_link, goal_joint_state=goal_state,
-                                                       special_door=special_door)
+                                                        special_door=special_door)
         giskard_wrapper.motion_goals.allow_all_collisions()
 
     giskard_wrapper.add_default_end_motion_conditions()
@@ -579,8 +588,8 @@ def achieve_tilting_goal(direction: str, angle: float) -> 'MoveResult':
 def achieve_cartesian_goal_w_fts(goal_pose: Pose,
                                  tip_link: str,
                                  root_link: str,
-                                 object_type: str,
                                  threshold_name: GiskardStateFTS,
+                                 object_type: str = "Default",
                                  position_threshold: float = 0.02,
                                  orientation_threshold: float = 0.02
                                  ) -> 'MoveResult':
@@ -622,7 +631,48 @@ def achieve_cartesian_goal_w_fts(goal_pose: Pose,
     # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
     giskard_wrapper.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
-                                               ForceTorqueThresholdException('force violated'))
+                                               ObjectForceTorqueThresholdException('force violated'))
+    giskard_wrapper.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+@thread_safe
+def achieve_place_w_fts(goal_pose: Pose,
+                        tip_link: str,
+                        root_link: str,
+                        threshold_name: GiskardStateFTS,
+                        object_type: str = "Default",
+                        position_threshold: float = 0.02,
+                        orientation_threshold: float = 0.02
+                        ) -> 'MoveResult':
+    """
+    threshold:  GRASP
+                PLACE
+    object_type: default
+                 Bowl
+    """
+    cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
+                                                                goal_pose=_pose_to_pose_stamped(goal_pose),
+                                                                position_threshold=position_threshold,
+                                                                orientation_threshold=orientation_threshold,
+                                                                name='cart goal 1')
+    end_monitor = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
+
+    giskard_wrapper.motion_goals.add_cartesian_pose(name='g1', root_link=root_link, tip_link=tip_link,
+                                                    goal_pose=_pose_to_pose_stamped(goal_pose),
+                                                    end_condition=cart_monitor1)
+
+    giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    sleep = giskard_wrapper.monitors.add_sleep(1)
+
+    mon = giskard_wrapper.monitors.monitor_placing()
+
+    # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
+
+    giskard_wrapper.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
+                                               ObjectForceTorqueThresholdException('force violated'))
     giskard_wrapper.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
     return giskard_wrapper.execute()
 
@@ -924,19 +974,25 @@ def _pose_to_pose_stamped(pose: Pose) -> PoseStamped:
 
     return ps
 
+
 @init_giskard_interface
 def cml(drive_back):
+    try:
         print("in cml")
-        giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=False, point_cloud_laser_topic_name=None,
-                                          clear_path=True,
-                                          laser_avoidance_angle_cutout=np.pi/5)
+        giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=False,
+                                                          point_cloud_laser_topic_name=None,
+                                                          clear_path=True,
+                                                          laser_avoidance_angle_cutout=np.pi / 5)
         giskard_exe = giskard_wrapper.execute()
         print("done")
+    except PreemptedException:
+        print("done  cml")
 
         # if giskard_exe.error.code == 2:
         #     print("works fine")
         # else:
         #     print("cml error")
+
 
 @init_giskard_interface
 @thread_safe
@@ -948,7 +1004,7 @@ def arm_down_ft(down_distance: float = 0.3, object_type: str = 'Default', speed_
     handle_retract_direction.header.frame_id = 'base_link'
     handle_retract_direction.vector.z = -down_distance
 
-    base_retract = tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
+    base_retract = giskard_tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
 
     goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
 
@@ -959,13 +1015,13 @@ def arm_down_ft(down_distance: float = 0.3, object_type: str = 'Default', speed_
     tip_normal_z.header.frame_id = 'hand_gripper_tool_frame'
     tip_normal_z.vector.z = 1
 
-    goal_normal_z = tf.transform_vector('map', tip_normal_z)
+    goal_normal_z = giskard_tf.transform_vector('map', tip_normal_z)
 
     tip_normal_y = Vector3Stamped()
     tip_normal_y.header.frame_id = 'hand_gripper_tool_frame'
     tip_normal_y.vector.y = 1
 
-    goal_normal_y = tf.transform_vector('map', tip_normal_y)
+    goal_normal_y = giskard_tf.transform_vector('map', tip_normal_y)
 
     giskard_wrapper.motion_goals.add_align_planes(root_link='map', tip_link='hand_gripper_tool_frame',
                                                   goal_normal=goal_normal_z, tip_normal=tip_normal_z,
@@ -982,6 +1038,335 @@ def arm_down_ft(down_distance: float = 0.3, object_type: str = 'Default', speed_
     sleep = giskard_wrapper.monitors.add_sleep(7)
 
     giskard_wrapper.monitors.add_cancel_motion(f'not {ft_placing} and {sleep} ',
-                                               ForceTorqueThresholdException('object not placed'))
+                                               ObjectForceTorqueThresholdException('object not placed'))
     giskard_wrapper.monitors.add_end_motion(start_condition=f'{ft_placing}')
+    giskard_wrapper.execute()
+
+
+@init_giskard_interface
+@thread_safe
+def door_open_ft(handle_name: str,
+                 tip: str,
+                 handle_turn_limit: float,
+                 hinge_turn_limit: float,
+                 handle_length: float,
+                 ref_speed: float,
+                 handle_retract_distance: float,
+                 pre_grasp_distance: float,
+                 grasp_into_distance: float,
+                 offset_leftright: float):
+    ft_timeout = 10
+
+    x_gripper = Vector3Stamped()
+    x_gripper.header.frame_id = tip
+    x_gripper.vector.z = 1
+
+    x_goal = Vector3Stamped()
+    x_goal.header.frame_id = handle_name
+    x_goal.vector.z = -1
+
+    pre_grasp = giskard_wrapper.monitors.add_local_minimum_reached(name='pre grasp local min')
+
+    offset_pre = Vector3Stamped()
+    offset_pre.header.frame_id = tip
+    offset_pre.vector.y = pre_grasp_distance
+    offset_pre.vector.z = offset_leftright
+
+    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(name='pre grasp', handle_name=handle_name,
+                                                        handle_bar_length=handle_length,
+                                                        grasp_axis_offset=offset_pre, end_condition=pre_grasp)
+
+    open_gripper = giskard_wrapper.monitors.add_open_hsr_gripper(start_condition=pre_grasp)
+
+    giskard_wrapper.motion_goals.add_align_planes(name='pre grasp align',
+                                                  tip_link=tip,
+                                                  tip_normal=x_gripper,
+                                                  goal_normal=x_goal,
+                                                  root_link='map',
+                                                  end_condition=open_gripper)
+
+    giskard_wrapper.motion_goals.add_align_planes(name='grasp align',
+                                                  tip_link=tip,
+                                                  tip_normal=x_gripper,
+                                                  goal_normal=x_goal,
+                                                  root_link='map',
+                                                  start_condition=open_gripper)
+
+    offset = Vector3Stamped()
+    offset.header.frame_id = tip
+    offset.vector.y = grasp_into_distance
+    offset.vector.z = offset_leftright
+
+    slep = giskard_wrapper.monitors.add_sleep(name='grasp sleep', seconds=ft_timeout, start_condition=open_gripper)
+    force = giskard_wrapper.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value, object_type='',
+                                                      start_condition=open_gripper)
+    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(name='grasp', handle_name=handle_name,
+                                                        handle_bar_length=handle_length,
+                                                        grasp_axis_offset=offset, ref_speed=ref_speed,
+                                                        start_condition=open_gripper,
+                                                        end_condition=force)
+
+    goal_point = PointStamped()
+    goal_point.header.frame_id = 'base_link'
+
+    handle_retract_direction = Vector3Stamped()
+    handle_retract_direction.header.frame_id = handle_name
+    handle_retract_direction.vector.z = handle_retract_distance
+
+    base_retract = giskard_tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
+
+    goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
+
+    giskard_wrapper.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
+                                                                 goal_point=goal_point, start_condition=force)
+    grasped = giskard_wrapper.monitors.add_local_minimum_reached(name='grasped monitor', start_condition=force)
+
+    giskard_wrapper.monitors.add_end_motion(start_condition=grasped)
+    giskard_wrapper.monitors.add_cancel_motion(f'not {force} and {slep} ',
+                                               ObjectForceTorqueThresholdException('Door not touched!'))
+
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.execute()
+
+    close_gripper = giskard_wrapper.monitors.add_close_hsr_gripper()
+
+    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=handle_turn_limit,
+                                                     hinge_limit=hinge_turn_limit,
+                                                     start_condition=close_gripper)
+
+    giskard_wrapper.motion_goals.allow_all_collisions()
+    giskard_wrapper.execute()
+
+
+##############################################################
+###################### Luca Added Stuff ######################
+##############################################################
+
+@init_giskard_interface
+def clear() -> None:
+    giskard_wrapper.world.clear()
+
+
+@init_giskard_interface
+def set_joint_positions(world_object, joint_positions: dict):
+    """
+    Sets the joint position of a given world object to the given joint positions.
+
+    :param world_object: Relevant world object
+    :param joint_positions: Dictionary with joint names and joint positions
+    """
+    obj_name = world_object.name
+    done = giskard_wrapper.monitors.add_set_seed_configuration(joint_positions, obj_name)
+    giskard_wrapper.monitors.add_end_motion(start_condition=done)
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+def move_head_to_pose(pose1: PoseStamped):
+    p_axis = Vector3Stamped()
+    camera_link = 'head_center_camera_frame'
+    p_axis.header.frame_id = camera_link
+    p_axis.vector.x = 0
+    p_axis.vector.y = 0
+    p_axis.vector.z = 1
+
+    pointSt = PointStamped()
+    pointSt.header = pose1.header
+    pointSt.point = pose1.pose.position
+    giskard_wrapper.motion_goals.add_pointing(goal_point=pointSt,
+                                              name='g1',
+                                              root_link="base_footprint",
+                                              tip_link=camera_link,
+                                              pointing_axis=p_axis)
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
+
+
+@init_giskard_interface
+def set_gripper_state(motion: str):
+    """
+    Opens or closes the gripper
+    """
+    if motion == "open":
+        done = giskard_wrapper.monitors.add_set_seed_configuration({"hand_motor_joint": 1.2},
+                                                                   RobotDescription.current_robot_description.name)
+        giskard_wrapper.monitors.add_end_motion(start_condition=done)
+    elif motion == "close":
+        done = giskard_wrapper.monitors.add_set_seed_configuration({"hand_motor_joint": 0},
+                                                                   RobotDescription.current_robot_description.name)
+        giskard_wrapper.monitors.add_end_motion(start_condition=done)
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+def achieve_sequence_pick_up(poses, demo_mode):
+    root_link = 'map'
+    tip_link = 'hand_gripper_tool_frame'
+    if demo_mode == real_robot:
+        sync_worlds()
+    last_monitor = ''
+    for index, pose1 in enumerate(poses):
+        # cart_monitor1 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link,
+        #                                                             tip_link=tip_link,
+        #                                                             goal_pose=_pose_to_pose_stamped(pose1),
+        #                                                             start_condition=last_monitor,
+        #                                                             position_threshold=0.01,
+        #                                                             orientation_threshold=0.01,
+        #                                                             name=f'cart goal {index}')
+
+        local_minimum1 = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=last_monitor,
+                                                                            name=f"local {index}")
+
+        # cart_monitor2 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link,
+        #                                                             tip_link=tip_link,
+        #                                                             goal_pose=_pose_to_pose_stamped(pose2),
+        #                                                             position_threshold=0.03,
+        #                                                             orientation_threshold=0.03,
+        #                                                             name='cart goal 2',
+        #                                                             start_condition=cart_monitor1)
+        # gripper_closed = giskard_wrapper.monitors.add_close_hsr_gripper(start_condition=cart_monitor2,
+        #                                                                 name='close gripper')
+        # cart_monitor3 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link,
+        #                                                             tip_link=tip_link,
+        #                                                             goal_pose=_pose_to_pose_stamped(pose3),
+        #                                                             name='cart goal 3',
+        #                                                             start_condition=gripper_closed)
+        # cart_monitor4 = giskard_wrapper.monitors.add_cartesian_pose(root_link=root_link,
+        #                                                             tip_link=tip_link,
+        #                                                             goal_pose=_pose_to_pose_stamped(pose4),
+        #                                                             name='cart goal 4',
+        #                                                             start_condition=cart_monitor3)
+        # end_monitor = giskard_wrapper.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
+        #
+        giskard_wrapper.motion_goals.add_cartesian_pose(name=f'g{index}',
+                                                        root_link=root_link,
+                                                        tip_link=tip_link,
+                                                        start_condition=last_monitor,
+                                                        end_condition=local_minimum1,
+                                                        goal_pose=_pose_to_pose_stamped(pose1))
+        # done = giskard_wrapper.monitors.add_sleep(0.25, start_condition=cart_monitor1, name=f"sleep {index}")
+        last_monitor = local_minimum1
+        # giskard_wrapper.motion_goals.add_cartesian_pose(name='g2',
+        #                                                 root_link=root_link,
+        #                                                 tip_link=tip_link,
+        #                                                 goal_pose=_pose_to_pose_stamped(pose2),
+        #                                                 start_condition=cart_monitor1,
+        #                                                 end_condition=cart_monitor2)
+
+        # giskard_wrapper.motion_goals.add_cartesian_pose(name='g3',
+        #                                                 root_link=root_link,
+        #                                                 tip_link=tip_link,
+        #                                                 goal_pose=_pose_to_pose_stamped(pose3),
+        #                                                 start_condition=gripper_closed,
+        #                                                 end_condition=cart_monitor3)
+        # giskard_wrapper.motion_goals.add_cartesian_pose(name='g4',
+        #                                                 root_link=root_link,
+        #                                                 tip_link=tip_link,
+        #                                                 goal_pose=_pose_to_pose_stamped(pose4),
+        #                                                 start_condition=cart_monitor3,
+        #                                                 end_condition=cart_monitor4)
+
+        # giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.monitors.add_end_motion(start_condition=last_monitor)
+    # giskard_wrapper.motion_goals.avoid_all_collisions()
+    giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+    # giskard_wrapper.motion_goals.allow_collision(g)
+    return giskard_wrapper.execute()
+
+
+@init_giskard_interface
+def update_from_giskard(robot, result):
+    tf_listener = tf.TransformListener()
+    last_point = result.trajectory.points[-1]
+    joint_names = result.trajectory.joint_names
+    joint_states = dict(zip(joint_names, last_point.positions))
+
+    non_fixed_or_mimic_joints = list(
+        filter(lambda joint: joint.type != JointType.FIXED and joint.mimic_of, robot.joints.values()))
+
+    for joint in non_fixed_or_mimic_joints:
+        joint_states[joint.name] = joint_states.get(joint.mimic_of) * joint.mimic_multiplier + joint.mimic_offset
+
+    orientation = list(tf.transformations.quaternion_from_euler(0, 0, joint_states["odom_t"], axes="sxyz"))
+    pose = Pose([joint_states["odom_x"], joint_states["odom_y"], 0], orientation, "odom", rospy.Duration(0))
+
+    can_transform = False
+    while not can_transform:
+        can_transform = tf_listener.canTransform("map", "odom", rospy.Time())
+
+    tf_transform = tf_listener.lookupTransform("map", "odom", rospy.Time())
+    mapTodom = Transform(tf_transform[0], tf_transform[1], "map", "odom")
+    odomTself = pose.to_transform("self")
+    mapTself = mapTodom * odomTself
+    map_pose = mapTself.to_pose()
+
+    robot_joint_states = {k: v for k, v in joint_states.items() if k in robot.joints.keys()}
+
+    robot.set_multiple_joint_positions(robot_joint_states)
+    robot.set_pose(map_pose)
+
+
+@init_giskard_interface
+def test(config):
+    giskard_wrapper.motion_goals.add_joint_position(config)
+    # js_reached = giskard.monitors.add_joint_position(js1, threshold=0.03)
+    # giskard.monitors.add_end_motion(start_condition=js_reached)
+    giskard_wrapper.motion_goals.allow_all_collisions()
+
+    giskard_wrapper.add_default_end_motion_conditions()
+    giskard_wrapper.execute()
+
+
+@init_giskard_interface
+def achieve_detached(obj_desig, demo_mode=real_robot):
+    if demo_mode == real_robot:
+        sync_worlds()
+    giskard_wrapper.world.detach_group(obj_desig.name)
+
+
+@init_giskard_interface
+def achieve_attached(obj_desig, tip_link='hand_gripper_tool_frame', demo_mode=real_robot):
+    root_link = 'map'
+    if demo_mode == real_robot:
+        sync_worlds()
+    giskard_object_names = set(giskard_wrapper.world.get_group_names())
+    giskard_wrapper.world.update_parent_link_of_group(
+        name=obj_desig.name, parent_link=tip_link)
+
+
+@init_giskard_interface
+def turning_80_left_and_back():
+    rot_left = QuaternionStamped()
+    rot_left.header.frame_id = 'base_footprint'
+    rot_left.quaternion.z = 0.707
+    rot_left.quaternion.w = 0.707
+
+    starting_rot = QuaternionStamped()
+    starting_rot.header.frame_id = 'base_footprint'
+    starting_rot.quaternion.z = -0.707
+    starting_rot.quaternion.w = 0.707
+
+    rot_left_monitor = giskard_wrapper.monitors.add_cartesian_orientation(goal_orientation=rot_left,
+                                                                          root_link='map',
+                                                                          tip_link='base_footprint',
+                                                                          name='rotation left monitor')
+    rot_start_monitor = giskard_wrapper.monitors.add_cartesian_orientation(goal_orientation=starting_rot,
+                                                                           root_link='map',
+                                                                           tip_link='base_footprint',
+                                                                           start_condition=rot_left_monitor,
+                                                                           threshold=0.03,
+                                                                           name='rotation start monitor')
+    giskard_wrapper.motion_goals.add_cartesian_orientation(goal_orientation=rot_left,
+                                                           root_link='map',
+                                                           tip_link='base_footprint',
+                                                           end_condition=rot_left_monitor,
+                                                           name='rotation left goal')
+    giskard_wrapper.motion_goals.add_cartesian_orientation(goal_orientation=starting_rot,
+                                                           root_link='map',
+                                                           tip_link='base_footprint',
+                                                           start_condition=rot_left_monitor,
+                                                           end_condition=rot_start_monitor,
+                                                           name='rotation start goal')
+
+    giskard_wrapper.monitors.add_end_motion(start_condition=rot_start_monitor)
     giskard_wrapper.execute()

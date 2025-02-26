@@ -53,6 +53,8 @@ def demo(step: int):
     global  second_timer_pose
     with (real_robot):
         TalkingMotion("Starting Carry my Luggage demo.").perform()
+        # MoveJointsMotion(["wrist_roll_joint"], [0.0]).perform()
+        # MoveJointsMotion(["arm_roll_joint"], [-1.2]).perform()
         img.pub_now(ImageEnum.HI.value)
 
         if step <= 1:
@@ -100,7 +102,7 @@ def demo(step: int):
                 img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("I am not able to pick up the bag. Please hand it in my gripper").perform()
                 text_to_img_publisher.pub_now("when the bag is handed in push down my gripper")
-                rospy.sleep(4)
+                rospy.sleep(3)
                 img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("please put the bag in my gripper and push down my gripper").perform()
                 # TODO: Timer einbauen? falls gripper nicht gedrückt wird
