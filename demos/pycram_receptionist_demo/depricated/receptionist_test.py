@@ -1,8 +1,4 @@
-from typing import Optional
-
-import rospy
-
-from demos.pycram_receptionist_demo.utils.misc import *
+from demos.pycram_receptionist_demo.depricated.misc import *
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *

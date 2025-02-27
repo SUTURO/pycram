@@ -3,14 +3,12 @@ from demos.pycram_receptionist_demo.utils.helper import *
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
-from pycram.language import Code
 from pycram.process_module import real_robot
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
 from pycram.utilities.robocup_utils import ImageSwitchPublisher
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
-from demos.pycram_receptionist_demo.utils.ResponseLoader import ResponseLoader
 import rospy
 
 # Initialize the Bullet world for simulation
@@ -33,10 +31,6 @@ callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 nlp = NLP_Helper()
 
-# response loader
-# res_loader = ResponseLoader(json_file='resp.json')
-# res_loader.load_data()
-
 # Declare variables for humans
 host = HumanDescription("Jule", fav_drink="topical juice bottle")
 host.set_id(1)
@@ -48,7 +42,7 @@ guest1.set_id(0)
 guest2 = HumanDescription("Sarah", fav_drink="Juice")
 guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright top'])
 
-# important poses
+############### important poses #######################
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 0.3, 0.75])
 look_drinks = Pose([2.3, 4.7, 0.55])
@@ -57,20 +51,22 @@ nav_pose_to_drink = Pose([2, 0.6, 0], orientation=[0, 0, 0.7, 0.7])
 nav_pose_to_couch = Pose([2.2, 3.3, 0], orientation=[0, 0, -0.7, 0.7])
 greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
 beverage_pose = Pose(position=[2.2, 4, 0], orientation=[0, 0, 0.9, 0.3])
+########################################################
 
 
 def demo(step: int):
     with (real_robot):
-
         rospy.loginfo("start demo at step " + str(step))
         # NavigateAction([greet_guest_pose]).resolve().perform()
 
         # set neutral pose
-        # image_switch_publisher.pub_now(ImageEnum.HI.value)
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+        MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         if step <= 1:
+
             # greet first guest
             nlp.welcome_guest(guest1)
             display_info(f"guest name is: {guest1.name}")
@@ -82,38 +78,43 @@ def demo(step: int):
             TalkingMotion("i will show you around now").perform()
             rospy.sleep(2)
             TalkingMotion("please step out of the way and follow me").perform()
+            image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 3:
-            # guide to drinking area
+            # TODO: guide to drinking area
             NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
             TalkingMotion("here you can get yourself a drink").perform()
             MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
+
+            # TODO: look at person pose
             LookAtAction([look_person_drinks]).resolve().perform()
+
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
-            rospy.sleep(1.5)
             nlp.get_fav_drink(guest1)
             display_info(f"guest favorite drink is: {guest1.fav_drink}")
 
         if step <= 4:
             # ParkArmsAction([Arms.LEFT]).resolve().perform()
             TalkingMotion(f"let me see if {guest1.fav_drink} is available").perform()
-            MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+            # MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+
+            # TODO: look at drinks?
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             LookAtAction([look_drinks]).resolve().perform()
+
             rospy.sleep(1)
             check_drink_available(guest1)
             rospy.sleep(2)
             TalkingMotion("i love cleaning up this table").perform()
-            rospy.sleep(1.5)
+            # TODO: look at person pose
             LookAtAction([look_person_drinks]).resolve().perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             TalkingMotion("what do you do in your free time?").perform()
             rospy.sleep(1.5)
-
             nlp.store_and_answer_hobby(guest1)
             if guest1.interests:
                 display_info(f"guest interest: {guest1.interests[0]}")
@@ -123,9 +124,12 @@ def demo(step: int):
             MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
+            image_switch_publisher.pub_now(ImageEnum.HI.value)
             DetectAction(technique='human', state="stop").resolve().perform()
             TalkingMotion("please step out of the way and follow me").perform()
             MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+
+            # TODO: navigate to living room
             NavigateAction([nav_pose_to_couch]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
 
@@ -165,6 +169,7 @@ def demo(step: int):
 
         if step <= 7:
             # find free place to sit for guest
+            # TODO: look at couch pose
             LookAtAction([look_couch]).resolve().perform()
             guest_pose = detect_point_to_seat(robot)
             if not guest_pose:
@@ -183,18 +188,17 @@ def demo(step: int):
             # introduce sitting people
             TalkingMotion("i will go back to the entrance to assist other guests").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-            rospy.logerr("stop now")
-            rospy.sleep(6)
 
         if step <= 9:
             # go back to start-pose
+            # TODO: navigate start pose
             NavigateAction([greet_guest_pose]).resolve().perform()
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             TalkingMotion("waiting for new guest").perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
-        if step <= 9:
+        if step <= 10:
             # greet second guest and lead to living room
             nlp.welcome_guest(guest2)
             display_info(f"guest name is: {guest1.name}")
@@ -203,38 +207,46 @@ def demo(step: int):
             TalkingMotion("i will show you around").perform()
             rospy.sleep(1)
             TalkingMotion("please step out of the way and follow me").perform()
+            image_switch_publisher.pub_now(ImageEnum.HI.value)
+
+            # TODO: navigate to drinks
             NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
-        if step <= 9:
+        if step <= 11:
             TalkingMotion("here you can get a drink").perform()
             MoveJointsMotion(["torso_lift_joint"], [0.07]).perform()
+
+            # TODO: look to person
             LookAtAction([look_person_drinks]).resolve().perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
 
             nlp.get_fav_drink(guest2)
-            display_info(f"guest favorite drink is: {guest1.fav_drink}")
+            display_info(f"guest favorite drink is: {guest2.fav_drink}")
             rospy.sleep(1)
 
-            TalkingMotion("let me see if your favorite drink is available").perform()
+            TalkingMotion(f"let me see if {guest2.fav_drink} is available").perform()
             MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+
+            # TODO: look at drinks
             LookAtAction([look_drinks]).resolve().perform()
             check_drink_available(guest2)
-            rospy.sleep(2)
+
+            # TODO: look at person
             LookAtAction([look_person_drinks]).resolve().perform()
             DetectAction(technique='human', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
-            rospy.sleep(2)
+            rospy.sleep(1)
             TalkingMotion("i love cleaning up this table").perform()
             rospy.sleep(1.5)
             TalkingMotion("what do you do in your free time?").perform()
             rospy.sleep(1.5)
             nlp.store_and_answer_hobby(guest2)
-            display_info(f"guest interest: {guest1.interests[0]}")
+            display_info(f"guest interest: {guest2.interests[0]}")
 
-        if step <= 10:
+        if step <= 12:
             # lead to living room
             MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             TalkingMotion("i will show you the living room now").perform()
@@ -242,18 +254,23 @@ def demo(step: int):
             DetectAction(technique='human', state="stop").resolve().perform()
             TalkingMotion("please step out of the way and follow me").perform()
             MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
+
+            # TODO: navigate to living room
+            image_switch_publisher.pub_now(ImageEnum.HI.value)
             NavigateAction([nav_pose_to_couch]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
             TalkingMotion("welcome to the living room").perform()
 
             # recognise people, did they change seats
+            # TODO: check head movement
             identify_faces(host, guest1)
 
-        if step <= 11:
+        if step <= 13:
             # find free place for second guest
             LookAtAction([look_couch]).resolve().perform()
             guest_pose = detect_point_to_seat(robot)
             if not guest_pose:
+                # TODO: check head movement
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 if guest_pose:
@@ -264,7 +281,7 @@ def demo(step: int):
             else:
                 guest2.set_pose(guest_pose)
 
-        if step <= 12:
+        if step <= 14:
             # introduce everyone and state attributes of first guest
             HeadFollowMotion(state="start").perform()
             rospy.sleep(2)

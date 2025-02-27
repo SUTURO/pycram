@@ -1,3 +1,4 @@
+import rospy
 from geometry_msgs.msg import PointStamped, PoseStamped
 
 from pycram.datastructures.enums import ImageEnum
@@ -30,6 +31,7 @@ def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
             keys = DetectAction(technique='human', state='face').resolve().perform()
             new_id = keys["keys"][0]
             guest.set_id(new_id)
+            rospy.loginfo(new_id)
 
             # get 4 different attributes
             attr_list = DetectAction(technique='attributes', state='start').resolve().perform()
@@ -64,47 +66,44 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
 
     # detect free seat
     try:
-        print("before")
         seat = DetectAction(technique='location', state="sofa").resolve().perform()
     except PerceptionObjectNotFound:
         rospy.logerr("i hate perception lol")
         return None
     free_seat = False
+    print(seat)
 
     # loop through all seating options detected by perception
     if not no_sofa:
         for place in seat:
             # found a place that is not occupied
-            print(place)
-            print(place[1])
+            rospy.logerr(place)
             if place[1] == ' False' or place[1] == 'False':
 
-                if not float(place[2])-4.62 < 0.25:
+                pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
+                rospy.loginfo("place: " + str(place))
 
-                    pose_in_map = Pose([float(place[2]), float(place[3]), 0.85])
-                    rospy.loginfo("place: " + str(place))
+                # transform poses to find out position relative to robot
+                lt = LocalTransformer()
+                pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
 
-                    # transform poses to find out position relative to robot
-                    lt = LocalTransformer()
-                    pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
+                if pose_in_robot_frame.pose.position.y > 0.25:
+                    TalkingMotion("please take a seat to the left from me").perform()
+                    # move pose more to the left for clear pointing pose
+                    pose_in_robot_frame.pose.position.y += 0.6
 
-                    if pose_in_robot_frame.pose.position.y > 0.25:
-                        TalkingMotion("please take a seat to the left from me").perform()
-                        # move pose more to the left for clear pointing pose
-                        pose_in_robot_frame.pose.position.y += 0.6
+                elif pose_in_robot_frame.pose.position.y < -0.15:
+                    TalkingMotion("please take a seat to the right from me").perform()
+                    # move pose more to the right for clear pointing pose
+                    pose_in_robot_frame.pose.position.y -= 0.6
 
-                    elif pose_in_robot_frame.pose.position.y < -0.15:
-                        TalkingMotion("please take a seat to the right from me").perform()
-                        # move pose more to the right for clear pointing pose
-                        pose_in_robot_frame.pose.position.y -= 0.6
+                else:
+                    TalkingMotion("please take a seat in front of me").perform()
 
-                    else:
-                        TalkingMotion("please take a seat in front of me").perform()
-
-                    # get pose in map
-                    pose_in_map = lt.transform_pose(pose_in_robot_frame, "map")
-                    free_seat = True
-                    break
+                # get pose in map
+                pose_in_map = lt.transform_pose(pose_in_robot_frame, "map")
+                free_seat = True
+                break
     else:
         rospy.loginfo("find free chairs")
         for place in seat:
@@ -353,7 +352,7 @@ def check_drink_available(guest: HumanDescription):
 
 def display_info(info: str):
     text_to_img_publisher.pub_now(info)
-    rospy.sleep(1)
+    rospy.sleep(1.5)
     img.pub_now(ImageEnum.GENERATED_TEXT.value)
     img.pub_now(ImageEnum.GENERATED_TEXT.value)
 
