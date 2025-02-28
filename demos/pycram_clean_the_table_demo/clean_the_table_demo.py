@@ -1,5 +1,6 @@
 from typing_extensions import Optional
 
+from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.external_interfaces import giskard
 from pycram.failures import *
 from pycram.designators.motion_designator import *
@@ -9,8 +10,11 @@ from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
 from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up, sort_objects
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
+from pycram.utilities.robocup_utils import ImageSendPublisher
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
+
+tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot, kitchen = startup()
 
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
@@ -31,23 +35,9 @@ table_pose = 4.7
 handle_name = "iai_kitchen/sink_area_dish_washer_door_handle"
 door_name = "sink_area_dish_washer_door"
 
-# Intermediate positions for a safer navigation
-move_to_the_middle_table_pose = [2.2, 1.98, 0]
-move_to_the_middle_dishwasher_pose = [2.2, -0.1, 0]
-
-# Initialize the Bullet world for simulation
-world = BulletWorld()
-
-# Create and configure the robot object
-robot = Object("hsrb", ObjectType.ROBOT, "../../resources/hsrb.urdf", pose=Pose([0, 0, 0]))
-
 # Update robot state
 RobotStateUpdater("/tf", "/giskard_joint_states")
 
-# robot.set_color([0.5, 0.5, 0.9, 1])
-
-# Create environmental objects
-apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 apart_desig = BelieveObject(names=["kitchen"])
 
 
@@ -214,7 +204,7 @@ def pickup_and_place(objects_list: list):
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         if objects_list[value].obj_type in DRINKS:
             # Navigate to trash can pose
-            NavigateAction([Pose([1.1, 3.8, 0], [0, 0, -1, 1])]).resolve().perform()
+            NavigateAction([Pose([1.26, 3.58, 0], [0, 0, -1, 1])]).resolve().perform()
             throw_object(objects_list[value])
         else:
             NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
@@ -239,12 +229,13 @@ def throw_object(obj: Object):
     # TODO: adjust navigate poses
     # navigate to perceive pose
     # NavigateAction([Pose()]).resolve().perform()
-    obj_desig = try_detect(Pose([1.2, 0.257, 0.18], [0, 0, -1, 1]))
+    obj_desig = DetectAction(technique='all').resolve().perform()
+    # try_detect(Pose([1.2, 0.257, 0.08], [0, 0, -1, 1]))
     # TODO: change "trash" name
     trash = get_object(obj_desig, "Spoon")
     # navigate to drop pose (trash can)
-    NavigateAction([Pose([1.26, 3.58, 0], [0, 0, -1, 1])]).resolve().perform()
-    PlaceAction(obj, [Pose([trash.pose.position.x, trash.pose.position.y, 0.54])], [Grasp.FRONT],
+    # NavigateAction([Pose([1.26, 3.58, 0], [0, 0, -1, 1])]).resolve().perform()
+    PlaceAction(obj, [Pose([trash.pose.position.x, trash.pose.position.y, 0.65])], [Grasp.FRONT],
                 [Arms.LEFT], [False]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
 
@@ -279,6 +270,7 @@ def navigate_and_detect(location_name: NavigatePose):
         MoveTorsoAction([0.12]).resolve().perform()
         object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 3.9, 0.21], [0, 0, 0, 1]))
         objects_list = get_objects(object_desig)
+        image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
     elif location_name == NavigatePose.POPCORN_TABLE:
         NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x - 0.4,
                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
@@ -286,16 +278,38 @@ def navigate_and_detect(location_name: NavigatePose):
         MoveTorsoAction([0.12]).resolve().perform()
         object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list1 = get_objects(object_desig1)
+        annotator = get_used_annotator_list(Demos.CLEAN_THE_TABLE)
+        isp = ImageSendPublisher(sub_topic=annotator[0])
+        isp.activate_subscriber()
+        image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
         NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                              NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list2 = get_objects(object_desig2)
+        annotator = get_used_annotator_list(Demos.CLEAN_THE_TABLE)
+        isp = ImageSendPublisher(sub_topic=annotator[0])
+        isp.activate_subscriber()
+        image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
         objects_list = []
         for object in objects_list1 + objects_list2:
             if object not in objects_list:
                 objects_list.append(object)
+
+        # which objects has been perceived
+        if len(objects_list) == 0:
+            TalkingMotion("I was not able to find any objects").perform()
+        else:
+            sentence = ""
+            for value in range(len(objects_list)):
+                if value + 1 < len(objects_list):
+                    sentence += "a " + str(objects_list[value].obj_type) + ", "
+                else:
+                    sentence += "and a " + str(objects_list[value].obj_type)
+            print(sentence)
+            TalkingMotion(f"I perceived {sentence}").perform()
+
     else:
         raise ValueError(f'Incorrect location name: {location_name}.')
 
@@ -309,7 +323,7 @@ def failure_handling1(sorted_obj: list):
     :param sorted_obj: list of seen objects.
     :return: list of seen objects in the second round. Empty list when nothing perceived or all objects already found.
     """
-    global LEN_WISHED_SORTED_OBJ_LIST, wished_sorted_obj_list, move_to_the_middle_table_pose
+    global LEN_WISHED_SORTED_OBJ_LIST, wished_sorted_obj_list
     new_objects_list = []
     print(f"length of sorted obj: {len(sorted_obj)}")
 
@@ -422,6 +436,7 @@ with (real_robot):
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
+    """
     # sort objects based on distance and which we like to keep
     sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
     # sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
@@ -434,3 +449,4 @@ with (real_robot):
 
     rospy.loginfo("Done!")
     TalkingMotion("Done").perform()
+    """

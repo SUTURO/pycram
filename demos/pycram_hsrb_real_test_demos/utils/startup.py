@@ -31,4 +31,4 @@ def startup():
     KitchenStateUpdater("/tf", "/iai_kitchen/joint_states")
     move = PoseNavigator()
 
-    return tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot
+    return tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot, kitchen
