@@ -193,11 +193,21 @@ def move_towards(goal: Pose):
         moving = True
         move.pub_now(navpose=goal)
 
+def set_pose_in_front(goalPose: Pose, robotPose: Pose, dist : float):
+    rotation_matrix = quaternion_matrix([goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w])
+
+    forward_vector = rotation_matrix[:3, 0]
+    distance = dist
+    new_pos = np.array([goalPose.pose.position.x, goalPose.pose.position.y, goalPose.pose.position.z]) - distance * forward_vector
+    adjusted_pose = Pose(position=[new_pos[0], new_pos[1], new_pos[2]], orientation=[goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w])
+    print(adjusted_pose)
+    return adjusted_pose
 
 def demo(step: int):
-    rospy.Subscriber("/hsrb/odom", Odometry, cmd_vel_callback)
-    rospy.Subscriber("/hsrb/base_scan", LaserScan, laser_callback)
+   # rospy.Subscriber("/hsrb/odom", Odometry, cmd_vel_callback)
+   # rospy.Subscriber("/hsrb/base_scan", LaserScan, laser_callback)
     global customer, customerCounter, kitchen_pose, human_pose
+
     with real_robot:
 
         talk = True
@@ -246,15 +256,17 @@ def demo(step: int):
                 rospy.sleep(2)
                 drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
                 print(drive_pose)
+                adjusted_drive_pose = set_pose_in_front(drive_pose, robot.get_pose(), 0.6)
 
                 customerCounter += 1
 
-                customer = CustomerDescription(customerCounter, drive_pose)
+                customer = CustomerDescription(customerCounter, adjusted_drive_pose)
                 customers.append(customer)
 
-            marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
+            marker.publish(Pose.from_pose_stamped(adjusted_drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
             rospy.sleep(2.5)
-            move_towards(drive_pose)
+           # move_towards(drive_pose)
+            move.pub_now(navpose=adjusted_drive_pose)
             #plan = Code(move.pub_now(navpose=drive_pose) | lol(drive_pose))
             #plan.perform()
 
@@ -297,14 +309,14 @@ def demo(step: int):
                 image_switch_publisher.pub_now(ImageEnum.GENERATED_TEXT.value)
             elif len(customer.order) >= 2:
                 TalkingMotion("Please prepare the following order").perform()
-                txt_order = ""
+                txt_order = "The order: "
                 for n in customer.order:
-                    TalkingMotion(f"{n[1]}{n[0]} ").perform()
+                    TalkingMotion(f"{n[1]}{n[0]}").perform()
                     txt_order += f" {n[1]} {n[0]} " + "\n"
                 text_to_img_publisher.pub_now(txt_order)
                 rospy.sleep(2)
                 image_switch_publisher.pub_now(ImageEnum.GENERATED_TEXT.value)
-            TalkingMotion("Please put the order into the tray in my gripper").perform()
+            TalkingMotion("Please put the order in the tray in my gripper").perform()
             rospy.sleep(2)
             TalkingMotion(f"Please push down my gripper, if the order is prepared and my display changed").perform()
             rospy.sleep(1)
