@@ -27,12 +27,14 @@ from pycram.utilities.robocup_utils import TextToSpeechPublisher, HSRBMoveGrippe
 
 from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
+start_signal = StartSignalWaiter()
 
 world = BulletWorld(WorldMode.GUI)
-kitchen = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2024_1.urdf")
+kitchen = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_robocup_2025_1.urdf")
 kitchen_desig = ObjectDesignatorDescription(names=["kitchen"])
 
 lt = LocalTransformer()
+navigation = PoseNavigator()
 robot = Object("hsrb", ObjectType.ROBOT, "../../resources/" + "hsrb" + ".urdf")
 robot_desig = ObjectDesignatorDescription(names=["hsrb"])
 KitchenStateUpdater("/tf", "/iai_kitchen/joint_states")
@@ -59,24 +61,24 @@ isp = ImageSendPublisher(sub_topic=annotator[0])
 talk_bool: bool = True
 
 # Variables needed for the left shelf door opening
-shelf_left_door_exists = True
-start_with_left_shelf_door_open = True
-shelf_left_door_handle = "shelf_billy:shelf_billy:shelf_door_left:handle"
-shelf_left_door_joint = "shelf_billy:shelf_billy:shelf_door_left:joint"
+# shelf_left_door_exists = True
+# start_with_left_shelf_door_open = True
+# shelf_left_door_handle = "shelf_billy:shelf_billy:shelf_door_left:handle"
+# shelf_left_door_joint = "shelf_billy:shelf_billy:shelf_door_left:joint"
 
 # Variables needed for the right shelf door opening
-shelf_right_door_exists = True
-start_with_right_shelf_door_open = True
-shelf_right_door_handle = "shelf_billy:shelf_billy:shelf_door_right:handle"
-shelf_right_door_joint = "shelf_billy:shelf_billy:shelf_door_right:joint"
-shelf_door_open_state = -1.7
+# shelf_right_door_exists = True
+# start_with_right_shelf_door_open = True
+# shelf_right_door_handle = "shelf_billy:shelf_billy:shelf_door_right:handle"
+# shelf_right_door_joint = "shelf_billy:shelf_billy:shelf_door_right:joint"
+# shelf_door_open_state = -1.7
 
 # Insert the correct link names here. I chose to also save the variable names seperately, in case
 # I want to target a specific shelf floor: for example when perceiving the shelf initially, I currently
 # look at floor 0 and 2 (and leave out shelf_floor_1), because thats enough to reliably capture the whole shelf.
-shelf_floor_0 = 'shelf_billy:shelf_billy:shelf_floor_0'
-shelf_floor_1 = 'shelf_billy:shelf_billy:shelf_floor_1'
-shelf_floor_2 = 'shelf_billy:shelf_billy:shelf_floor_2'
+shelf_floor_0 = 'shelf_billy_corridor:shelf_billy:shelf_floor_0'
+shelf_floor_1 = 'shelf_billy_corridor:shelf_billy:shelf_floor_1'
+shelf_floor_2 = 'shelf_billy_corridor:shelf_billy:shelf_floor_2'
 
 # this list contains the links of the shelf floors we want to use for placing
 # In this case, we will never try to place an object on shelf_floor_0
@@ -95,14 +97,16 @@ pick_table_link = "dinner_table:dinner_table:table_center"
 # [0.0, 0.0, 0.707, 0.707]: robot is rotated 90 degrees counter-clockwise from the map frame
 # [0.0, 0.0, -0.707, 0.707]: robot is rotated 90 degrees clockwise from the map frame
 main_door_pose = Pose([1.25, 0.148, 0], [0, 0, 0, 1])
-left_door_pose = Pose([3.73, 0.98, 0], [0, 0, 0.7, 0.7])
+left_door_pose = Pose([3.73, 0.45, 0], [0, 0, 0.7, 0.7])
 front_door_to_kitchen_pose = Pose([4.67, 0.412, 0], [0, 0, 0, 1])
 left_door_to_kitchen_pose = Pose([7.65, 2.75, 0], [0, 0, -0.7, 0.7])
 left_door_to_livingroom_pose = Pose([7.65, 2.75, 0], [0, 0, 0.7, 0.7])
 perceive_pose = Pose([4.7, 2.9, 0.0], [0, 0, 0, 1])
-shelf_pose = Pose([4.7, 3.0, 0.0], [0, 0, -0.7, 0.7])
-shelf_pose_drive_back = Pose([4.7, 3.0, 0.0], [0, 0, 0.7, 0.7])
-table_pose = Pose([8.3, -0.1, 0.0], [0.0, 0.0, -0.29, 0.956])
+shelf_pose = Pose([4.8, 3.0, 0.0], [0, 0, -0.7, 0.7])
+shelf_pose_drive_back = Pose([4.8, 3.0, 0.0], [0, 0, 0, 1])
+table_pose = Pose([4.6, 2.9, 0.0], [0, 0, 0, 1])
+table_pose_drive_back = Pose([6.15, 3.8, 0.0], [0, 0, 1, 0])
+# table_pose = Pose([8.3, -0.1, 0.0], [0.0, 0.0, -0.29, 0.956])
 # table_pose_drive_back = Pose([8.3, -0.1, 0.0], [0.0, 0.0, 0.958, 0.283])
 
 # Used to identify if an object is some form of cereal. List contains substrings that are common in cereal names
@@ -112,12 +116,12 @@ cereal_types = ["Muesli", "Cereal"]
 
 # Specifies the types that may be used as containers for pouring.
 # This is used in the "if step <= 3:" block inside demo()
-container_types = ["Metalbowl", ObjectType.BOWL, "CerealStorageContainerCornflakes", "CerealStorageContainerFruitLoops"]
+container_types = ["CerealStorageContainerCornflakes", "CerealStorageContainerFruitLoops"]
 
 # Specifies the direction to pour from ("left" or "right") and the tipping angle for
 # pouring (positive angle, is inverted inside the PouringActionPerformable if needed).
 direction_to_pour_from = "left"
-pour_angle = 115
+pour_angle = 125
 
 # Objects types where we know we want to grasp from the top. Otherwise, process_pick_up_objects will
 # try to find a suitable grasp based on object dimensions etc, which may be unreliable
@@ -236,15 +240,15 @@ talk = TextToSpeechPublisher()
 giskard.clear()
 giskard.sync_worlds()
 
-if start_with_left_shelf_door_open and shelf_left_door_exists:
-    kitchen.set_joint_position(shelf_left_door_joint, shelf_door_open_state)
-    if demo_mode == simulated_robot:
-        giskard.set_joint_positions(kitchen, {shelf_left_door_joint: shelf_door_open_state})
-
-if start_with_right_shelf_door_open and shelf_right_door_exists:
-    kitchen.set_joint_position(shelf_right_door_joint, shelf_door_open_state)
-    if demo_mode == simulated_robot:
-        giskard.set_joint_positions(kitchen, {shelf_right_door_joint: shelf_door_open_state})
+# if start_with_left_shelf_door_open and shelf_left_door_exists:
+#     kitchen.set_joint_position(shelf_left_door_joint, shelf_door_open_state)
+#     if demo_mode == simulated_robot:
+#         giskard.set_joint_positions(kitchen, {shelf_left_door_joint: shelf_door_open_state})
+#
+# if start_with_right_shelf_door_open and shelf_right_door_exists:
+#     kitchen.set_joint_position(shelf_right_door_joint, shelf_door_open_state)
+#     if demo_mode == simulated_robot:
+#         giskard.set_joint_positions(kitchen, {shelf_right_door_joint: shelf_door_open_state})
 
 
 def multiply_quaternions(q1, q2):
@@ -445,7 +449,7 @@ def place_object(object_name, object, grasp, target_location, talk_bool):
     else:
         set_joint_config(config=config_for_placing)
 
-    talk_pub(f"Pick Up now! {object_name.split('_')[0]} from: {grasp}", talk_bool)
+    talk_pub(f"Placing now! {object_name.split('_')[0]} from: {grasp}", talk_bool)
 
     # These two code blocks both move the gripper with the object to te target pose, the second one uses sequence goals
     # while the first one doesnt. The second one is faster, but if the grasping gets unreliable because
@@ -486,7 +490,7 @@ def place_object(object_name, object, grasp, target_location, talk_bool):
     #     except Exception as e:
     #         print(f"Exception type: {type(e).__name__}")
 
-    giskard.achieve_detached(object, demo_mode)
+    # giskard.achieve_detached(object, demo_mode)
     BulletWorld.robot.detach(object)
     gripper_motion("open")
 
@@ -506,7 +510,7 @@ def place_object(object_name, object, grasp, target_location, talk_bool):
         giskard.update_from_giskard(robot, park)
 
 
-def process_objects_and_pick_up(talk_bool, table):
+def process_objects_and_pick_up(talk_bool):
     """
     Process the objects on the table and pick up the first object. The objects are processed and the first object
     is picked up based on the x position of the object.
@@ -527,7 +531,8 @@ def process_objects_and_pick_up(talk_bool, table):
     talk_pub("driving", talk_bool)
     navigate_to(table_pose)
     # look_pose = kitchen.get_link_pose(pick_table_link)
-    look_pose = table
+    # look_pose = table
+    look_pose = Pose([5.45, 2.9, 0.0], [0, 0, -0.7, 0.7])
     set_joint_config(config=perceive_config)
     move_head(look_pose)
 
@@ -689,7 +694,7 @@ def process_objects_and_pick_up(talk_bool, table):
 
         # Keep this uncommented, updates the robot, attaches the object and closes the gripper
         giskard.update_from_giskard(robot, giskard_return)
-        giskard.achieve_attached(object, demo_mode=demo_mode)
+        # giskard.achieve_attached(object, demo_mode=demo_mode)
         tip_link = 'hand_gripper_tool_frame'
         BulletWorld.robot.attach(child_object=object, parent_link=tip_link)
         gripper_motion("close")
@@ -895,31 +900,51 @@ print(ergebnis)
 def demo(step):
     global groups_in_shelf, handled_cereal, table_pose
     with ((((demo_mode)))):
+        try:
+            talk_pub("push down my hand when you are ready")
+
+            plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+            plan.perform()
+        except SensorMonitoringCondition:
+            print("start demo")
+
+        # park = park_arms()
+        # while not park:
+        #     print("waiting for park")
+        #     rospy.sleep(0.1)
+        # if demo_mode == real_robot:
+        #     giskard.update_from_giskard(robot, park)
+        start_signal.wait_for_startsignal()
+        start_pose = robot.get_pose()
+        navigation.pub_fake_pose(start_pose)
+        giskard.turning_left_and_back(45)
+
         object = None,
         grasp = None,
         talk_bool = True
         gripper_motion("close")
-        park = park_arms()
-        while not park:
-            print("waiting for park")
-            rospy.sleep(0.1)
-        if demo_mode == real_robot:
-            giskard.update_from_giskard(robot, park)
+        # park = park_arms()
+        # while not park:
+        #     print("waiting for park")
+        #     rospy.sleep(0.1)
+        # if demo_mode == real_robot:
+        #     giskard.update_from_giskard(robot, park)
 
         if step <= 1:
             talk_pub("driving", talk_bool)
-            navigate_to(main_door_pose)
             navigate_to(left_door_pose)
             navigate_to(shelf_pose, interrupt_bool=False)
             TalkingMotion("Can you please open the right door of the shelf?")
             text_to_speech_publisher.pub_now("Can you please open the right door of the shelf?")
             rospy.sleep(0.5)
             image_switch_publisher.pub_now(ImageEnum.GENERATED_TEXT.value)
-            rospy.sleep(8)
+            rospy.sleep(2)
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
             giskard.billy_shelf_open(shelf_pose)
 
+            navigate_to(Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y + 0.3, 0],
+                             [0, 0, -0.7, 0.7]))
             navigate_to(shelf_pose, interrupt_bool=False)
             groups_in_shelf = process_objects_in_shelf(talk_bool)
             park = park_arms()
@@ -928,31 +953,32 @@ def demo(step):
                 rospy.sleep(0.1)
             if demo_mode == real_robot:
                 giskard.update_from_giskard(robot, park)
-            navigate_to(shelf_pose_drive_back, interrupt_bool=False)
-            TalkingMotion("looking for the table").perform()
-            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-            obj_desig = DetectAction(technique='all').resolve().perform()
-            if object_found(obj_desig, "table"):
-                table = get_table(obj_desig)
-            else:
-                MoveJointsMotion(["head_pan_joint"], [-0.5]).perform()
-                obj_desig = DetectAction(technique='all').resolve().perform()
-                if object_found(obj_desig, "table"):
-                    table = get_table(obj_desig)
-                else:
-                    MoveJointsMotion(["head_pan_joint"], [-0.9]).perform()
-                    obj_desig = DetectAction(technique='all').resolve().perform()
-                    if object_found(obj_desig, "table"):
-                        table = get_table(obj_desig)
-                    else:
-                        TalkingMotion("I was not able to find the table.").perform()
-            table_pose = table.pose
+            # navigate_to(shelf_pose_drive_back, interrupt_bool=False)
+            # navigate_to(table_pose, interrupt_bool=False)
+            # TalkingMotion("looking for the table").perform()
+            # MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            # MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+            # obj_desig = DetectAction(technique='all').resolve().perform()
+            # if object_found(obj_desig, "table"):
+            #     table = get_table(obj_desig)
+            # else:
+            #     MoveJointsMotion(["head_pan_joint"], [-0.5]).perform()
+            #     obj_desig = DetectAction(technique='all').resolve().perform()
+            #     if object_found(obj_desig, "table"):
+            #         table = get_table(obj_desig)
+            #     else:
+            #         MoveJointsMotion(["head_pan_joint"], [-0.9]).perform()
+            #         obj_desig = DetectAction(technique='all').resolve().perform()
+            #         if object_found(obj_desig, "table"):
+            #             table = get_table(obj_desig)
+            #         else:
+            #             TalkingMotion("I was not able to find the table.").perform()
+            # table_pose = table.pose
 
         if step <= 2:
             try:
                 grasped_bool, grasp, group,  object_raw, obj_id, groups_on_table, original_pose = process_objects_and_pick_up(
-                    talk_bool, table)
+                    talk_bool)
             except TypeError as e:
                 print(f"done (caught error {e})")
                 return
@@ -981,9 +1007,10 @@ def demo(step):
                 place_object(object_raw.name, object_raw.world_object, grasp, original_pose, talk_bool)
 
             else:
-                drive_back_orientation = quaternion_rotate_180(table.pose.orientation, [0, 0, 1])
-                table_pose_drive_back = Pose(table_pose.pose.position, drive_back_orientation)
-                navigate_to(table_pose_drive_back, interrupt_bool=False)
+                # drive_back_orientation = quaternion_rotate_180(table.pose.orientation, [0, 0, 1])
+                # table_pose_drive_back = Pose(table_pose.pose.position, drive_back_orientation)
+                # navigate_to(table_pose_drive_back, interrupt_bool=False)
+                # navigate_to(table_pose, interrupt_bool=False)
                 navigate_to(shelf_pose, interrupt_bool=False)
                 giskard.sync_worlds()
                 place_pose, link = find_pose_in_shelf(group, object_raw, groups_in_shelf)
@@ -997,8 +1024,8 @@ def demo(step):
 #
 # monitor_func_place()
 
-# try:
-#     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-#     plan.perform()
-# except SensorMonitoringCondition:
+
+
 demo(0)
+
+
