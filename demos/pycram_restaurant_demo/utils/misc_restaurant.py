@@ -1,40 +1,49 @@
-import math
-from typing import Any
+import numpy as np
+from hsrb_simple_actions import tf
+from tf.transformations import quaternion_matrix
 
-from geometry_msgs.msg import PoseWithCovarianceStamped
-
-from pycram.failures import SensorMonitoringCondition
-from pycram.fluent import Fluent
+from pycram.datastructures.pose import Pose
 
 
-class Restaurant:
-    def __init__(self, robot: Any ,rospy):
-        self.toya_pose = Fluent()
-        self.human_pose = None
-        self.toya_pose_sub = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.toya_pose_cb)
-        self.robot = robot
-        self.rospy = rospy
+def change_orientation(startPose: Pose):
+    """
+    Rotates the base of the HSR in a 180-degree rotation around the origin.
+    :param startPose: Pose to rotate around.
+    :return: Rotated Pose.
+    """
+    quat_orientation = (startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z,
+              startPose.pose.orientation.w)
+    quat_add = tf.transformations.quaternion_from_euler(0, 0, np.pi)
+    quat_add_new = (quat_add[0], quat_add[1], quat_add[2], quat_add[3])
 
-    def toya_pose_cb(self, msg):
-        #print("updating")
-        self.toya_pose.set_value(self.robot.get_pose())
-        self.rospy.sleep(0.5)
-
-    def set_human_pose(self, pose: PoseWithCovarianceStamped):
-        self.human_pose = pose
-
-    def distance(self):
-        print("toya pose:" + str(self.toya_pose.get_value().pose))
-        if self.human_pose:
-            dis = math.sqrt((self.human_pose.pose.position.x - self.toya_pose.get_value().pose.position.x) ** 2 +
-                            (self.human_pose.pose.position.y - self.toya_pose.get_value().pose.position.y) ** 2)
-            print("dis: " + str(dis))
-            return dis
-        else:
-            self.rospy.logerr("Cant calculate distance, no human pose found")
+    q_new = tf.transformations.quaternion_multiply(quat_orientation, quat_add_new)
+    new_angle = (q_new[0], q_new[1], q_new[2], q_new[3])
+    newPose = Pose([startPose.pose.position.x, startPose.pose.position.y, startPose.pose.position.z],
+                   [new_angle[0], new_angle[1], new_angle[2], new_angle[3]])
+    return newPose
 
 
-def monitor_func(restaurant : Restaurant):
-    if restaurant.distance() < 1:
-        return SensorMonitoringCondition
-    return False
+def move_pose_forwards(goal: Pose, distance: float):
+    """
+    Moves the goal pose of a navigation action on a vector given the set distance.
+    :param goal: Pose to move.
+    :param distance: Distance to move the goal.
+    :return: Moved Pose.
+    """
+    rotMatrix = quaternion_matrix([goal.pose.orientation.x,
+                                   goal.pose.orientation.y,
+                                   goal.pose.orientation.z,
+                                   goal.pose.orientation.w])
+    forward_vector = rotMatrix[:3, 0]
+    movedPose = np.array([goal.pose.position.x,
+                      goal.pose.position.y,
+                      goal.pose.position.z]) - distance * forward_vector
+    return movedPose
+
+def set_pose_in_front(goalPose: Pose, dist : float):
+    new_pos = move_pose_forwards(goalPose, dist)
+    adjusted_pose = Pose(position=[new_pos[0], new_pos[1], new_pos[2]], orientation=[goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w])
+    return adjusted_pose
+
+
+
