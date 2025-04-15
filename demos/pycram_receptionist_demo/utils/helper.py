@@ -92,7 +92,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
                     # move pose more to the left for clear pointing pose
                     pose_in_robot_frame.pose.position.y += 0.6
 
-                elif pose_in_robot_frame.pose.position.y < -0.25:
+                elif pose_in_robot_frame.pose.position.y < -0.3:
                     TalkingMotion("please take a seat to the right from me").perform()
                     # move pose more to the right for clear pointing pose
                     pose_in_robot_frame.pose.position.y -= 0.5
@@ -169,18 +169,23 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
     while True:
         unknown = []
         try:
-            if counter > 4 or (found_guest and found_host):
+            if counter > 5 or (found_guest and found_host):
                 break
 
             elif counter == 2:
                 TalkingMotion("sitting people please look at me").perform()
-                rospy.sleep(2.5)
+                rospy.sleep(2)
 
             elif counter == 3:
                 # look to the side to find faces
                 MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
                 TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2.5)
+            elif counter == 4:
+                # look to the side to find faces
+                MoveJointsMotion(["head_pan_joint"], [0.8]).perform()
+                TalkingMotion("sitting people please look at me").perform()
+                rospy.sleep(2.2)
 
             human_dict = DetectAction(technique='human', state='face').resolve().perform()
             rospy.loginfo("faces detect: " + str(human_dict))
@@ -210,6 +215,10 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
             counter += 1
             if counter == 3:
                 MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
+                TalkingMotion("please look at me").perform()
+                rospy.sleep(2.5)
+            if counter == 4:
+                MoveJointsMotion(["head_pan_joint"], [0.8]).perform()
                 TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
 
@@ -302,29 +311,27 @@ def describe(human: HumanDescription):
     
     if human.attributes != "False" and human.attributes is not None:
         print(human.attributes)
-
-        if human.pose:
-            pub_pose2.publish(human.pose)
-
+        TalkingMotion(f"another guest called {human.name} arrived before you").perform()
+        rospy.sleep(2.5)
         TalkingMotion(f"I will describe {human.name} further now").perform()
         rospy.sleep(1.5)
 
         # gender
-        TalkingMotion(f"i think your gender is {human.attributes[0]}").perform()
+        TalkingMotion(f"their gender is {human.attributes[0]}").perform()
         rospy.sleep(1.5)
 
         # headgear or not
-        TalkingMotion(f"you are not wearing a hat").perform()
+        TalkingMotion(f"they are not wearing a hat").perform()
         rospy.sleep(1)
 
         # kind of clothes
-        TalkingMotion(f"you are  {human.attributes[2]}").perform()
-        rospy.sleep(1)
+        # TalkingMotion(f"they are  {human.attributes[2]}").perform()
+        # rospy.sleep(1)
 
         # brightness of clothes
-        TalkingMotion(f"you are wearing {human.attributes[3]}").perform()
-        rospy.sleep(2.5)
-        TalkingMotion("have fun at the party").perform()
+        TalkingMotion(f"they are wearing {human.attributes[3]}").perform()
+        rospy.sleep(1)
+
 
 
 def check_drink_available(guest: HumanDescription):

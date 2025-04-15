@@ -338,6 +338,9 @@ class HSRBDetectingReal(ProcessModule):
             print("I am here")
             stop_query()
             return "stopped"
+        elif desig.technique == 'human_receptionist' and (desig.state == 'start' or desig.state == None):
+            human_pose = query_human_receptionist()
+            return human_pose
         elif desig.technique == 'human' and (desig.state == 'start' or desig.state == None):
             human_pose = query_human()
             return human_pose
@@ -356,11 +359,14 @@ class HSRBDetectingReal(ProcessModule):
             for i in range(0, len(query_result.res)):
                 try:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                    return human_pose
                 except IndexError:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose)
+                    return human_pose
                     pass
         elif desig.technique == 'waving':
             query_result = query_waving_human()
+            print(query_result)
             for i in range(0, len(query_result.res)):
                 try:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])

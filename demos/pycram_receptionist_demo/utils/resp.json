@@ -106,9 +106,8 @@
       "I love the creativity that comes with coding."
     ],
     "robotics": [
-      "Building robots is my passion!",
-      "I love combining hardware and software to create something unique.",
-      "There's always something new to learn in robotics."
+      "robotics is fun",
+      "i love robotics too"
     ],
     "guitar": [
       "I love strumming my guitar and playing my favorite songs.",
@@ -192,12 +191,15 @@
     ],
     "handball": [
       "i am a great goal keeper in handball"
+    ],
+    "robots": [
+      "i am a robot"
     ]
   },
   "fallback": [
     "That sounds interesting!",
     "Oh, that must be fun!",
-    "I haven't tried that before, but it sounds fascinating!"
+    "sounds fascinating!"
   ],
   "verb_correction": {
     "program": [
@@ -281,6 +283,7 @@
     "meet with friends": [
       "meeting with friends"
     ]
+
 }
 
 

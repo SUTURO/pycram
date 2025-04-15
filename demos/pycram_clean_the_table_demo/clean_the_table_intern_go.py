@@ -9,10 +9,13 @@ from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
+from pycram.utilities.robocup_utils import StartSignalWaiter
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
 
 fts = ForceTorqueSensor(robot_name='hsrb')
+
+start_signal = StartSignalWaiter()
 
 # list of cutlery objects
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
@@ -358,17 +361,23 @@ def monitor_func():
 # Main interaction sequence with real robot
 with (real_robot):
     try:
+        TalkingMotion("push down my gripper to start").perform()
         plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
         plan.perform()
     except SensorMonitoringCondition:
+        start_signal.wait_for_startsignal()
         ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
 
         # navigate from door to dishwasher
         NavigateAction([NavigatePose.DOOR.value]).resolve().perform()
         NavigateAction([NavigatePose.CORRIDOR.value]).resolve().perform()
-        NavigateAction([NavigatePose.BEFORE_KITCHEN.value]).resolve().perform()
-        NavigateAction([NavigatePose.IN_KITCHEN.value]).resolve().perform()
-        NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
+        NavigateAction([Pose([NavigatePose.CORRIDOR.value.pose.position.x,
+                              NavigatePose.SHELF.value.pose.position.y, 0],
+                             NavigatePose.SHELF.value.pose.orientation)]).resolve().perform()
+
+        # NavigateAction([NavigatePose.BEFORE_KITCHEN.value]).resolve().perform()
+        # NavigateAction([NavigatePose.IN_KITCHEN.value]).resolve().perform()
+        # NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
         # MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
         # MoveJointsMotion(["arm_roll_joint"], [0]).perform()
@@ -376,10 +385,10 @@ with (real_robot):
 
         # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
 
-        TalkingMotion("Can you please open the dishwasher and pull out the lower rack").perform()
+        # TalkingMotion("Can you please open the dishwasher and pull out the lower rack").perform()
 
-        ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        # ParkArmsAction([Arms.LEFT]).resolve().perform()
+        # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
         # detect objects
         object_desig_list = navigate_and_detect(NavigatePose.KITCHEN_TABLE)

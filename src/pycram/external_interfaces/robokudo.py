@@ -97,6 +97,7 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
     loginfo("Waiting for action server")
     client.wait_for_server()
 
+
     global human_bool
     global human_pose
     human_bool = False
@@ -114,7 +115,8 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
         human_bool = True
         human_pose = pose
 
-    if goal.obj.type == "human":
+    if goal.obj.type == "human_receptionist":
+        goal.obj.type = "human"
         client.send_goal(goal)
 
         rospy.Subscriber("/human_pose", PointStamped, human_callback)
@@ -152,6 +154,14 @@ def query_object(obj_desc: ObjectDesignatorDescription) -> dict:
 def query_human() -> PointStamped:
     """Query RoboKudo for human detection and return the detected human's pose."""
     result = send_query(obj_type='human')
+    if result:
+        return result  # Assuming result is of type PointStamped or similar.
+    return "human found"
+
+@init_robokudo_interface
+def query_human_receptionist() -> PointStamped:
+    """Query RoboKudo for human detection and return the detected human's pose."""
+    result = send_query(obj_type='human_receptionist')
     if result:
         return result  # Assuming result is of type PointStamped or similar.
     return "human found"

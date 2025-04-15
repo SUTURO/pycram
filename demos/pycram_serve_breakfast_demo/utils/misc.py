@@ -161,3 +161,22 @@ def try_detect(pose: Pose, technique: Optional[str] = None):
     except PerceptionObjectNotFound:
         object_desig = {}
     return object_desig
+
+
+def try_detect_with_tilting(angle: float, technique: Optional[str] = None):
+    """
+    lets the robot looks on a pose and perceive objects or free spaces
+    :param pose: the pose that the robot looks to
+    :param technique: if location should be detected or not
+    :return: tupel of State and dictionary of found objects in the FOV
+    """
+    MoveJointsMotion(["head_tilt_joint"], [angle]).perform()
+    TalkingMotion("Perceiving").perform()
+    try:
+        if technique == "location":
+            object_desig = DetectAction(technique='location', state='popcorn_table').resolve().perform()
+        else:
+            object_desig = DetectAction(technique='all').resolve().perform()
+    except PerceptionObjectNotFound:
+        object_desig = {}
+    return object_desig

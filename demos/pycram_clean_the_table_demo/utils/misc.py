@@ -1,5 +1,6 @@
 from typing_extensions import Optional
 
+from demos.pycram_serve_breakfast_demo.utils.misc import try_detect_with_tilting
 from pycram.designators.action_designator import *
 from pycram.failures import PerceptionObjectNotFound, EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
@@ -19,6 +20,34 @@ def get_objects(obj_dict: dict):
         objects_list.append(value)
 
     return objects_list
+
+
+def sort_objects(found_objects_list: list):
+    CUTLERY = ["Spoon", "Fork", "Knife"]
+    DRINKS = ["AppleJuice", "OatMilk", "MezzoMixBottle", "MilkPackBerch", "IceTeaFuze", "SpriteCan",
+              "TeaBagBoxBad", "ColaBottle"]
+    SILVERWARE = ["Metalmug", "Metalbowl", "Metalplate"]
+
+    first_list = []
+    for obj in found_objects_list:
+        object_type = obj.obj_type
+        if object_type in CUTLERY + DRINKS + SILVERWARE:
+            first_list.append(obj)
+
+    drinks_items = [item for item in first_list if item.obj_type in DRINKS]
+    silverware_items = [item for item in first_list if item.obj_type in SILVERWARE and item != "Metalplate"]
+    cutlery_items = [item for item in first_list if item.obj_type in CUTLERY]
+    metalplate_item = [item for item in first_list if item.obj_type == "Metalplate"]
+
+    sorted_objects = drinks_items + silverware_items + cutlery_items + metalplate_item
+
+    # print which objects are in the final list
+    test_list = []
+    for test_object in sorted_objects:
+        test_list.append(test_object.obj_type)
+    print(test_list)
+
+    return sorted_objects
 
 
 def sort_objects_euclidian(robot: BulletWorld.robot, found_objects_list: list, wished_sorted_obj_list: list):
@@ -172,6 +201,49 @@ def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Obj
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
             rospy.sleep(4)
             MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+
+
+def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
+    """
+    Picking up any object with failure handling.
+    :param robot: the robot
+    :param obj: the object that should be picked up
+    :param grasps: how to pick up the object
+    """
+    try:
+        PickUpAction(obj, [Arms.LEFT], [grasps]).resolve().perform()
+    except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
+        TalkingMotion("Try pick up again").perform()
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        # after failed attempt to pick up the object, the robot moves 30cm back on x pose
+        step_back_robocup(robot)
+        NavigateAction([Pose([8.35, -0.1, 0.0], [0.0, 0.0, -0.29, 0.956])]).resolve().perform()
+        MoveTorsoAction([0.12]).resolve().perform()
+        # try to detect the object again
+        object_desig = try_detect_with_tilting(-0.2)
+        new_object = get_object(object_desig, str(obj.obj_type))
+        # second try to pick up the object
+        try:
+            TalkingMotion("try again").perform()
+            PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
+        # ask for human interaction if it fails a second time
+        except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
+            step_back_robocup(robot)
+            TalkingMotion(f"Can you please give me the {obj.obj_type} on the table?").perform()
+            TalkingMotion("Put it in my gripper.").perform()
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            rospy.sleep(5)
+            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+
+
+def step_back_robocup(robot: BulletWorld.robot):
+    """"
+    steps back, parks arms and opens gripper
+    """
+    NavigateAction([Pose([robot.get_pose().pose.position.x - 0.3, robot.get_pose().pose.position.y + 0.3, 0],
+                    robot.get_pose().pose.orientation)]).resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
 
 def step_back(robot: BulletWorld.robot):
