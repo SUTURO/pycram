@@ -112,6 +112,8 @@ class NLP_Helper:
             guest.set_name(self.name_repeat())
         self.image_switch_publisher.pub_now(ImageEnum.HI.value)
         TalkingMotion(f"Nice to meet you {guest.name}").perform()
+        #TalkingMotion(f"Nice to meet you Rania").perform()
+
         return guest
 
     def name_repeat(self):
@@ -182,6 +184,8 @@ class NLP_Helper:
         """
         function that returns interests of conversational partner
         """
+        TalkingMotion("answer me when my display changes").perform()
+
         trys = 0
         # wait for nlp answer
         start_time = time.time()
@@ -235,7 +239,7 @@ class NLP_Helper:
         TalkingMotion("What is your favorite drink?").perform()
         rospy.sleep(2)
         TalkingMotion("please answer me when my display changes").perform()
-        rospy.sleep(2)
+        rospy.sleep(2.2)
 
         # signal to start listening
         self.nlp_pub.publish("start listening")
@@ -246,7 +250,8 @@ class NLP_Helper:
 
         # wait for nlp answer
         start_time = time.time()
-        while not self.callback:
+        trys = 0
+        while not self.callback and trys < 2:
             rospy.sleep(1)
 
             if int(time.time() - start_time) == timeout:
@@ -256,6 +261,7 @@ class NLP_Helper:
                 start_time = time.time()
                 rospy.sleep(1)
                 self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+                trys += 1
             # if int(time.time() - start_time) == timeout2:
             #     print("listen again")
             #     self.nlp_pub.publish("start listening")
@@ -268,8 +274,9 @@ class NLP_Helper:
             guest.set_drink(self.response[2])
         else:
             guest.set_drink(self.drink_repeat())
-        self.image_switch_publisher.pub_now(ImageEnum.HI.value)
-        TalkingMotion(f"your favorite drink is {guest.fav_drink}").perform()
+        if guest.fav_drink:
+            self.image_switch_publisher.pub_now(ImageEnum.HI.value)
+            TalkingMotion(f"your favorite drink is {guest.fav_drink}").perform()
 
 
     def drink_repeat(self):
@@ -289,16 +296,20 @@ class NLP_Helper:
 
             self.nlp_pub.publish("start")
             rospy.sleep(2)
-            self.image_switch_publisher.pub_now(ImageEnum.TALKING_DUMMIES.value)
+            self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
             # wait for response
             start_time = time.time()
-            while not self.callback:
+            while not self.callback and trys < 1:
                 if time.time() - start_time == timeout:
                     rospy.logwarn("guest needs to repeat")
+                    self.nlp_pub.publish("start listening")
                     self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+
                 if int(time.time() - start_time) == timeout2:
                     trys += 1
+                    start_time = time.time()
+
                     # print("listen again")
                     # self.nlp_pub.publish("start listening")
                     # start_time = time.time()

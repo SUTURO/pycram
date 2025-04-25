@@ -1,7 +1,5 @@
 import rospy
-
 from neem_interface_python import rosprolog_client
-
 ros_client = rosprolog_client.Prolog()
 
 
@@ -85,6 +83,7 @@ def get_pose(room: str):
 
 
 # tests functions like this:
-# save_person_drink("Bob", "coffee")
+save_person_drink("Bob", "coffee")
+known_person("jule")
 
 

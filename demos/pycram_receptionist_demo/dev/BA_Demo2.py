@@ -59,9 +59,10 @@ def demo(step: int, clear_path: Optional[bool] = True):
     global drive_poses
 
     with (real_robot):
-        TalkingMotion("I am excited for the next interaction").perform()
-        print(robot.get_pose())
+
         if step <= 1:
+            TalkingMotion("I am excited for the next interaction").perform()
+            print(robot.get_pose())
             # TalkingMotion("Starting Carry my Luggage demo.").perform()
             MoveJointsMotion(["arm_roll_joint"], [-1.2]).perform()
             img.pub_now(ImageEnum.HI.value)

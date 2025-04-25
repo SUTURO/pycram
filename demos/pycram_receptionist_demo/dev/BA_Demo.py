@@ -57,10 +57,10 @@ nav_pose_to_couch = Pose([2.2, 3.3, 0], orientation=[0, 0, -0.7, 0.7])
 nav_pose_to_couch_from_kitchen = Pose([2.2, -0.8, 0], orientation=[0, 0, 0.7, 0.7])
 greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
 beverage_pose = Pose(position=[2.2, 4, 0], orientation=[0, 0, 0.9, 0.3])
-kitchen_pose = Pose(position=[3.5, -2.5, 0], orientation=[0, 0, 1, 0])
+kitchen_pose = Pose(position=[3.5, -2.35, 0], orientation=[0, 0, 1, 0])
 
 
-available_drinks_ba = ["water", "cola", "juice", "apple juice", "milk"]
+available_drinks_ba = ["water", "cola", "coffee", "juice", "apple juice", "milk"]
 
 
 def drive_to_drinks(drink: str):
@@ -149,10 +149,10 @@ def demo(step: int):
             TalkingMotion("i love cleaning up here").perform()
             rospy.sleep(1.5)
             TalkingMotion("what do you do in your free time?").perform()
-            rospy.sleep(1.5)
+            rospy.sleep(2)
             nlp.store_and_answer_hobby(guest1)
             image_switch_publisher.pub_now(ImageEnum.HI.value)
-
+            rospy.sleep(1.5)
         if step <= 5:
             # lead to living room
             MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
