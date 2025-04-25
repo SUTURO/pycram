@@ -9,7 +9,7 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
-from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up, sort_objects
+from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.utilities.robocup_utils import ImageSendPublisher
 from pycram.worlds.bullet_world import BulletWorld
@@ -144,8 +144,9 @@ def pickup_object(object: Object):
 
     if object.obj_type in CUTLERY:
         MoveTorsoAction([0.12]).resolve().perform()
-        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35],
-                                       NavigatePose.POPCORN_TABLE.value.pose.orientation))
+        object_desig = try_detect_with_tilting(-0.2)
+        # object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35],
+                                       # NavigatePose.POPCORN_TABLE.value.pose.orientation))
         if object_found(object_desig, str(object.obj_type)):
             new_object = get_object(object_desig, str(object.obj_type))
             try_pick_up(robot, new_object, grasp)
@@ -277,7 +278,8 @@ def navigate_and_detect(location_name: NavigatePose):
     if location_name == NavigatePose.SHELF:
         NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
-        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 3.9, 0.21], [0, 0, 0, 1]))
+        object_desig = try_detect_with_tilting(-0.2)
+        # object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 3.9, 0.21], [0, 0, 0, 1]))
         objects_list = get_objects(object_desig)
         image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
     elif location_name == NavigatePose.POPCORN_TABLE:
@@ -287,7 +289,8 @@ def navigate_and_detect(location_name: NavigatePose):
         MoveTorsoAction([0.12]).resolve().perform()
         image_switch_publisher.pub_now(ImageEnum.SEARCH.value)
         isp.activate_subscriber()
-        object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
+        object_desig1 = try_detect_with_tilting(-0.2)
+        # object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list1 = get_objects(object_desig1)
         image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
         NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
@@ -296,7 +299,8 @@ def navigate_and_detect(location_name: NavigatePose):
         MoveTorsoAction([0.12]).resolve().perform()
         image_switch_publisher.pub_now(ImageEnum.SEARCH.value)
         isp.activate_subscriber()
-        object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
+        object_desig2 = try_detect_with_tilting(-0.2)
+        # object_desig2 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list2 = get_objects(object_desig2)
         image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
         objects_list = []
@@ -443,11 +447,10 @@ with (real_robot):
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
-    """
     # sort objects based on distance and which we like to keep
-    sorted_obj = sort_objects_euclidian(robot, object_desig_list, wished_sorted_obj_list)
-    # sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
+    sorted_obj = sort_objects(object_desig_list)
 
+    """
     # picking up and placing objects
     pickup_and_place(sorted_obj)
 
