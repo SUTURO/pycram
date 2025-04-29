@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import Optional
 
 import owlready2
 import sqlalchemy.orm
@@ -207,3 +208,59 @@ class RealObject(ObjectDesignatorDescription):
             for world_obj in World.get_object_by_type(obj_desig.obj_type):
                 obj_desig.world_object = world_obj
                 yield obj_desig
+
+
+class HumanDescription:
+    """
+    Class that represents humans. this class does not spawn a human in a simulation.
+    """
+
+    def __init__(self, name: str, fav_drink: Optional = None,
+                 pose: Optional = None, attributes: Optional = None):
+        """
+        :param name: name of human
+        :param fav_drink: favorite drink of human
+        :param pose: last known pose of human
+        """
+        self.name = name
+        self.fav_drink = fav_drink
+        self.pose = pose
+        self.attributes = attributes
+        self.id = -1
+
+    def set_id(self, new_id: int):
+        """
+        function for changing id of human
+        is given by perception with face recognition
+        :param new_id: new id of human
+        """
+        self.id = new_id
+
+    def set_name(self, new_name):
+        """
+        function for changing name of human
+        :param new_name: new name of human
+        """
+        self.name = new_name
+
+    def set_drink(self, new_drink):
+        """
+        function for changing/setting favorite drink of human
+        :param new_drink: name of drink
+        """
+        self.fav_drink = new_drink
+
+    def set_pose(self, new_pose):
+        """
+        function for changing pose of human
+        :param new_pose: new pose of human
+        """
+        print("in set pose")
+        self.pose = new_pose
+
+    def set_attributes(self, attribute_list):
+        """
+        function for setting attributes
+        :param attribute_list: list with attributes: gender, headgear, kind of clothes, bright/dark clothes
+        """
+        self.attributes = attribute_list
