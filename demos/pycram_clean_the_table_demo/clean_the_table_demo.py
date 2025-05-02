@@ -23,7 +23,8 @@ start_signal = StartSignalWaiter()
 navigation = PoseNavigator()
 
 # Wished objects for the Demo
-wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
+# wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
+wished_sorted_obj_list = ["SpriteCan", "Metalbowl"]
 
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
@@ -47,7 +48,7 @@ apart_desig = BelieveObject(names=["kitchen"])
 
 class NavigatePose(Enum):
     DISHWASHER_CLOSED = Pose([2.75, -2.1, 0], [0, 0, -1, 1])
-    DISHWASHER_LEFT = Pose([3.75, -2.45, 0], [0, 0, 0.7, 0.7])
+    DISHWASHER_LEFT = Pose([3.75, -2.45, 0], [0, 0, 1, 0])
     DISHWASHER_RIGHT = Pose([1.9, -2.45, 0], [0, 0, 0, 1])
     DISHWASHER = Pose([2.65, -1.85, 0], [0, 0, -1, 1])
     SHELF = Pose([4.5, 3.95, 0], [0, 0, 0, 1])
@@ -166,7 +167,7 @@ def place_object(object: Object):
     # For the safety in cases where the HSR is not placing, better drop the object to not colide with the kitchen
     # drawer when moving to parkArms arm config
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    park_arms_and_move_torso(0)
 
 
 def pickup_and_place(objects_list: list):
@@ -180,7 +181,7 @@ def pickup_and_place(objects_list: list):
                              NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         if objects_list[value].obj_type in DRINKS:
             # Navigate to trash can pose
-            NavigateAction([Pose([1.1, 3.1, 0], [0, 0, -1, 1])]).resolve().perform()
+            NavigateAction([Pose([1.1, 3.5, 0], [0, 0, -1, 1])]).resolve().perform()
             throw_object(objects_list[value])
         else:
             NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
@@ -197,10 +198,11 @@ def pickup_and_place(objects_list: list):
 
 def throw_object(obj: Object):
     obj_desig = try_detect_with_tilting(-0.8)
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
     real_trash_can = get_object(obj_desig, "Trashbin")
     PlaceAction(obj, [Pose([real_trash_can.pose.position.x, real_trash_can.pose.position.y, 0.6])], [Grasp.FRONT],
                 [Arms.LEFT], [False]).resolve().perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    park_arms_and_move_torso(0)
 
 
 def get_pos(obj_type: str):
@@ -382,7 +384,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
             else:
                 PlaceGivenObjectAction([wished_sorted_obj_list[val]], [Arms.LEFT],
                                        [Pose([x_pos, y_pos, 0.3])], [grasp], False).resolve().perform()
-            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            park_arms_and_move_torso(0)
 
             # navigates back if a next object exists
             if val + 1 < len(wished_sorted_obj_list):
@@ -390,6 +392,11 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
                 NavigateAction([Pose(robot.get_pose().pose.position,
                                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
                 NavigateAction([NavigatePose.POPCORN_TABLE.value]).resolve().perform()
+
+
+def park_arms_and_move_torso(hight: float):
+    ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
+    MoveTorsoAction([hight]).resolve().perform()
 
 
 def monitor_func():
@@ -413,18 +420,19 @@ with (real_robot):
         navigation.pub_fake_pose(start_pose)
         giskard.turning_left_and_back(45)
 
-    ParkArmsAction(arms=[Arms.LEFT]).resolve().perform()
+    park_arms_and_move_torso(0)
+
     NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
     if not opened:
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
-        giskard.dishwasher_test(handle_name, hinge_name, door_name)
-        # OpenDishwasherAction(handle_name, door_name, 0.6, 1.4, [Arms.LEFT]).resolve().perform()
+        MoveJointsMotion(["arm_roll_joint"], [0]).perform()
+        giskard.open_dishwasher(handle_name, hinge_name, door_name)
+        OpenDishwasherAction(handle_name, hinge_name, door_name, [Arms.LEFT]).resolve().perform()
 
-    TalkingMotion("Please pull out the lower rack").perform()
-
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    park_arms_and_move_torso(0)
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+    TalkingMotion("Please pull out the lower rack").perform()
 
     NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
                          NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -433,7 +441,7 @@ with (real_robot):
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
     # sort objects based on distance and which we like to keep
-    sorted_obj = sort_objects(object_desig_list)
+    sorted_obj = sort_objects(object_desig_list, wished_sorted_obj_list)
 
     # picking up and placing objects
     pickup_and_place(sorted_obj)

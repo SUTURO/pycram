@@ -12,6 +12,7 @@ DRINKS = ["RedBullCan", "Milkpack", "MilkpackLactoseFree", "Milkpackja", "Cola",
           "Fantacan", "Iceteacan", "Waterbottle"]
 SILVERWARE = ["Metalmug", "Metalbowl", "Metalplate"]
 
+
 def get_objects(obj_dict: dict):
     objects_list = []
 
@@ -24,10 +25,7 @@ def get_objects(obj_dict: dict):
     return objects_list
 
 
-def sort_objects(found_objects_list: list):
-    #TODO: add all drinks
-
-
+def sort_objects(found_objects_list: list, wished_objs_list: list):
     first_list = []
     for obj in found_objects_list:
         object_type = obj.obj_type
@@ -40,6 +38,9 @@ def sort_objects(found_objects_list: list):
     metalplate_item = [item for item in first_list if item.obj_type == "Metalplate"]
 
     sorted_objects = drinks_items + silverware_items + cutlery_items + metalplate_item
+    for obj in sorted_objects:
+        if obj.obj_type not in wished_objs_list:
+            sorted_objects.remove(obj)
 
     # print which objects are in the final list
     test_list = []
@@ -245,7 +246,7 @@ def step_back_robocup(robot: BulletWorld.robot):
     steps back, parks arms and opens gripper
     """
     NavigateAction([Pose([robot.get_pose().pose.position.x - 0.3, robot.get_pose().pose.position.y + 0.3, 0],
-                    robot.get_pose().pose.orientation)]).resolve().perform()
+                         robot.get_pose().pose.orientation)]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
