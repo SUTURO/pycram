@@ -21,7 +21,7 @@ from .location_designator import CostmapLocation
 from .motion_designator import MoveJointsMotion, MoveGripperMotion, MoveArmJointsMotion, MoveTCPMotion, MoveMotion, \
     LookingMotion, DetectingMotion, OpeningMotion, ClosingMotion, HeadFollowMotion, TalkingMotion, \
     MoveTCPForceTorqueMotion, GraspingDishwasherHandleMotion, HalfOpeningDishwasherMotion, MoveArmAroundMotion, \
-    FullOpeningDishwasherMotion, MoveArmDownForceTorqueMotion
+    FullOpeningDishwasherMotion, MoveArmDownForceTorqueMotion, OpenDishwasherMotion
 from .object_designator import ObjectDesignatorDescription, BelieveObject, ObjectPart
 from ..datastructures.enums import Arms, Grasp, GripperState, GiskardStateFTS
 from ..datastructures.pose import Pose
@@ -430,8 +430,7 @@ class OpenDishwasherAction(ActionDesignatorDescription):
     Opens the dishwasher door
     """
 
-    def __init__(self, handle_name: str, door_name: str, goal_state_half_open: float, goal_state_full_open: float,
-                 arms: List[Arms], resolver=None):
+    def __init__(self, handle_name: str, hinge_name: str, door_name: str, arms: List[Arms], resolver=None):
         """
         Moves the arm of the robot to open a container.
 
@@ -444,9 +443,8 @@ class OpenDishwasherAction(ActionDesignatorDescription):
         """
         super().__init__(resolver)
         self.handle_name = handle_name
+        self.hinge_name = hinge_name
         self.door_name = door_name
-        self.goal_state_half_open = goal_state_half_open
-        self.goal_state_full_open = goal_state_full_open
         self.arms: List[Arms] = arms
 
     def ground(self) -> OpenDishwasherPerformable:
@@ -456,8 +454,7 @@ class OpenDishwasherAction(ActionDesignatorDescription):
 
         :return: A performable designator
         """
-        return OpenDishwasherPerformable(self.handle_name, self.door_name, self.goal_state_half_open,
-                                         self.goal_state_full_open, self.arms[0])
+        return OpenDishwasherPerformable(self.handle_name, self.hinge_name, self.door_name, self.arms[0])
 
 
 class OpenAction(ActionDesignatorDescription):
@@ -1375,19 +1372,14 @@ class OpenDishwasherPerformable(ActionAbstract):
     Name of the handle to grasp for opening
     """
 
+    hinge_name: str
+    """
+    Name of the hinge of the dishwasher
+    """
+
     door_name: str
     """
     Name of the door belonging to the handle
-    """
-
-    goal_state_half_open: float
-    """
-    goal state for opening the door partially
-    """
-
-    goal_state_full_open: float
-    """
-    goal state for opening the door fully
     """
 
     arm: Arms
@@ -1397,27 +1389,7 @@ class OpenDishwasherPerformable(ActionAbstract):
 
     @with_tree
     def perform(self) -> None:
-        # Grasping the dishwasher handle
-        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
-        GraspingDishwasherHandleMotion(self.handle_name, self.arm).perform()
-
-        # partially opening the dishwasher door
-        MoveGripperMotion(GripperState.CLOSE, self.arm).perform()
-        HalfOpeningDishwasherMotion(self.handle_name, self.goal_state_half_open, self.arm).perform()
-
-        # moves arm around the door to further push it open
-        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
-        MoveArmAroundMotion(self.handle_name, self.arm).perform()
-
-        # pushes the rest of the door open
-        MoveGripperMotion(GripperState.CLOSE, self.arm).perform()
-        FullOpeningDishwasherMotion(self.handle_name, self.door_name, self.goal_state_full_open,
-                                    self.arm).perform()
-
-        ParkArmsAction([self.arm]).resolve().perform()
-        MoveGripperMotion(GripperState.OPEN, self.arm).perform()
-        # plan = talk | park | gripper_open
-        # plan.perform()
+        OpenDishwasherMotion(self.handle_name, self.hinge_name, self.door_name, self.arm).perform()
 
 
 @dataclass

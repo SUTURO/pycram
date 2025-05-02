@@ -513,7 +513,7 @@ def set_hsrb_dishwasher_door_around(handle_name: str) -> 'MoveResult':
 
 @init_giskard_interface
 @thread_safe
-def dishwasher_test(handle_name, hinge_name, door_name) -> 'MoveResult':
+def open_dishwasher(handle_name, hinge_name, door_name) -> 'MoveResult':
     return giskard_wrapper.hsrb_dishwasher_test(handle_name, hinge_name, door_name)
 
 
@@ -993,7 +993,8 @@ def cml(drive_back, clear_path: Optional[bool] = True):
         giskard_wrapper.motion_goals.add_carry_my_luggage(name='cmb', drive_back=drive_back,
                                                           point_cloud_laser_topic_name=None,
                                                           clear_path=clear_path,
-                                                          laser_avoidance_angle_cutout=np.pi / 5)
+                                                          max_translation_velocity=0.45,
+                                                          laser_avoidance_angle_cutout=np.pi / 7)
         giskard_exe = giskard_wrapper.execute()
     except PreemptedException:
         print("done  cml")

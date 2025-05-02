@@ -615,6 +615,43 @@ class GraspHandleMotion(BaseMotion):
 
 
 @dataclass
+class OpenDishwasherMotion(BaseMotion):
+    """
+    Designator for opening the dishwasher
+    """
+
+    handle_name: str
+    """
+    Name of the handle to grasp for opening
+    """
+
+    hinge_name: str
+    """
+    Name of the hinge of the dishwasher
+    """
+
+    door_name: str
+    """
+    Name of the door belonging to the handle
+    """
+    arm: Arms
+    """
+    Arm that should be used
+    """
+
+    @with_tree
+    def perform(self):
+        pm_manager = ProcessModuleManager.get_manager()
+        return pm_manager.open_dishwasher().execute(self)
+
+    def to_sql(self) -> ORMMotionDesignator:
+        pass
+
+    def insert(self, session: Session, *args, **kwargs) -> ORMMotionDesignator:
+        pass
+
+
+@dataclass
 class GraspingDishwasherHandleMotion(BaseMotion):
     """
     Designator for grasping the dishwasher handle

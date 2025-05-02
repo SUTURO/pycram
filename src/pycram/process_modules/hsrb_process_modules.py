@@ -785,6 +785,12 @@ class HSRBFullOpenDishwasherReal(ProcessModule):
                                             .get_tool_frame(), designator.handle_name,
                                             goal_state=designator.goal_state_full_open, special_door=True)
 
+class HSRBOpenDishwasherReal(ProcessModule):
+    """Opens the dishwasher"""
+
+    def _execute(self, designator: OpenDishwasherMotion) -> Any:
+        giskard.open_dishwasher(designator.handle_name, designator.hinge_name, designator.door_name)
+
 
 class HSRBMoveArmDownForceTorqueReal(ProcessModule):
     """Moves the arm of the robot down until reaching Force torque values"""
@@ -825,6 +831,7 @@ class HSRBManager(ProcessModuleManager):
         self._open_door_lock = Lock()
         self._grasp_handle_lock = Lock()
         self._move_arm_down_lock = Lock()
+        self._open_dishwasher_lock = Lock()
 
     def navigate(self):
         if ProcessModuleManager.execution_type == ExecutionType.SIMULATED:
@@ -977,3 +984,9 @@ class HSRBManager(ProcessModuleManager):
             return HSRBGraspHandleReal(self._grasp_handle_lock)
         elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
             return HSRBGraspHandleReal(self._grasp_handle_lock)
+
+    def open_dishwasher(self):
+        if ProcessModuleManager.execution_type == ExecutionType.REAL:
+            return HSRBOpenDishwasherReal(self._open_dishwasher_lock)
+        elif ProcessModuleManager.execution_type == ExecutionType.SEMI_REAL:
+            return HSRBOpenDishwasherReal(self._open_dishwasher_lock)
