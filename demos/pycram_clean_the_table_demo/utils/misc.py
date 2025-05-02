@@ -5,10 +5,12 @@ from pycram.designators.action_designator import *
 from pycram.failures import PerceptionObjectNotFound, EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
 
-wished_sorted_obj_list_clean_the_table = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
-
-wished_sorted_obj_list_serve_breakfast = ["Metalbowl", "Cerealbox", "Milkpack", "Spoon"]
-
+CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
+DRINKS = ["RedBullCan", "Milkpack", "MilkpackLactoseFree", "Milkpackja", "Cola", "AppleJuice", "OatMilk",
+          "MezzoMixBottle", "MilkPackBerch", "IceTeaFuze", "SpriteCan", "ColaBottle", "Winebottle",
+          "Juicepack", "Colacan", "Tropicaljuicebottle", "Milkbottle", "Iceteabottle", "Orangejuicebox",
+          "Fantacan", "Iceteacan", "Waterbottle"]
+SILVERWARE = ["Metalmug", "Metalbowl", "Metalplate"]
 
 def get_objects(obj_dict: dict):
     objects_list = []
@@ -23,10 +25,8 @@ def get_objects(obj_dict: dict):
 
 
 def sort_objects(found_objects_list: list):
-    CUTLERY = ["Spoon", "Fork", "Knife"]
-    DRINKS = ["AppleJuice", "OatMilk", "MezzoMixBottle", "MilkPackBerch", "IceTeaFuze", "SpriteCan",
-              "TeaBagBoxBad", "ColaBottle"]
-    SILVERWARE = ["Metalmug", "Metalbowl", "Metalplate"]
+    #TODO: add all drinks
+
 
     first_list = []
     for obj in found_objects_list:
@@ -185,11 +185,15 @@ def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Obj
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
         step_back(robot)
-        NavigateAction([Pose([robot.get_pose().pose.position.x, 5.34, 0], [0, 0, -0.7, 0.7])]).resolve().perform()
+        NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         # try to detect the object again
-        object_desig = try_detect(Pose([robot.get_pose().pose.position.x, 4.35, 0.35], [0, 0, -0.7, 0.7]))
-        new_object = sort_objects_euclidian(robot, object_desig, [obj.obj_type])[0]
+        object_desig = try_detect_with_tilting(-0.2)
+        objects_list = []
+        for item in object_desig:
+            if item not in objects_list:
+                objects_list.append(item)
+        new_object = sort_objects(objects_list)[0]
         # second try to pick up the object
         try:
             TalkingMotion("try again").perform()
@@ -251,7 +255,7 @@ def step_back(robot: BulletWorld.robot):
     steps back, parks arms and opens gripper
     """
     NavigateAction(
-        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y + 0.3, 0],
+        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, 0],
               robot.get_pose().pose.orientation)]).resolve().perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
