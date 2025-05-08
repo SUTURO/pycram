@@ -8,7 +8,8 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import String
-from pycram.demos.pycram_restaurant_demo.utils.misc_restaurant import MiscRestaurant
+
+from demos.pycram_restaurant_demo.utils import misc
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
@@ -38,7 +39,6 @@ stopped = False
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 nlp = nlp_restaurant()
-misc = MiscRestaurant()
 odom_response = None
 pose_dict = OrderedDict()
 moving = False
@@ -77,10 +77,9 @@ def transform_camera_to_x(pose, frame_x):
     return tPm
 
 
-def look_around(increase: float, star_pose: PoseStamped, talk):
+def look_around(increase: float, star_pose: PoseStamped, talk=True):
     """
-    Function to make Toya look continuous from left to right. It stops if Toya perceives a human.
-    :param: increase: The increments in which Toya should look around.
+    Make robot look continuously from left to right. Stops if a human is perceived.    :param: increase: The increments in which Toya should look around.
     """
 
     global human_pose
@@ -173,23 +172,24 @@ def demo(step: int):
         talk = True
         start_pose = robot.get_pose()
         kitchen_pose = start_pose
-        MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+       # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
         image_switch_publisher.pub_now(ImageEnum.HI.value)
         rospy.sleep(2)
-
+        # Due to the endless loop for this demo, this is only called once
         if len(customers) == 0:
-             TalkingMotion("start restaurant demo").perform()
-             rospy.sleep(2)
-             TalkingMotion("Please push down my gripper to start the demo ").perform()
-             image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
+            TalkingMotion("start restaurant demo").perform()
+            rospy.sleep(2)
+            TalkingMotion("Please push down my gripper to start the demo ").perform()
+            image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
 
-             try:
-                 plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-                 plan.perform()
-             except SensorMonitoringCondition:
-                 image_switch_publisher.pub_now(ImageEnum.HI.value)
+            try:
+                plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                plan.perform()
+            except SensorMonitoringCondition:
+                image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 0:
+            #Preparation for the look around pose. Toyas torso needs to be high enough
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
@@ -202,11 +202,13 @@ def demo(step: int):
 
         if step <= 1:
             image_switch_publisher.pub_now(ImageEnum.WAVING.value)
+            #To show the perceived person, this needs to initialized beforehand
             annotator = get_used_annotator_list(Demos.RESTAURANT, as_topic_names=False)
 
             isp = ImageSendPublisher(sub_topic=annotator[0])
             isp.activate_subscriber()
             rospy.sleep(2)
+
             look_around(0.5, start_pose, talk)
             MoveTorsoAction([0]).resolve().perform()
 
@@ -236,8 +238,9 @@ def demo(step: int):
             MoveTorsoAction([0.1]).resolve().perform()
             LookAtAction([Pose([robot.pose.position.x, robot.pose.position.y, 0.8])])
             rospy.sleep(1)
+            # Test customer for nlp testing purpose
             Timmi = CustomerDescription(id=1, pose=start_pose)
-            # customer = Timmi
+            #customer = Timmi
             nlp.get_order(customer=customer)
             print(customer.order)
             rospy.sleep(2)

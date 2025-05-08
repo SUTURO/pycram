@@ -11,7 +11,7 @@ from pycram.designators.motion_designator import TalkingMotion, HeadFollowMotion
 from pycram.designators.object_designator import CustomerDescription
 from pycram.utilities.robocup_utils import ImageSwitchPublisher, TextToImagePublisher
 import re
-
+import ast
 response = [None, None]
 confirmation = [None]
 callback = False
@@ -33,10 +33,56 @@ class nlp_restaurant:
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
         self.response = ["", ""]
+        self.test = ""
         self.callback = False
         self.image_switch_publisher = ImageSwitchPublisher()
 
+    # New Methods to work with lists instead of strings
+
+    def get_order_data(self, data):
+        """
+        Method to extract the necessary data (entity values and numberAttributes) from the received Data.
+        Only useable if the gpsr nlp script is running.
+        :param: data: NLP Response
+        :return: A list of tuples
+        """
+        order_list = []
+        msg = ast.literal_eval(self.test)
+        print("Messages", msg.keys())
+        if msg['intent'] == "Order":
+            list_order = msg['Item']
+            print(list_order)
+            tmp_entity = list_order['value']
+            print(tmp_entity)
+            tmp_num = list_order['numberAttribute']
+            list_num = []
+            list_entity = []
+            list_entity.append(tmp_entity)
+            if tmp_num == ():
+                list_num.append(1)
+            else:
+                tmp = tmp_num[0]
+                real_int = options.get(tmp)
+                list_num.append(real_int)
+
+            order_list = list(zip(list_entity, list_num))
+            print(order_list)
+
+        # for values in list_order.values():
+        #     list_entity.append(values["value"])
+        #     tmp_num = values["numberAttribute"]
+        #     if tmp_num == ():
+        #         list_num.append(1)
+        #     else:
+        #         tmp = tmp_num[0]
+        #         real_int = options.get(tmp)
+        #         list_num.append(real_int)
+
+        #order_list = list(zip(list_entity, list_num))
+        return order_list
+
     # Methods to prepare the received nlp data for further processing
+
 
     def split_response(self, data):
         """
@@ -44,6 +90,7 @@ class nlp_restaurant:
         :param: data: The response as a split list
         :return: A clean list
         """
+        print("Type of data:", type(data))
         new_tmp = [n.strip() for n in data]
         real_msg = [re.sub('\W+', '', m) for m in new_tmp]
         return real_msg
@@ -92,7 +139,7 @@ class nlp_restaurant:
         """
         image_switch_publisher = ImageSwitchPublisher()
         image_switch_publisher.pub_now(ImageEnum.HI.value)
-
+        self.test = data.data
         self.response = data.data.split(",")
         for ele in self.response:
             ele.strip()
@@ -408,8 +455,10 @@ class nlp_restaurant:
         self.callback = False
         print(self.response)
         print(type(self.response))
-
+        #test = self.get_order_data(self.test)
+        #print("test", test)
         if self.response[0] == "<ORDER>":
+
             tmp = self.split_response(self.response)
             order = self.save_order(tmp)
             if order is not None:
