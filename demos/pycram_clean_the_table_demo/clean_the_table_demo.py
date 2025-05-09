@@ -35,6 +35,9 @@ opened = False
 # start of the demo
 from_outside = False
 
+# placing on upper rack
+with_upper_rack = False
+
 # name of the dishwasher handle and dishwasher door
 handle_name = "iai_kitchen/sink_area_dish_washer_door_handle"
 door_name = "sink_area_dish_washer_door"
@@ -60,28 +63,28 @@ class PlacingXPose(Enum):
     """
     Differentiate the x pose for placing
     """
-    CUTLERY = 2.64  # 2.376
-    SPOON = 2.64  # 2.376
-    FORK = 2.64  # 2.376
-    PLASTICKNIFE = 2.64  # 2.376
-    KNIFE = 2.64  # 2.376
-    METALBOWL = 2.95  # 2.83
-    METALMUG = 2.91  # 2.79
-    METALPLATE = 2.92  # 2.8
+    CUTLERY = 2.66 # 2.64
+    SPOON = 2.66 # 2.64
+    FORK = 2.66 # 2.64
+    PLASTICKNIFE = 2.66 # 2.64
+    KNIFE = 2.66 # 2.64
+    METALBOWL = 2.95
+    METALMUG = 2.91
+    METALPLATE = 2.92
 
 
 class PlacingYPose(Enum):
     """
     Differentiate the y pose for placing
     """
-    CUTLERY = -2.59  # -1.59 # mitte
-    SPOON = -2.59  # -1.59
-    FORK = -2.59  # -1.59
-    PLASTICKNIFE = -2.59  # -1.59
-    KNIFE = -2.59  # -1.59
-    METALBOWL = -2.64  # -1.73
-    METALMUG = -2.59  # -1.75
-    METALPLATE = -2.72  # -1.65
+    CUTLERY = -2.61 # -2.59
+    SPOON = -2.61 # -2.59
+    FORK = -2.61 # -2.59
+    PLASTICKNIFE = -2.61 # -2.59
+    KNIFE = -2.61 # -2.59
+    METALBOWL = -2.66 # -2.64
+    METALMUG = -2.59
+    METALPLATE = -2.72
 
 
 class PlacingZPose(Enum):
@@ -90,6 +93,7 @@ class PlacingZPose(Enum):
     """
     METALPLATE = 0.488
     OTHER = 0.5
+    UPPER = 0.77
 
 
 def pickup_object(object: Object):
@@ -156,6 +160,7 @@ def place_object(object: Object):
     else:
         NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
 
+    ParkArmsAction([Arms.LEFT]).perform().resolve()
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
@@ -216,6 +221,8 @@ def get_pos(obj_type: str):
     y_val = PlacingYPose[obj_type].value
     if obj_type == "Metalplate":
         z_val = PlacingZPose.METALPLATE.value
+    elif (obj_type == "Metalbowl" or obj_type == "Metalmug") and with_upper_rack:
+        z_val = PlacingZPose.UPPER.value
     else:
         z_val = PlacingZPose.OTHER.value
     return x_val, y_val, z_val
@@ -383,7 +390,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
                 MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
             else:
                 PlaceGivenObjectAction([wished_sorted_obj_list[val]], [Arms.LEFT],
-                                       [Pose([x_pos, y_pos, 0.3])], [grasp], False).resolve().perform()
+                                       [Pose([x_pos, y_pos, z_pos])], [grasp], False).resolve().perform()
             park_arms_and_move_torso(0)
 
             # navigates back if a next object exists
@@ -432,7 +439,10 @@ with (real_robot):
 
     park_arms_and_move_torso(0)
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-    TalkingMotion("Please pull out the lower rack").perform()
+    if with_upper_rack:
+        TalkingMotion("Please pull out the lower and upper rack").perform()
+    else:
+        TalkingMotion("Please pull out the lower rack").perform()
 
     NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
                          NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
