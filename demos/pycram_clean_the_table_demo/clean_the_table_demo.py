@@ -53,7 +53,7 @@ class NavigatePose(Enum):
     DISHWASHER_CLOSED = Pose([2.75, -2.1, 0], [0, 0, -1, 1])
     DISHWASHER_LEFT = Pose([3.75, -2.45, 0], [0, 0, 1, 0])
     DISHWASHER_RIGHT = Pose([1.9, -2.45, 0], [0, 0, 0, 1])
-    DISHWASHER = Pose([2.65, -1.85, 0], [0, 0, -1, 1])
+    DISHWASHER = Pose([2.92, -1.85, 0], [0, 0, -1, 1])
     SHELF = Pose([4.5, 3.95, 0], [0, 0, 0, 1])
     POPCORN_TABLE = Pose([1.95, 4, 0], [0, 0, 0.7, 0.7])
     LONG_TABLE = Pose([1.7, 0.8, 0], [0, 0, 1, 0])
@@ -63,35 +63,35 @@ class PlacingXPose(Enum):
     """
     Differentiate the x pose for placing
     """
-    CUTLERY = 2.66 # 2.64
-    SPOON = 2.66 # 2.64
-    FORK = 2.66 # 2.64
-    PLASTICKNIFE = 2.66 # 2.64
-    KNIFE = 2.66 # 2.64
+    CUTLERY = 2.64
+    SPOON = 2.64
+    FORK = 2.64
+    PLASTICKNIFE = 2.64
+    KNIFE = 2.64
     METALBOWL = 2.95
     METALMUG = 2.91
-    METALPLATE = 2.92
+    METALPLATE = 2.79
 
 
 class PlacingYPose(Enum):
     """
     Differentiate the y pose for placing
     """
-    CUTLERY = -2.61 # -2.59
-    SPOON = -2.61 # -2.59
-    FORK = -2.61 # -2.59
-    PLASTICKNIFE = -2.61 # -2.59
-    KNIFE = -2.61 # -2.59
-    METALBOWL = -2.66 # -2.64
+    CUTLERY = -2.59
+    SPOON = -2.59
+    FORK = -2.59
+    PLASTICKNIFE = -2.59
+    KNIFE = -2.59
+    METALBOWL = -2.66
     METALMUG = -2.59
-    METALPLATE = -2.72
+    METALPLATE = -2.7
 
 
 class PlacingZPose(Enum):
     """
     Differentiate the z pose for placing
     """
-    METALPLATE = 0.488
+    METALPLATE = 0.52
     OTHER = 0.5
     UPPER = 0.77
 
@@ -155,16 +155,17 @@ def place_object(object: Object):
     z_pos = x_y_z_pos[2]
 
     NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
-    if x_pos >= 2.65:
-        NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
-    else:
-        NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
+    if object.obj_type != "Metalplate":
+        if x_pos >= 2.65:
+            NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
+        else:
+            NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
 
-    ParkArmsAction([Arms.LEFT]).perform().resolve()
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
     if object.obj_type == "Metalplate":
+        MoveTorsoAction([0.2]).resolve().perform()
         PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [grasp], False)
     else:
         PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT], [False]).resolve().perform()

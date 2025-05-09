@@ -1,5 +1,4 @@
 import rospy
-from giskardpy.data_types.exceptions import ForceTorqueThresholdException
 from geometry_msgs.msg import PoseStamped
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *

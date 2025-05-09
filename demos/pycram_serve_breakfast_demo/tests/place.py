@@ -43,7 +43,7 @@ with (real_robot):
     MoveTorsoAction([0.2]).resolve().perform()
 
     pickup = "popcorn_table"
-    placing = "None"
+    placing = "popcorn_table"
 
     if pickup == "shelf":
         # shelf pickup
@@ -72,7 +72,7 @@ with (real_robot):
     # obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Milkpack"])
 
     # MoveJointsMotion(list(pre_pick_place_config.keys()), list(pre_pick_place_config.values())).perform()
-    PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.TOP]).resolve().perform()
+    PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
 
     if pickup == "shelf":
         # shelf pickup

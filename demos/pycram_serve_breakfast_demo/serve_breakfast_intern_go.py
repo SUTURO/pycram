@@ -6,6 +6,7 @@ from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_serve_breakfast_demo.utils.misc import *
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
+from pycram.utilities.robocup_utils import StartSignalWaiter
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
 
@@ -34,6 +35,8 @@ bowl = None
 
 # free places for placing
 place_pose = None
+
+start_signal = StartSignalWaiter()
 
 # x pose for placing the object
 x_pos = 4.49
@@ -231,9 +234,9 @@ def place_objects(first_placing: bool, objects_list: list, index: int, grasp: Gr
                          NavigatePose.KITCHEN_TABLE.value.pose.orientation)]).resolve().perform()
     TalkingMotion("Placing").perform()
     if grasp == Grasp.TOP:
-        MoveTorsoAction([0.4]).resolve().perform()
+        MoveTorsoAction([0.8]).resolve().perform()
     else:
-        MoveTorsoAction([0.2]).resolve().perform()
+        MoveTorsoAction([0.5]).resolve().perform()
     if first_placing:
         PlaceAction(objects_list[index], [Pose([x_pos, 4.6, 0.75])], [grasp], [Arms.LEFT], [True]).resolve().perform()
     else:
@@ -302,9 +305,11 @@ def monitor_func():
 
 with (real_robot):
     try:
+        TalkingMotion("push down my gripper to start").perform()
         plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
         plan.perform()
     except SensorMonitoringCondition:
+        start_signal.wait_for_startsignal()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
 
         # navigate from door to shelf
@@ -330,7 +335,7 @@ with (real_robot):
             if sorted_obj[0].obj_type != "Metalbowl":
                 MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
                 TalkingMotion(f"Can you please give me the Metalbowl in the shelf?").perform()
-                rospy.sleep(4)
+                rospy.sleep(8)
                 MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
                 place_objects(False, ["Metalbowl"], 0, Grasp.TOP)
                 # navigate_to(4.3, 4.9, "shelf")

@@ -1,5 +1,6 @@
 import rospy
 
+from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from demos.pycram_serve_breakfast_demo.utils.misc import get_bowl, sort_objects, try_pick_up, get_free_spaces
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
@@ -60,10 +61,16 @@ class NavigateOrientation(Enum):
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
     print(robot.get_pose().pose)
+    NavigateAction([Pose([3.75, -2.45, 0], [0, 0, 1, 0])]).resolve().perform()
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
-    # MoveTorsoAction([0.8]).resolve().perform()
-    # NavigateAction([Pose([3.65, -2.35, 0], [0, 0, 1, 0])]).resolve().perform()
-    PlaceGivenObjectAction(["Metalmug"], [Arms.LEFT], [Pose([2.92, -2.62, 0.488])],
-                           [Grasp.FRONT], [False], False).resolve().perform()
-    # NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
     # object_desig = DetectAction(technique='all').resolve().perform()
+    # MoveTorsoAction([0.8]).resolve().perform()
+    # NavigateAction([Pose([7.23, -0.22, 0], [0, 0, -0.7, 0.7])]).resolve().perform()
+    # PlaceGivenObjectAction(["Fork"], [Arms.LEFT], [Pose([7.22, -1.12, 0.5])],
+                           # [Grasp.FRONT], [False], False).resolve().perform()
+    # NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
+    # MoveJointsMotion(["head_tilt_joint"], [-0.8]).perform()
+    # MoveJointsMotion(["head_pan_joint"], [-1]).perform()
+    # obj_desig = DetectAction(technique='all').resolve().perform()
+    # object_desig = DetectAction(technique='all').resolve().perform()
+    # image_switch_publisher.pub_now(ImageEnum.HI.value)

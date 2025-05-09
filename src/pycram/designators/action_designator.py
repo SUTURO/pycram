@@ -1200,8 +1200,7 @@ class PlaceActionPerformable(ActionAbstract):
             else:
                 object_type = "Bowl"
             try:
-                # MoveArmDownForceTorqueMotion(down_distance=0.3, object_type=object_type, speed_multi=0.1)
-                giskard.arm_down_ft(down_distance=0.3, object_type=object_type, speed_multi=0.1)
+                MoveArmDownForceTorqueMotion(down_distance=0.3, object_type=object_type, speed_multi=0.1).perform()
             except ObjectForceTorqueThresholdException:
                 raise ManipulationFTSCheckNoObject(f"Could not place object after checking force-torque values")
         else:
