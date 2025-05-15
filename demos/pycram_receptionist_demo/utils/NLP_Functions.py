@@ -43,9 +43,9 @@ class NLP_Functions:
         TalkingMotion("Welcome, please step in front of me and come close").perform()
 
         # look for human and position higher
-        DetectAction(technique='human').resolve().perform()
+        DetectAction(technique='human_receptionist').resolve().perform()
         rospy.sleep(1)
-        MoveJointsMotion(["torso_lift_joint"], [0.2]).perform()
+        # MoveJointsMotion(["torso_lift_joint"], [0.2]).perform()
 
         # look at guest and introduce
         HeadFollowMotion(state="start").perform()
@@ -75,6 +75,8 @@ class NLP_Functions:
                 self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
 
         self.callback = False
+        print(response)
+        print(response[0])
 
         # check response -> was everything understood with right intent
         if self.response[0] == "<GUEST>":

@@ -56,7 +56,7 @@ class NLP_Helper:
         rospy.sleep(2)
         TalkingMotion("thank you").perform()
 
-        MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
+        MoveJointsMotion(["torso_lift_joint"], [0.05]).perform()
 
         # look at guest and introduce
         HeadFollowMotion(state="start").perform()

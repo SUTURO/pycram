@@ -27,6 +27,7 @@ rkclient.wait_for_server()
 rospy.loginfo("You can start your demo now")
 drive_poses = []
 
+
 class Human:
     """
     Class that represents humans. This class does not spawn a human in a simulation.
@@ -81,7 +82,7 @@ def demo(step: int, clear_path: Optional[bool] = True):
             MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
             # MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
 
-           # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+            # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
             # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
             # wait for human and hand to be pushed down
@@ -162,7 +163,7 @@ def demo_start(human: Human):
         img.pub_now(ImageEnum.SEARCH.value)
         MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
 
-        TalkingMotion("Looking for a human").perform()
+        TalkingMotion("Please step in front of me").perform()
         human.human_pose = False
 
         goal_msg = QueryGoal()
@@ -181,10 +182,11 @@ def demo_start(human: Human):
                 TalkingMotion("please step in front of me").perform()
                 start_time = time.time()
 
-        TalkingMotion("Found a Human").perform()
+        TalkingMotion("Thank you").perform()
         img.pub_now(ImageEnum.HI.value)
         rospy.sleep(2)
         return
+
 
 def monitor_func_no_timer():
     """

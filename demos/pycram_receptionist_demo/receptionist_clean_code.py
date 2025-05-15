@@ -1,4 +1,4 @@
-from demos.pycram_receptionist_demo.utils.NLP_Functions import NLP_Functions
+from demos.pycram_receptionist_demo.utils.NLP_new import NLP_Helper
 from demos.pycram_receptionist_demo.utils.helper import *
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
@@ -29,7 +29,7 @@ apartment = Object("kitchen", ObjectType.ENVIRONMENT, "suturo_lab_2.urdf")
 response = [None, None, None]
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
-nlp = NLP_Functions()
+nlp = NLP_Helper()
 
 # Declare variables for humans
 host = HumanDescription("Jule", fav_drink="topical juice bottle")
@@ -51,18 +51,20 @@ greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
 
 def demo(step: int):
     with (real_robot):
-        NavigateAction([greet_guest_pose]).resolve().perform()
+        # NavigateAction([greet_guest_pose]).resolve().perform()
         rospy.loginfo("start demo at step " + str(step))
 
-        # set neutral pose
-        image_switch_publisher.pub_now(ImageEnum.HI.value)
-        MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-        ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
+        # # set neutral pose
+        # image_switch_publisher.pub_now(ImageEnum.HI.value)
+        # MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+        # ParkArmsAction([Arms.LEFT]).resolve().perform()
+        # MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
 
         if step <= 1:
             # greet first guest
             nlp.welcome_guest(guest1)
+            rospy.sleep(1.5)
+            nlp.get_fav_drink(guest1)
 
         if step <= 2:
             # perceive attributes of guest
@@ -135,17 +137,18 @@ def demo(step: int):
             # go back to start-pose
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction([greet_guest_pose]).resolve().perform()
-            TalkingMotion("waiting for new guest").perform()
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 8:
             # greet second guest and lead to living room
             nlp.welcome_guest(guest2)
+            rospy.sleep(1.5)
+            nlp.get_fav_drink(guest2)
             MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             TalkingMotion("i will show you the living room now").perform()
             rospy.sleep(1.5)
             TalkingMotion("please step out of the way and follow me").perform()
-            NavigateAction([nav_pose1]).resolve().perform()
             NavigateAction([couch_pose_semantik]).resolve().perform()
 
         if step <= 9:
@@ -159,7 +162,7 @@ def demo(step: int):
             guest_pose = detect_point_to_seat(robot)
             if not guest_pose:
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
-                guest_pose = detect_point_to_seat(no_sofa=True)
+                guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 guest2.set_pose(guest_pose)
             else:
                 guest2.set_pose(guest_pose)
@@ -174,6 +177,8 @@ def demo(step: int):
             rospy.sleep(3)
             describe(guest1)
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            rospy.sleep(2)
+            TalkingMotion("have fun at the party").perform()
 
 
-demo(0)
+demo(4)

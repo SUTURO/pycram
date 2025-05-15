@@ -8,7 +8,7 @@ from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
 
-look_couch = Pose([8.8, 6.6, 0.65]) # done
+look_couch = Pose([3.8, 0.3, 1])
 text_to_img_publisher = TextToImagePublisher()
 img = ImageSwitchPublisher()
 
@@ -169,7 +169,7 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
     while True:
         unknown = []
         try:
-            if counter > 5 or (found_guest and found_host):
+            if counter > 4 or (found_guest and found_host):
                 break
 
             elif counter == 2:
@@ -178,14 +178,9 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
 
             elif counter == 3:
                 # look to the side to find faces
-                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2.5)
-            elif counter == 4:
-                # look to the side to find faces
-                MoveJointsMotion(["head_pan_joint"], [0.8]).perform()
-                TalkingMotion("sitting people please look at me").perform()
-                rospy.sleep(2.2)
 
             human_dict = DetectAction(technique='human', state='face').resolve().perform()
             rospy.loginfo("faces detect: " + str(human_dict))
@@ -214,13 +209,10 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
         except PerceptionObjectNotFound:
             counter += 1
             if counter == 3:
-                MoveJointsMotion(["head_pan_joint"], [-0.8]).perform()
+                MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 TalkingMotion("please look at me").perform()
                 rospy.sleep(2.5)
-            if counter == 4:
-                MoveJointsMotion(["head_pan_joint"], [0.8]).perform()
-                TalkingMotion("please look at me").perform()
-                rospy.sleep(2.5)
+
 
     # Failure Handling if at least one person was not recognized
     if not found_guest and not found_host:
@@ -311,8 +303,6 @@ def describe(human: HumanDescription):
     
     if human.attributes != "False" and human.attributes is not None:
         print(human.attributes)
-        TalkingMotion(f"another guest called {human.name} arrived before you").perform()
-        rospy.sleep(2.5)
         TalkingMotion(f"I will describe {human.name} further now").perform()
         rospy.sleep(1.5)
 

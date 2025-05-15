@@ -46,7 +46,7 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
 look_couch = Pose([3.8, 0.3, 0.75])
 look_drinks = Pose([2.3, 4.7, 0.55])
-look_person_drinks = Pose([1.9, 4, 1])
+look_person_drinks = Pose([1.9, 4.1, 1])
 nav_pose_to_drink = Pose([2, 0.6, 0], orientation=[0, 0, 0.7, 0.7])
 nav_pose_to_couch = Pose([2.2, 3.3, 0], orientation=[0, 0, -0.7, 0.7])
 greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
@@ -88,10 +88,11 @@ def demo(step: int):
             TalkingMotion("here you can get yourself a drink").perform()
             MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
 
+        if step <= 4:
             # TODO: look at person pose
             LookAtAction([look_person_drinks]).resolve().perform()
 
-            DetectAction(technique='human', state="start").resolve().perform()
+            DetectAction(technique='human_receptionist', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             nlp.get_fav_drink(guest1)
             display_info(f"guest favorite drink is: {guest1.fav_drink}")
@@ -111,7 +112,7 @@ def demo(step: int):
             TalkingMotion("i love cleaning up this table").perform()
             # TODO: look at person pose
             LookAtAction([look_person_drinks]).resolve().perform()
-            DetectAction(technique='human', state="start").resolve().perform()
+            DetectAction(technique='human_receptionist', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             TalkingMotion("what do you do in your free time?").perform()
             rospy.sleep(1.5)
@@ -158,7 +159,7 @@ def demo(step: int):
                 if counter == 5:
                     try:
                         rospy.logerr("host has no id")
-                        host_pose = DetectAction(technique='human').resolve().perform()
+                        host_pose = DetectAction(technique='human_receptionist').resolve().perform()
                         host.set_pose(host_pose)
 
                     except Exception as e:
@@ -219,7 +220,7 @@ def demo(step: int):
 
             # TODO: look to person
             LookAtAction([look_person_drinks]).resolve().perform()
-            DetectAction(technique='human', state="start").resolve().perform()
+            DetectAction(technique='human_receptionist', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
 
             nlp.get_fav_drink(guest2)
@@ -236,7 +237,7 @@ def demo(step: int):
 
             # TODO: look at person
             LookAtAction([look_person_drinks]).resolve().perform()
-            DetectAction(technique='human', state="start").resolve().perform()
+            DetectAction(technique='human_receptionist', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
             rospy.sleep(1)
             TalkingMotion("i love cleaning up this table").perform()
@@ -274,10 +275,13 @@ def demo(step: int):
                 MoveJointsMotion(["head_pan_joint"], [-0.3]).perform()
                 guest_pose = detect_point_to_seat(no_sofa=True, robot=robot)
                 if guest_pose:
-                    guest1.set_pose(guest_pose)
+                    guest2.set_pose(guest_pose)
                 else:
                     TalkingMotion("i am sorry i can not find a seat")
-                    guest1.set_pose(guest_pose)
+                    # guest1.set_pose(guest_pose)
+                    rospy.sleep(2)
+                    TalkingMotion("please find a seat yourself")
+                    rospy.sleep(1)
             else:
                 guest2.set_pose(guest_pose)
 
@@ -291,4 +295,4 @@ def demo(step: int):
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
 
-demo(0)
+demo(4)
