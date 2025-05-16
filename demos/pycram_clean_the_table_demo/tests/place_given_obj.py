@@ -34,12 +34,12 @@ object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
 
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
-    dishwasher_left = Pose([3.75, -2.45, 0], [0, 0, 1, 0])
-    dishwasher_right = Pose([1.9, -2.45, 0], [0, 0, 0, 1])
-    dishwasher_middle = Pose([2.92, -1.85, 0], [0, 0, -1, 1])
+    dishwasher_left = Pose([3.78, -2.35, 0], [0, 0, 1, 0])
+    dishwasher_right = Pose([1.93, -2.35, 0], [0, 0, 0, 1])
+    dishwasher_middle = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
     # dishwasher_middle = Pose([3.15, -1.85, 0], [0, 0, -1, 1])
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     MoveTorsoAction([0.2]).resolve().perform()
     NavigateAction(target_locations=[dishwasher_middle]).resolve().perform()
-    PlaceGivenObjectAction(["Metalplate"],  [Arms.LEFT], [Pose([2.79, -2.7, 0.52])],
+    PlaceGivenObjectAction(["Spoon"],  [Arms.LEFT], [Pose([2.67, -2.57, 0.46])],
                            [Grasp.FRONT], [False], False).resolve().perform()

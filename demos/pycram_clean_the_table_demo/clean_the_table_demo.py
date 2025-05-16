@@ -50,41 +50,41 @@ apart_desig = BelieveObject(names=["kitchen"])
 
 
 class NavigatePose(Enum):
-    DISHWASHER_CLOSED = Pose([2.75, -2.1, 0], [0, 0, -1, 1])
-    DISHWASHER_LEFT = Pose([3.75, -2.45, 0], [0, 0, 1, 0])
-    DISHWASHER_RIGHT = Pose([1.9, -2.45, 0], [0, 0, 0, 1])
-    DISHWASHER = Pose([2.92, -1.85, 0], [0, 0, -1, 1])
-    SHELF = Pose([4.5, 3.95, 0], [0, 0, 0, 1])
-    POPCORN_TABLE = Pose([1.95, 4, 0], [0, 0, 0.7, 0.7])
-    LONG_TABLE = Pose([1.7, 0.8, 0], [0, 0, 1, 0])
+    DISHWASHER_CLOSED = Pose([2.753, -2.1, 0], [0, 0, -1, 1])
+    DISHWASHER_LEFT = Pose([3.753, -2.35, 0], [0, 0, 1, 0])
+    DISHWASHER_RIGHT = Pose([1.93, -2.35, 0], [0, 0, 0, 1])
+    DISHWASHER = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
+    SHELF = Pose([4.53, 3.95, 0], [0, 0, 0, 1])
+    POPCORN_TABLE = Pose([1.98, 4, 0], [0, 0, 0.7, 0.7])
+    LONG_TABLE = Pose([1.73, 0.8, 0], [0, 0, 1, 0])
 
 
 class PlacingXPose(Enum):
     """
     Differentiate the x pose for placing
     """
-    CUTLERY = 2.64
-    SPOON = 2.64
-    FORK = 2.64
-    PLASTICKNIFE = 2.64
-    KNIFE = 2.64
-    METALBOWL = 2.95
-    METALMUG = 2.91
-    METALPLATE = 2.79
+    CUTLERY = 2.67
+    SPOON = 2.67
+    FORK = 2.67
+    PLASTICKNIFE = 2.67
+    KNIFE = 2.67
+    METALBOWL = 3.0
+    METALMUG = 2.98
+    METALPLATE = 2.82
 
 
 class PlacingYPose(Enum):
     """
     Differentiate the y pose for placing
     """
-    CUTLERY = -2.59
-    SPOON = -2.59
-    FORK = -2.59
-    PLASTICKNIFE = -2.59
-    KNIFE = -2.59
+    CUTLERY = -2.57
+    SPOON = -2.57
+    FORK = -2.57
+    PLASTICKNIFE = -2.57
+    KNIFE = -2.57
     METALBOWL = -2.66
     METALMUG = -2.59
-    METALPLATE = -2.7
+    METALPLATE = -2.65
 
 
 class PlacingZPose(Enum):
@@ -92,7 +92,7 @@ class PlacingZPose(Enum):
     Differentiate the z pose for placing
     """
     METALPLATE = 0.52
-    OTHER = 0.5
+    OTHER = 0.47
     UPPER = 0.77
 
 
@@ -155,17 +155,14 @@ def place_object(object: Object):
     z_pos = x_y_z_pos[2]
 
     NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
-    if object.obj_type != "Metalplate":
-        if x_pos >= 2.65:
-            NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
-        else:
-            NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
+    if x_pos >= 2.9:
+        NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
 
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
+    MoveTorsoAction([0.2]).resolve().perform()
     if object.obj_type == "Metalplate":
-        MoveTorsoAction([0.2]).resolve().perform()
         PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [grasp], False)
     else:
         PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT], [False]).resolve().perform()
@@ -420,6 +417,7 @@ def monitor_func():
 
 # Main interaction sequence with real robot
 with (real_robot):
+    """
     rospy.loginfo("Starting demo")
     TalkingMotion("Starting demo").perform()
     if from_outside:
@@ -447,7 +445,7 @@ with (real_robot):
 
     NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
                          NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
-
+    """
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
