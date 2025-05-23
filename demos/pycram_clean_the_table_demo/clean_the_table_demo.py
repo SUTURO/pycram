@@ -10,7 +10,6 @@ from pycram.designators.object_designator import *
 from pycram.process_module import real_robot, semi_real_robot
 from pycram.ros.viz_marker_publisher import VizMarkerPublisher
 from demos.pycram_clean_the_table_demo.utils.misc import *
-from demos.pycram_serve_breakfast_demo.utils.misc import try_pick_up
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.utilities.robocup_utils import ImageSendPublisher, StartSignalWaiter
 from pycram.worlds.bullet_world import BulletWorld
@@ -24,7 +23,7 @@ navigation = PoseNavigator()
 
 # Wished objects for the Demo
 # wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
-wished_sorted_obj_list = ["SpriteCan", "Metalbowl"]
+wished_sorted_obj_list = ["Metalbowl"]
 
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
@@ -50,7 +49,7 @@ apart_desig = BelieveObject(names=["kitchen"])
 
 
 class NavigatePose(Enum):
-    DISHWASHER_CLOSED = Pose([2.753, -2.1, 0], [0, 0, -1, 1])
+    DISHWASHER_CLOSED = Pose([2.753, -2.0, 0], [0, 0, -1, 1])
     DISHWASHER_LEFT = Pose([3.753, -2.35, 0], [0, 0, 1, 0])
     DISHWASHER_RIGHT = Pose([1.93, -2.35, 0], [0, 0, 0, 1])
     DISHWASHER = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
@@ -105,12 +104,19 @@ def pickup_object(object: Object):
 
     if object.obj_type == "Metalplate":
         TalkingMotion("Can you please give me the plate on the table.").perform()
-        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-        rospy.sleep(3)
+        rospy.sleep(1)
+        try:
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+            TalkingMotion("Put the plate in my gripper please").perform()
+            rospy.sleep(1)
+            TalkingMotion("Push down my hand when everything is ready").perform()
 
-        TalkingMotion("Grasping.").perform()
-
-        MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+            plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+            plan.perform()
+        except SensorMonitoringCondition:
+            rospy.sleep(1.5)
+            TalkingMotion("Grasping.").perform()
+            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
     else:
         if object.obj_type in CUTLERY:
             object.pose.position.z = 0.71
@@ -121,7 +127,7 @@ def pickup_object(object: Object):
             MoveTorsoAction([0.8]).resolve().perform()
         else:
             MoveTorsoAction([0.4]).resolve().perform()
-        try_pick_up(robot, object, grasp)
+        try_pick_up_c(robot, object, grasp)
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
@@ -134,7 +140,7 @@ def pickup_object(object: Object):
         # NavigatePose.POPCORN_TABLE.value.pose.orientation))
         if object_found(object_desig, str(object.obj_type)):
             new_object = get_object(object_desig, str(object.obj_type))
-            try_pick_up(robot, new_object, grasp)
+            try_pick_up_c(robot, new_object, grasp)
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                                    robot.get_pose().pose.position.y - 0.3, 0],
@@ -174,9 +180,13 @@ def place_object(object: Object):
 
 
 def pickup_and_place(objects_list: list):
+    # TODO: remove this navigate after filming
+    NavigateAction([Pose([2.3, 1.5, 0],[0, 0, 0.7, 0.7])]).resolve().perform()
     if len(objects_list) != 0:
-        NavigateAction([Pose([objects_list[0].pose.position.x, robot.get_pose().pose.position.y, 0],
+        NavigateAction([Pose([objects_list[0].pose.position.x, NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                              NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
+        # NavigateAction([Pose([objects_list[0].pose.position.x, robot.get_pose().pose.position.y, 0],
+        #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
     for value in range(len(objects_list)):
         pickup_object(objects_list[value])
         # turn around
@@ -431,6 +441,7 @@ with (real_robot):
     NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
     if not opened:
+        TalkingMotion("I will open the dishwasher now").perform()
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
         MoveJointsMotion(["arm_roll_joint"], [0]).perform()
         giskard.open_dishwasher(handle_name, hinge_name, door_name)
