@@ -34,12 +34,24 @@ object_orientation = axis_angle_to_quaternion([0, 0, 1], 180)
 
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
-    dishwasher_left = Pose([3.78, -2.35, 0], [0, 0, 1, 0])
+    dishwasher_left = Pose([3.753, -2.35, 0], [0, 0, 1, 0])
     dishwasher_right = Pose([1.93, -2.35, 0], [0, 0, 0, 1])
     dishwasher_middle = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
     # dishwasher_middle = Pose([3.15, -1.85, 0], [0, 0, -1, 1])
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    # ParkArmsAction([Arms.LEFT]).resolve().perform()
+    NavigateAction([dishwasher_middle]).resolve().perform()
+    # if x_pos >= 2.9:
+    # NavigateAction([dishwasher_left]).resolve().perform()
+
+    TalkingMotion("Placing").perform()
+    grasp = Grasp.FRONT
+
     MoveTorsoAction([0.2]).resolve().perform()
-    NavigateAction(target_locations=[dishwasher_middle]).resolve().perform()
-    PlaceGivenObjectAction(["Spoon"],  [Arms.LEFT], [Pose([2.67, -2.57, 0.46])],
+    PlaceGivenObjectAction(["Metalplate"],  [Arms.LEFT], [Pose([2.82, -2.65, 0.52])],
                            [Grasp.FRONT], [False], False).resolve().perform()
+
+    MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
+    MoveTorsoAction([0.0]).resolve().perform()
+    NavigateAction([Pose(robot.get_pose().pose.position, [0, 0, 0.7, 0.7])]).resolve().perform()
+    NavigateAction([Pose([2.3, 1.5, 0],[0, 0, 0.7, 0.7])]).resolve().perform()

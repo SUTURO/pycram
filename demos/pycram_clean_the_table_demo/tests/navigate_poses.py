@@ -61,7 +61,9 @@ class NavigateOrientation(Enum):
 # TODO: change postions of navigating, pickup, placing, etc.
 with (real_robot):
     print(robot.get_pose().pose)
-    NavigateAction([Pose([3.75, -2.45, 0], [0, 0, 1, 0])]).resolve().perform()
+    dishwasher = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
+    table = Pose([1.98, 4, 0], [0, 0, 0.7, 0.7])
+    NavigateAction([dishwasher]).resolve().perform()
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
     # object_desig = DetectAction(technique='all').resolve().perform()
     # MoveTorsoAction([0.8]).resolve().perform()

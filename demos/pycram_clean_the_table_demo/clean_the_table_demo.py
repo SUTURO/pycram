@@ -23,7 +23,7 @@ navigation = PoseNavigator()
 
 # Wished objects for the Demo
 # wished_sorted_obj_list = ["Metalplate", "Metalbowl", "Metalmug", "Fork", "Spoon"]
-wished_sorted_obj_list = ["Metalbowl"]
+wished_sorted_obj_list = ["Metalplate"]
 
 # length of wished list for failure handling
 LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
@@ -180,8 +180,6 @@ def place_object(object: Object):
 
 
 def pickup_and_place(objects_list: list):
-    # TODO: remove this navigate after filming
-    NavigateAction([Pose([2.3, 1.5, 0],[0, 0, 0.7, 0.7])]).resolve().perform()
     if len(objects_list) != 0:
         NavigateAction([Pose([objects_list[0].pose.position.x, NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
                              NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -427,7 +425,6 @@ def monitor_func():
 
 # Main interaction sequence with real robot
 with (real_robot):
-    """
     rospy.loginfo("Starting demo")
     TalkingMotion("Starting demo").perform()
     if from_outside:
@@ -444,7 +441,6 @@ with (real_robot):
         TalkingMotion("I will open the dishwasher now").perform()
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
         MoveJointsMotion(["arm_roll_joint"], [0]).perform()
-        giskard.open_dishwasher(handle_name, hinge_name, door_name)
         OpenDishwasherAction(handle_name, hinge_name, door_name, [Arms.LEFT]).resolve().perform()
 
     park_arms_and_move_torso(0)
@@ -465,7 +461,7 @@ with (real_robot):
 
     # picking up and placing objects
     pickup_and_place(sorted_obj)
-
+    """
     # TODO: Adjust Failure handling and add new cases
 
     # Maybe failure handling using list
