@@ -60,80 +60,36 @@ def demo(step: int, clear_path: Optional[bool] = True):
     global drive_poses
 
     with (real_robot):
-        if step <= 1:
-            # TalkingMotion("Starting Carry my Luggage demo.").perform()
+        if step <= 0:
+            # move robot in starting position
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             MoveJointsMotion(["arm_roll_joint"], [-1.2]).perform()
             img.pub_now(ImageEnum.HI.value)
-            print("start demo")
-
-            # store pose to drive back to with rotated orientation
-            start_pose = robot.get_pose()
-            print("start pose ###########################")
-            print(start_pose)
-            print("###########################")
-
-            rotated_quaternion = multiply_quaternions(start_pose.orientation_as_list(), [0, 0, 1, 0])
-            start_pose.set_orientation(rotated_quaternion)
-            drive_poses.append(start_pose)
-
-
-            # move robot in starting position
             MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
-            # MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+            MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
 
-            # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-            # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-
+        if step <= 1:
             # wait for human and hand to be pushed down
             demo_start(human)
 
         if step <= 2:
-            TalkingMotion("when we arrive, push down my gripper.").perform()
-            rospy.sleep(2.5)
-            TalkingMotion("please walk slowly i will follow you").perform()
+            TalkingMotion("i will follow you now until you push down my gripper").perform()
+            rospy.sleep(2)
             img.pub_now(ImageEnum.FOLLOWSTOP.value)
 
             try:
-                # start timer /store time when following part starts
-                start_time = time.time()
-
                 # perceive and follow human
-                plan = Code(lambda: giskardpy.cml(drive_back=False, clear_path=clear_path)) >> Monitor(monitor_func)
+                plan = Code(lambda: giskardpy.cml(drive_back=False, clear_path=clear_path)) >> Monitor(monitor_func_no_timer)
                 plan.perform()
                 plan = Code(lambda: rospy.sleep(1)) * 999999 >> Monitor(monitor_func_no_timer)
                 plan.perform()
 
             except SensorMonitoringCondition:
                 MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-                TalkingMotion("We have arrived.").perform()
-                MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
-                text_to_img_publisher.pub_now("please hand the bag in my gripper")
-                rospy.sleep(1)
-                img.pub_now(ImageEnum.GENERATED_TEXT.value)
-                TalkingMotion("I am not able to pick up the bag. Please hand it in my gripper").perform()
-                text_to_img_publisher.pub_now("when the bag is handed in push down my gripper")
-                MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-                rospy.sleep(4)
-                img.pub_now(ImageEnum.GENERATED_TEXT.value)
-                TalkingMotion("please put the bag in my gripper and push down my gripper").perform()
-                # TODO: Timer einbauen? falls gripper nicht gedrückt wird
-                try:
-                    plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func_no_timer)
-                    plan.perform()
-                except SensorMonitoringCondition:
-                    MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-                    TalkingMotion("Closing my Gripper.").perform()
-                    MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-                    if step <= 3:
-                        # drive back starting with last recorded pose
-                        drive_back_move_base()
-                        # giskardpy.cml(True)
-
-                        TalkingMotion("back at starting position").perform()
-                        img.pub_now(ImageEnum.HI.value)
-                        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
-
+                TalkingMotion("stopping").perform()
+                demo(1, True)
+                
             except giskardpy.ExecutionException:
                 TalkingMotion("Wait").perform()
                 rospy.sleep(1)
@@ -199,62 +155,6 @@ def monitor_func_no_timer():
         return SensorMonitoringCondition
 
     return False
-
-
-def monitor_func():
-    """
-    monitors force torque sensor of robot and throws
-    Condition if a significant force is detected (e.g. the gripper is pushed down)
-    """
-    global start_time
-    global timeout1
-    global drive_poses
-    der = fts.get_last_value()
-
-    # TODO: test values before challenge
-    if abs(der.wrench.force.x) > 18.30:
-        rospy.logwarn("sensor exception")
-        return SensorMonitoringCondition
-
-    if int(time.time() - start_time) >= timeout1:
-        # store pose for way back with orientation turned 180 degree
-        drive_pose = robot.get_pose().copy()
-        rotated_quaternion = multiply_quaternions(drive_pose.orientation_as_list(), [0, 0, 1, 0])
-        drive_pose.set_orientation(rotated_quaternion)
-        drive_poses.append(drive_pose)
-        rospy.loginfo("stored drive pose")
-        start_time = time.time()
-
-    return False
-
-
-def drive_back_move_base():
-    """
-    navigate with move base to the start point of the challenge
-    """
-    # last_pose = robot.get_pose()
-
-    # subprocess.call(["rosnode", "kill", "/hector_slam"])
-    rospy.sleep(2)
-    # process = subprocess.Popen(["roslaunch", "suturo_bringup", "pose_integrator.launch"])
-    # process = subprocess.Popen(["roslaunch", "hsrb_rosnav_config", "cml_amcl.launch"])
-    rospy.sleep(2)
-
-    # last_pose_stamped = PoseStamped()
-    # last_pose_stamped.pose.position = last_pose.position
-    # last_pose_stamped.pose.orientation = last_pose.orientation
-    # navigation.pub_fake_pose(last_pose_stamped)
-
-    # turn in driving position
-    giskardpy.turning_around()
-
-    rospy.loginfo("driving back")
-    TalkingMotion("Driving Back.").perform()
-    img.pub_now(ImageEnum.DRIVINGBACK.value)
-    # drive back to all collected poses
-    drive_poses.reverse()
-    for pose in drive_poses:
-        NavigateAction([pose]).resolve().perform()
 
 
 demo(0)
