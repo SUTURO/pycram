@@ -68,7 +68,7 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
     try:
         seat = DetectAction(technique='location', state="sofa").resolve().perform()
     except PerceptionObjectNotFound:
-        rospy.logerr("i hate perception lol")
+        rospy.logerr("aaahrg")
         return None
     free_seat = False
     print(seat)
@@ -173,7 +173,7 @@ def identify_faces(host: HumanDescription, guest1: HumanDescription):
                 break
 
             elif counter == 2:
-                TalkingMotion("sitting people please look at me").perform()
+                #TalkingMotion("sitting people please look at me").perform()
                 rospy.sleep(2)
 
             elif counter == 3:
@@ -400,7 +400,8 @@ nlp_drink_to_robokudo = {
     "red bull": "RedBullCan",
     "milk1": "MilkpackLactoseFree",
     "cola": "Colacan",
-    "red oil": "RedBullCan"
+    "red oil": "RedBullCan",
+    "tea": "TeaBagBoxWestminster"
 }
 
 

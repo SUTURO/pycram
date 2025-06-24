@@ -7,8 +7,8 @@ ros_client = rosprolog_client.Prolog()
 
 ##### Infos about Knowrob querys #####
 # communication via strings
-# query once (one result) und qoery all solutions (all results)
-# dot at the end ofquery string important, if . is not there query won't stop
+# query once (one result) und query all solutions (all results)
+# dot at the end of query string important, if . is not there query won't stop
 # there is a difference between "" and '', you will need 'data'
 ########################################
 
@@ -19,6 +19,7 @@ def save_person_drink(name: str, drink: str):
     :param drink: favorite drink of that person
     """
     x = False
+    name.lower()
     if "coffee" in drink.lower():
         x = ros_client.once("save_me_and_coffee('" + name + "').")
     if "raspberryjuice" in drink.lower():
@@ -64,6 +65,8 @@ def get_fav_drink(name: str):
         name = name.lower()
         query = "fav_drink('" + name + "'," + "X)."
         data = ros_client.once(query)
+        print(data)
+
         uri = data['X']
         name_with_suffix = uri.split('#')[-1]
         drink = name_with_suffix.split('_')[0]
@@ -85,6 +88,8 @@ def get_pose(room: str):
 
 
 # tests functions like this:
-# save_person_drink("Bob", "coffee")
+save_person_drink("bob", "coffee")
+get_fav_drink("bob")
+
 
 
