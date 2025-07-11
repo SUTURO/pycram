@@ -1,6 +1,5 @@
-from typing_extensions import Optional
-
-from demos.pycram_serve_breakfast_demo.utils.misc import try_detect_with_tilting
+from demos.pycram_serve_breakfast_demo.utils.misc import try_detect_with_tilting, step_back
+from pycram.datastructures.enums import ObjectType
 from pycram.designators.action_designator import *
 from pycram.failures import PerceptionObjectNotFound, EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
@@ -11,6 +10,19 @@ DRINKS = ["RedBullCan", "Milkpack", "MilkpackLactoseFree", "Milkpackja", "Cola",
           "Juicepack", "Colacan", "Tropicaljuicebottle", "Milkbottle", "Iceteabottle", "Orangejuicebox",
           "Fantacan", "Iceteacan", "Waterbottle"]
 SILVERWARE = ["Metalmug", "Metalbowl", "Metalplate"]
+
+fts = ForceTorqueSensor(robot_name='hsrb')
+
+
+def monitor_func():
+    """
+    monitors force torque sensor of robot and throws
+    Condition if a significant force is detected (e.g. the gripper is pushed down)
+    """
+    der = fts.get_last_value()
+    if abs(der.wrench.force.x) > 10.30:
+        return SensorMonitoringCondition
+    return False
 
 
 def get_objects(obj_dict: dict):
@@ -26,6 +38,8 @@ def get_objects(obj_dict: dict):
 
 
 def sort_objects(found_objects_list: list, wished_objs_list: list):
+    if len(found_objects_list) == 0:
+        return []
     first_list = []
     for obj in found_objects_list:
         object_type = obj.obj_type
@@ -185,27 +199,53 @@ def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Obj
         TalkingMotion("Try pick up again").perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
-        step_back(robot)
+        step_back(robot, 0.3)
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         # try to detect the object again
         object_desig = try_detect_with_tilting(-0.2)
-        objects_list = []
-        for item in object_desig:
-            if item not in objects_list:
-                objects_list.append(item)
-        new_object = sort_objects(objects_list)[0]
-        # second try to pick up the object
-        try:
-            TalkingMotion("try again").perform()
-            PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
-        # ask for human interaction if it fails a second time
-        except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
-            step_back(robot)
-            TalkingMotion(f"Can you please give me the {obj.obj_type} in the shelf?").perform()
-            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-            rospy.sleep(4)
-            MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
+        objects_list = get_objects(object_desig)
+        new_object = None
+        new_list = sort_objects(found_objects_list=objects_list, wished_objs_list=[obj.obj_type])
+        if len(new_list) != 0:
+            new_object = new_list[0]
+        if new_object is not None:
+            # second try to pick up the object
+            try:
+                TalkingMotion("try again").perform()
+                PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
+            # ask for human interaction if it fails a second time
+            except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
+                step_back(robot, 0.3)
+                ParkArmsAction([Arms.LEFT]).resolve().perform()
+                MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+                ask_for_human_help(obj.obj_type, new_object)
+        else:
+            ask_for_human_help(obj.obj_type, new_object)
+
+
+def ask_for_human_help(object_type: ObjectType, pickup_object):
+    if pickup_object is None:
+        TalkingMotion(f"I was not able to find the {object_type} on the table?").perform()
+    else:
+        TalkingMotion(f"I was not able to pick up the {object_type} on the table?").perform()
+    rospy.sleep(2)
+    TalkingMotion(f"Can you please hand it over to me?").perform()
+    rospy.sleep(2)
+    try:
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        TalkingMotion(f"Put the {object_type} in my gripper please").perform()
+        rospy.sleep(2)
+        TalkingMotion("Push down my hand when everything is ready").perform()
+
+        plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+        plan.perform()
+    except SensorMonitoringCondition:
+        rospy.sleep(1.5)
+        TalkingMotion("Grasping.").perform()
+        MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
 
 
 def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
@@ -221,7 +261,7 @@ def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescripti
         TalkingMotion("Try pick up again").perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         # after failed attempt to pick up the object, the robot moves 30cm back on x pose
-        step_back_robocup(robot)
+        step_back(robot, 0.3)
         NavigateAction([Pose([8.35, -0.1, 0.0], [0.0, 0.0, -0.29, 0.956])]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         # try to detect the object again
@@ -233,30 +273,9 @@ def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescripti
             PickUpAction(new_object, [Arms.LEFT], [grasps]).resolve().perform()
         # ask for human interaction if it fails a second time
         except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
-            step_back_robocup(robot)
+            step_back(robot, 0.3)
             TalkingMotion(f"Can you please give me the {obj.obj_type} on the table?").perform()
             TalkingMotion("Put it in my gripper.").perform()
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
             rospy.sleep(5)
             MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
-
-
-def step_back_robocup(robot: BulletWorld.robot):
-    """"
-    steps back, parks arms and opens gripper
-    """
-    NavigateAction([Pose([robot.get_pose().pose.position.x - 0.3, robot.get_pose().pose.position.y + 0.3, 0],
-                         robot.get_pose().pose.orientation)]).resolve().perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-
-
-def step_back(robot: BulletWorld.robot):
-    """"
-    steps back, parks arms and opens gripper
-    """
-    NavigateAction(
-        [Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y - 0.3, 0],
-              robot.get_pose().pose.orientation)]).resolve().perform()
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()

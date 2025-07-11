@@ -17,7 +17,6 @@ from pycram.world_concepts.world_object import Object
 
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot, kitchen = startup()
 
-fts = ForceTorqueSensor(robot_name='hsrb')
 start_signal = StartSignalWaiter()
 navigation = PoseNavigator()
 
@@ -31,8 +30,8 @@ LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
 # if the dishwasher is opened at the start of the demo or not
 opened = False
 
-# start of the demo
-from_outside = False
+# Should the start of the demo be from outside or not
+from_outside = True
 
 # placing on upper rack
 with_upper_rack = False
@@ -412,21 +411,10 @@ def park_arms_and_move_torso(hight: float):
     MoveTorsoAction([hight]).resolve().perform()
 
 
-def monitor_func():
-    """
-    monitors force torque sensor of robot and throws
-    Condition if a significant force is detected (e.g. the gripper is pushed down)
-    """
-    der = fts.get_last_value()
-    if abs(der.wrench.force.x) > 10.30:
-        return SensorMonitoringCondition
-    return False
-
-
 # Main interaction sequence with real robot
 with (real_robot):
     rospy.loginfo("Starting demo")
-    TalkingMotion("Starting demo").perform()
+    # TalkingMotion("Starting demo").perform()
     if from_outside:
         start_signal.wait_for_startsignal()
         start_pose = robot.get_pose()
@@ -437,6 +425,7 @@ with (real_robot):
 
     NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
+    """
     if not opened:
         TalkingMotion("I will open the dishwasher now").perform()
         MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
@@ -452,7 +441,7 @@ with (real_robot):
 
     NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
                          NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
-    """
+
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
@@ -461,15 +450,15 @@ with (real_robot):
 
     # picking up and placing objects
     pickup_and_place(sorted_obj)
-    """
+    
     # TODO: Adjust Failure handling and add new cases
 
     # Maybe failure handling using list
     # after pickup, placing, throwing or even pouring make a list of picked up objects, plced objects etc.
-    """
+    
     new_obj_list = failure_handling1(sorted_obj)
     failure_handling2(sorted_obj, new_obj_list)
-    """
 
     rospy.loginfo("Done!")
     TalkingMotion("Done").perform()
+    """
