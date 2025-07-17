@@ -186,13 +186,15 @@ def get_bowl(obj_dict: dict):
     return None
 
 
-def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
+def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp,
+                  pickup_position: Pose):
     """
     Picking up any object with failure handling.
     :param robot: the robot
     :param obj: the object that should be picked up
     :param grasps: how to pick up the object
     """
+    # robot_orentation = robot.get_pose().pose.orientation
     try:
         PickUpAction(obj, [Arms.LEFT], [grasps]).resolve().perform()
     except (EnvironmentUnreachable, GripperClosedCompletely, ManipulationFTSCheckNoObject):
@@ -202,7 +204,10 @@ def try_pick_up_c(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Obj
         step_back(robot, 0.3)
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
-        NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        # NavigateAction([Pose([obj.pose.position.x, 4, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+        TalkingMotion("Repositioning").perform()
+        NavigateAction([Pose([obj.pose.position.x, pickup_position.pose.position.y, 0],
+                             pickup_position.pose.orientation)]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         # try to detect the object again
         object_desig = try_detect_with_tilting(-0.2)

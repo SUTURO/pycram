@@ -45,5 +45,6 @@ with (real_robot):
     NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
     MoveJointsMotion(["wrist_roll_joint"], [-1.5]).perform()
     MoveJointsMotion(["arm_roll_joint"], [0]).perform()
+    TalkingMotion("I will open the dishwasher now").perform()
     OpenDishwasherAction(handle_name, hinge_name, door_name, [Arms.LEFT]).resolve().perform()
     # giskard.open_dishwasher(handle_name, 'sink_area_dish_washer_door_joint', door_name)

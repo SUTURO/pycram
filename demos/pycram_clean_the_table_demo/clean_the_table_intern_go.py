@@ -122,7 +122,7 @@ def pickup_object(object: Object):
         if object.obj_type == "Metalbowl":
             object.pose.position.z = 0.76
         TalkingMotion("Picking up from: " + (str(grasp)[6:]).lower()).perform()
-        try_pick_up_c(robot, object, grasp)
+        try_pick_up_c(robot, object, grasp, NavigatePose.KITCHEN_TABLE.value)
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
@@ -137,7 +137,7 @@ def pickup_object(object: Object):
         if object_found(object_desig, str(object.obj_type)):
             new_object = get_object(object_desig, str(object.obj_type))
             MoveTorsoAction([0.4]).resolve().perform()
-            try_pick_up_c(robot, new_object, grasp)
+            try_pick_up_c(robot, new_object, grasp, NavigatePose.KITCHEN_TABLE.value)
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                                    robot.get_pose().pose.position.y + 0.3, 0],

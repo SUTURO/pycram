@@ -141,6 +141,18 @@ def step_back(robot: BulletWorld.robot, distance: float):
     rTbm = lt.transform_pose(rTb, "map")
     NavigateAction(target_locations=[rTbm]).resolve().perform()
 
+"""
+def reposition(robot, robot_orientation, obj):
+    TalkingMotion("repositioning").perform()
+    lt = LocalTransformer()
+    oTm = obj.pose
+    oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
+
+    oTb.pose.position.x -= 1.2
+    oTbm = lt.transform_pose(oTb, "map")
+    oTbm.pose.orientation = robot_orientation
+    NavigateAction(target_locations=[oTbm]).resolve().perform()
+"""
 
 def try_detect(pose: Pose, technique: Optional[str] = None):
     """

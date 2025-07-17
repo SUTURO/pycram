@@ -31,7 +31,7 @@ LEN_WISHED_SORTED_OBJ_LIST = len(wished_sorted_obj_list)
 opened = False
 
 # Should the start of the demo be from outside or not
-from_outside = True
+from_outside = False
 
 # placing on upper rack
 with_upper_rack = False
@@ -126,7 +126,7 @@ def pickup_object(object: Object):
             MoveTorsoAction([0.8]).resolve().perform()
         else:
             MoveTorsoAction([0.4]).resolve().perform()
-        try_pick_up_c(robot, object, grasp)
+        try_pick_up_c(robot, object, grasp, NavigatePose.POPCORN_TABLE.value)
 
     ParkArmsAction([Arms.LEFT]).resolve().perform()
     NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
@@ -139,7 +139,7 @@ def pickup_object(object: Object):
         # NavigatePose.POPCORN_TABLE.value.pose.orientation))
         if object_found(object_desig, str(object.obj_type)):
             new_object = get_object(object_desig, str(object.obj_type))
-            try_pick_up_c(robot, new_object, grasp)
+            try_pick_up_c(robot, new_object, grasp, NavigatePose.POPCORN_TABLE.value)
             ParkArmsAction([Arms.LEFT]).resolve().perform()
             NavigateAction(target_locations=[Pose([robot.get_pose().pose.position.x,
                                                    robot.get_pose().pose.position.y - 0.3, 0],

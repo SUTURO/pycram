@@ -13,7 +13,7 @@ lt = LocalTransformer()
 
 with_specific_objects = False
 
-wished_sorted_obj_list = ["Milkpack"]
+wished_sorted_obj_list = ["Metalmug"]
 
 with_placing = True
 
@@ -41,12 +41,6 @@ def sort_objects_demo(objs_list: List, wished_obj_list: List):
 
     for value in objs_list:
         object_type = value.obj_type
-        if value.obj_type in ["Mueslibox", "Cornybox", "Cerealbox", "Crackerbox", "MuesliboxVitalis"]:
-            object_type = "Cerealbox"
-        if value.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
-            object_type = "Spoon"
-        if value.obj_type in ["Milkpack", "Milkpackja", "MilkpackLactoseFree"]:
-            object_type = "Milkpack"
         if object_type in wished_obj_list:
             tuples_list.append((value, wished_obj_list.index(object_type)))
     sorted_objects = [x[0] for x in sorted(tuples_list, key=lambda index: index[1])]
@@ -72,26 +66,20 @@ with (real_robot):
     if with_specific_objects:
         obj_list = sort_objects_demo(obj_list, wished_sorted_obj_list)
 
-    object_pose = obj_list[0].pose
-    grasp = Grasp.FRONT
-    if obj_list[0].obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"] or obj_list[0].obj_type == "Metalbowl":
-        grasp = Grasp.TOP
-        MoveTorsoAction([0.5]).resolve().perform()
+    if len(obj_list) != 0:
+        object_pose = obj_list[0].pose
+        grasp = Grasp.FRONT
+        if obj_list[0].obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"] or obj_list[0].obj_type == "Metalbowl":
+            grasp = Grasp.TOP
+            MoveTorsoAction([0.5]).resolve().perform()
 
-    PickUpAction(obj_list[0], [Arms.LEFT], [grasp]).resolve().perform()
+            # oTb = lt.transform_pose(object_pose, robot.get_link_tf_frame("base_link"))
+            # oTb.pose.position.x -= 0.15
+            # oTbm = lt.transform_pose(oTb, "map")
+            # object_pose = oTbm
 
-    rTm = robot.get_pose()
-    rTb = lt.transform_pose(rTm, robot.get_link_tf_frame("base_link"))
+        PickUpAction(obj_list[0], [Arms.LEFT], [grasp]).resolve().perform()
 
-    rTb.pose.position.x -= 0.45
-    rTbm = lt.transform_pose(rTb, "map")
-    NavigateAction(target_locations=[rTbm]).resolve().perform()
-
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-
-    if with_placing:
-        PlaceAction(obj_list[0], [Pose([object_pose.position.x, object_pose.position.y, 0.713])],
-                    [grasp], [Arms.LEFT], with_force_torque=[True]).resolve().perform()
         rTm = robot.get_pose()
         rTb = lt.transform_pose(rTm, robot.get_link_tf_frame("base_link"))
 
@@ -100,4 +88,19 @@ with (real_robot):
         NavigateAction(target_locations=[rTbm]).resolve().perform()
 
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveTorsoAction([0.0]).resolve().perform()
+
+        if with_placing:
+            PlaceAction(obj_list[0], [Pose([object_pose.position.x, object_pose.position.y, 0.72])],
+                        [grasp], [Arms.LEFT], with_force_torque=[True]).resolve().perform()
+            # rTm = robot.get_pose()
+            # rTb = lt.transform_pose(rTm, robot.get_link_tf_frame("base_link"))
+            #
+            # rTb.pose.position.x -= 0.45
+            # rTbm = lt.transform_pose(rTb, "map")
+            # NavigateAction(target_locations=[rTbm]).resolve().perform()
+
+            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            MoveTorsoAction([0.0]).resolve().perform()
+
+    # else:
+        # TalkingMotion(f"I was not able to find the {wished_sorted_obj_list[0]}").perform()
