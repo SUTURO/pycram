@@ -7,12 +7,7 @@ from pycram.designators.object_designator import *
 from pycram.external_interfaces.navigate import PoseNavigator
 from pycram.process_module import real_robot
 import rospy
-import subprocess
-from pycram.datastructures.enums import ObjectType
-
 from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
-from pycram.world_concepts.world_object import Object
-from pycram.worlds.bullet_world import BulletWorld
 
 
 # Initialize the necessary components
@@ -22,9 +17,7 @@ img = ImageSwitchPublisher()
 navigation = PoseNavigator()
 fts = ForceTorqueSensor(robot_name='hsrb')
 rkclient = create_action_client('robokudo/query', QueryAction)
-rospy.loginfo("Waiting for action server")
 rkclient.wait_for_server()
-rospy.loginfo("You can start your demo now")
 drive_poses = []
 
 
@@ -47,43 +40,34 @@ class Human:
         """
         self.human_pose = True
 
+
 human = Human()
-first_timer_pose = None
-second_timer_pose = None
 start_time = time.time()
 timeout1 = 14
 
 
 def demo(step: int, clear_path: Optional[bool] = True):
     global start_time
-    global first_timer_pose
     global drive_poses
 
     with (real_robot):
         if step <= 1:
             # TalkingMotion("Starting Carry my Luggage demo.").perform()
-            ParkArmsAction([Arms.LEFT]).resolve().perform()
+            MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
+            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
             MoveJointsMotion(["arm_roll_joint"], [-1.2]).perform()
             img.pub_now(ImageEnum.HI.value)
             print("start demo")
 
             # store pose to drive back to with rotated orientation
             start_pose = robot.get_pose()
-            print("start pose ###########################")
-            print(start_pose)
-            print("###########################")
+            print(f"start pose: " + str(start_pose))
 
+            # add start pose but 180 degree rotated
             rotated_quaternion = multiply_quaternions(start_pose.orientation_as_list(), [0, 0, 1, 0])
             start_pose.set_orientation(rotated_quaternion)
             drive_poses.append(start_pose)
-
-
-            # move robot in starting position
-            MoveJointsMotion(["head_tilt_joint"], [0.2]).perform()
-            # MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-
-            # MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
-            # MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
             # wait for human and hand to be pushed down
             demo_start(human)
@@ -128,11 +112,11 @@ def demo(step: int, clear_path: Optional[bool] = True):
                     if step <= 3:
                         # drive back starting with last recorded pose
                         drive_back_move_base()
-                        # giskardpy.cml(True)
-
                         TalkingMotion("back at starting position").perform()
                         img.pub_now(ImageEnum.HI.value)
                         MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
+                        rospy.sleep(2)
+                        TalkingMotion("completed the task").perform()
 
             except giskardpy.ExecutionException:
                 TalkingMotion("Wait").perform()
@@ -184,7 +168,7 @@ def demo_start(human: Human):
 
         TalkingMotion("Thank you").perform()
         img.pub_now(ImageEnum.HI.value)
-        rospy.sleep(2)
+        rospy.sleep(1)
         return
 
 
@@ -205,17 +189,18 @@ def monitor_func():
     """
     monitors force torque sensor of robot and throws
     Condition if a significant force is detected (e.g. the gripper is pushed down)
+    this monitor function additionally stores robots position
     """
     global start_time
     global timeout1
     global drive_poses
     der = fts.get_last_value()
 
-    # TODO: test values before challenge
     if abs(der.wrench.force.x) > 18.30:
         rospy.logwarn("sensor exception")
         return SensorMonitoringCondition
 
+    # every 14 second new pose store
     if int(time.time() - start_time) >= timeout1:
         # store pose for way back with orientation turned 180 degree
         drive_pose = robot.get_pose().copy()
@@ -232,25 +217,13 @@ def drive_back_move_base():
     """
     navigate with move base to the start point of the challenge
     """
-    # last_pose = robot.get_pose()
 
-    # subprocess.call(["rosnode", "kill", "/hector_slam"])
-    rospy.sleep(2)
-    # process = subprocess.Popen(["roslaunch", "suturo_bringup", "pose_integrator.launch"])
-    # process = subprocess.Popen(["roslaunch", "hsrb_rosnav_config", "cml_amcl.launch"])
-    rospy.sleep(2)
-
-    # last_pose_stamped = PoseStamped()
-    # last_pose_stamped.pose.position = last_pose.position
-    # last_pose_stamped.pose.orientation = last_pose.orientation
-    # navigation.pub_fake_pose(last_pose_stamped)
-
-    # turn in driving position
     giskardpy.turning_around()
-
     rospy.loginfo("driving back")
     TalkingMotion("Driving Back.").perform()
     img.pub_now(ImageEnum.DRIVINGBACK.value)
+    rospy.sleep(2)
+
     # drive back to all collected poses
     drive_poses.reverse()
     for pose in drive_poses:
