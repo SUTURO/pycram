@@ -92,7 +92,7 @@ def send_query(obj_type: Optional[str] = None, region: Optional[str] = None,
         goal.obj.location = region
     if attributes:
         goal.obj.attribute = attributes
-
+    print(goal)
     client = create_action_client("robokudo/query", QueryAction)
     loginfo("Waiting for action server")
     client.wait_for_server()
@@ -213,7 +213,25 @@ def query_waving_human() -> Pose:
     if result:
         return result
 
+@init_robokudo_interface
+def query_gmah_waving_human() -> Pose:
+    print("Jetzt Bin ich hier")
+    result = send_query(obj_type='human', attributes=['waving'])
+    if result:
+        return result
+    else:
+        return None
 
+@init_robokudo_interface
+def query_pointing_human() -> Pose:
+    """
+    Query RoboKudo for detecting the direction in which a human points to.
+    """
+    result = send_query(obj_type='human', attributes=['pointing'])
+    if result:
+        return result
+    else:
+        return None
 def query_beverages() -> Any:
     """Query RoboKudo for detecting drinks in the robots field of vision"""
     return send_query(obj_type='beverage')

@@ -281,7 +281,7 @@ class HSRBNavigationReal(ProcessModule):
     """
 
     def _execute(self, designator: MoveMotion) -> Any:
-        use_giskard = False
+        use_giskard = True
         if use_giskard:
             logdebug(f"Sending goal to giskard to Move the robot")
             giskard.achieve_cartesian_goal(designator.target, RobotDescription.current_robot_description.base_link, "map")
@@ -334,6 +334,7 @@ class HSRBDetectingReal(ProcessModule):
         # ToDo: at the moment perception ignores searching for a specific object type so we do that as well on real
         global human_pose
         human_pose = None
+        print(desig.technique)
         if desig.state == "stop":
             print("I am here")
             stop_query()
@@ -364,6 +365,16 @@ class HSRBDetectingReal(ProcessModule):
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose)
                     return human_pose
                     pass
+        elif desig.technique == 'gmahWaving':
+            query_result = query_gmah_waving_human()
+            print(query_result)
+            for i in range(0, len(query_result.res)):
+                try:
+                    human_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                    return human_pose
+                except IndexError:
+                    human_pose = Pose.from_pose_stamped(query_result.res[i].pose)
+                    return human_pose
         elif desig.technique == 'waving':
             query_result = query_waving_human()
             print(query_result)
@@ -373,6 +384,20 @@ class HSRBDetectingReal(ProcessModule):
                 except IndexError:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose)
                     pass
+
+
+        elif desig.technique == 'pointing':
+            query_result = query_pointing_human()
+            print(query_result)
+            for i in range(0, len(query_result.res)):
+                try:
+                    pointing_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                    return pointing_pose
+                except IndexError:
+                    pointing_pose = Pose.from_pose_stamped(query_result.res[i].pose)
+                    return pointing_pose
+                    pass
+
 
             return human_pose
         elif desig.state == "face":
