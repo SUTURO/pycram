@@ -62,7 +62,7 @@ def sort_objects(found_objects_list: list, wished_objs_list: list):
             first_list.append(obj)
 
     drinks_items = [item for item in first_list if item.obj_type in DRINKS]
-    silverware_items = [item for item in first_list if item.obj_type in SILVERWARE and item != "Metalplate"]
+    silverware_items = [item for item in first_list if item.obj_type in SILVERWARE and item.obj_type != "Metalplate"]
     cutlery_items = [item for item in first_list if item.obj_type in CUTLERY]
     metalplate_item = [item for item in first_list if item.obj_type == "Metalplate"]
 
