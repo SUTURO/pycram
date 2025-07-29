@@ -1,9 +1,11 @@
+from typing_extensions import Optional
 from demos.pycram_serve_breakfast_demo.utils.misc import try_detect_with_tilting, step_back
 from pycram.datastructures.enums import ObjectType
 from pycram.designators.action_designator import *
 from pycram.failures import PerceptionObjectNotFound, EnvironmentUnreachable, GripperClosedCompletely
 from pycram.worlds.bullet_world import BulletWorld
 
+# Lists of all objects we have and could be used for the demo
 CUTLERY = ["Spoon", "Fork", "Knife", "Plasticknife"]
 DRINKS = ["RedBullCan", "Milkpack", "MilkpackLactoseFree", "Milkpackja", "Cola", "AppleJuice", "OatMilk",
           "MezzoMixBottle", "MilkPackBerch", "IceTeaFuze", "SpriteCan", "ColaBottle", "Winebottle",
@@ -26,6 +28,11 @@ def monitor_func():
 
 
 def get_objects(obj_dict: dict):
+    """
+    get all objects in the dictionary
+    :param obj_dict: A dictionary of perceived objects
+    :return: a list of all objects in the dictionary
+    """
     objects_list = []
 
     if len(obj_dict) == 0:
@@ -38,6 +45,14 @@ def get_objects(obj_dict: dict):
 
 
 def sort_objects(found_objects_list: list, wished_objs_list: list):
+    """
+    Filters out unneeded found objects and sorts the remaining objects in a list.
+    The drinks are sorted at the beginn of the list, then the silverware and cutlery and
+    the Metalplate, if seen, is arranged as the last object in the list.
+    :param found_objects_list: list of found objects in the FOV
+    :param wished_objs_list: list of object types we like to keep
+    :return: sorted list of seen and wished to keep objects
+    """
     if len(found_objects_list) == 0:
         return []
     first_list = []
@@ -53,7 +68,7 @@ def sort_objects(found_objects_list: list, wished_objs_list: list):
 
     sorted_objects = drinks_items + silverware_items + cutlery_items + metalplate_item
     for obj in sorted_objects:
-        if obj.obj_type not in wished_objs_list:
+        if obj.obj_type not in wished_objs_list and obj.obj_type not in DRINKS:
             sorted_objects.remove(obj)
 
     # print which objects are in the final list
@@ -146,7 +161,7 @@ def object_found(obj_dict: dict, obj_name: str) -> bool:
     """
     checks if an object is in the dictionary or not
     :param obj_dict: tupel of State and dictionary of founded objects in the FOV
-    :param obj_name: the object being checked
+    :param obj_name: the name of the object being checked
     :return: if the object has been found
     """
     if len(obj_dict) == 0:
@@ -159,10 +174,10 @@ def object_found(obj_dict: dict, obj_name: str) -> bool:
 
 def get_object(obj_dict: dict, obj_name: str):
     """
-    checks if an object is in the dictionary or not
-    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
-    :param obj_name: the object being checked
-    :return: if the object has been found
+    Get a specific object from the dictionary
+    :param obj_dict: A dictionary of perceived objects
+    :param obj_name: the name of the object being searched for
+    :return: The found object from the dictionary or None
     """
     if len(obj_dict) == 0:
         return None
@@ -175,7 +190,7 @@ def get_object(obj_dict: dict, obj_name: str):
 def get_bowl(obj_dict: dict):
     """
     searches in a dictionary of objects for a bowl and returns it
-    :param obj_dict: tupel of State and dictionary of founded objects in the FOV
+    :param obj_dict: A dictionary of found objects in the FOV
     :return: the found bowl or None
     """
     if len(obj_dict) == 0:
@@ -253,6 +268,7 @@ def ask_for_human_help(object_type: ObjectType, pickup_object):
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
 
 
+# TODO: comment out and use same try_pickup for "Clean the Table" and "Serve Breakfast"
 def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
     """
     Picking up any object with failure handling.
