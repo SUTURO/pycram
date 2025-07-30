@@ -11,9 +11,9 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import String
 
+from demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from demos.pycram_restaurant_demo.utils import misc
 
-from pycram.demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -64,7 +64,7 @@ pointing_found = False
 timeout = 10
 fts = ForceTorqueSensor(robot_name='hsrb')
 placingTest = Pose([5.36, 1.57, 1], [0, 0, 0, 1])
-placingPoseTest = Pose([5.36, 1.57, 0.75], [0,0,0,1])
+placingPoseTest = Pose([5.36, 1.57, 0.35], [0,0,0,1])
 objectGoals = []
 class FixedRoomPositions(Enum):
     LIVING_ROOM = Pose([1.86, 2.59, 0], [0,0, -1, 1])
@@ -100,15 +100,16 @@ def set_pose_in_front(goalPose: Pose, dist : float):
     return adjusted_pose
 
 
-def transform_camera_to_x(pose, frame_x):
+def transform_camera_to_x(pose, frame_x, human:bool):
     """
     transforms the pose with given frame_x, orientation will be head ori and z is minus 1.3
     """
-    pose.pose.position.z -= 1.3
+    #pose.pose.position.z -= 1.3
 
     pose.header.frame_id = "hsrb/" + frame_x
     tPm = tf_listener.transform_pose(pose=pose, target_frame="/map")
-    tPm.pose.position.z = 0
+    if human:
+        tPm.pose.position.z = 0
     pan_pose = robot.get_link_pose("head_pan_link")
     pan_pose.header.frame_id = "/map"
     tPm.pose.orientation = pan_pose.pose.orientation
@@ -120,18 +121,19 @@ def look_around(increase: float, star_pose: PoseStamped, talk=True):
     """
     Make robot look continuously from left to right. Stops if a human is perceived.    :param: increase: The increments in which Toya should look around.
     """
+    TalkingMotion("PLease raise your hand to identify yourself as my instructor").perform()
 
     global instructor_pose ,instructor_found
     instructor_pose = None
     tmp_x = star_pose.pose.position.x
     tmp_y = star_pose.pose.position.y
     tmp_z = star_pose.pose.position.z
-    x = -0.5
+    x = -1
     tries = 0
     MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
 
-    while x <= 1 and tries <= 2:
+    while x <= 1.5 and tries <= 2:
         print("Tries: " , tries)
         MoveJointsMotion(["head_pan_joint"], [x]).perform()
         try:
@@ -147,9 +149,9 @@ def look_around(increase: float, star_pose: PoseStamped, talk=True):
             break
 
         x += increase
-        if x == 1:
+        if x == 1.5:
             tries += 1
-            x = -0.5
+            x = -1
 def callOutInstructor() -> bool:
     test = nlp.check_Instructor()
     return test
@@ -158,22 +160,21 @@ def searching_for_instructor() -> Pose:
     #TODO transform pose from hgdb camera to map frame
 
     global instructor_pose
-    TalkingMotion("PLease raise your hand to identify yourself as my instructor").perform()
     rospy.sleep(2)
     while not instructor_found:
         NavigateAction([FixedRoomPositions.LIVING_ROOM.value]).resolve().perform()
-        callOutInstructor()
+        #callOutInstructor()
         look_around(0.5, robot.get_pose())
         if instructor_found:
             return instructor_pose
         NavigateAction([FixedRoomPositions.KITCHEN.value]).resolve().perform()
-        callOutInstructor()
+        #callOutInstructor()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         look_around(0.5, robot.get_pose())
         if instructor_found:
             return instructor_pose
         NavigateAction([FixedRoomPositions.WORKING_AREA.value]).resolve().perform()
-        callOutInstructor()
+        #callOutInstructor()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         look_around(0.5, robot.get_pose())
         if instructor_found:
@@ -209,12 +210,19 @@ def placeObject(goal_Pose: Pose):
         TalkingMotion("I will open my gripper and let go of the object").perform()
         MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
         TalkingMotion("I will go back now to my instructor ").perform()
+    MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+    config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
+                          'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
+    pakerino(config=config_for_placing)
+    MoveTorsoAction([0.0]).resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
 
 
 def search_location() -> Pose:
     global pointing_pose, pointing_found
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-    MoveTorsoAction([0.2]).perform()
+    #MoveTorsoAction([0.2]).resolve().perform()
 
     try:
 
@@ -239,7 +247,7 @@ def demo(step: int):
         config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
                                'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
         pakerino(config=config_for_placing)
-        MoveTorsoAction([0.2]).resolve().perform()
+        MoveTorsoAction([0.0]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
         TalkingMotion("Give me a Hand is starting.").perform()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
@@ -252,9 +260,9 @@ def demo(step: int):
                 searching_for_instructor()
                 tries += 1
             if instructor_pose:
-                mapInstructorPose = transform_camera_to_x(instructor_pose,"head_rgbd_sensor_link" )
+                mapInstructorPose = transform_camera_to_x(instructor_pose,"head_rgbd_sensor_link", True )
                 print("Hello", mapInstructorPose)#o9
-                newInstructor = set_pose_in_front(mapInstructorPose, 0.4)
+                newInstructor = set_pose_in_front(mapInstructorPose, 0.8)
                 print(newInstructor)
                 NavigateAction([mapInstructorPose]).resolve().perform()
                 marker.publish(Pose.from_pose_stamped(mapInstructorPose), color=[1, 1, 0, 1], name="human_waving_pose")
@@ -276,10 +284,12 @@ def demo(step: int):
             rospy.sleep(1)
         if step <= 2:
             # Finding goal location
+            TalkingMotion("Please step one meter away from me").perform()
+            rospy.sleep(2)
             TalkingMotion("Please point to the location where I should put the object").perform()
             rospy.sleep(2)
             # Testing purposes
-            pointing_pose = True
+            #pointing_pose = True
             while not pointing_found:
                 search_location()
 
@@ -287,12 +297,13 @@ def demo(step: int):
                 if pointing_pose is not None:
                     objectGoals.append(pointing_pose)
                 print("Hallo")
-                #newPose = transform_camera_to_x(placingTest,"head_rgbd_sensor_link" )
-                newPose = set_pose_in_front(pointing_pose, 0.5)
+                newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" , False)
+                #newPose = set_pose_in_front(newPose, 0.5)
                 print(newPose)
+                #move.pub_now(navpose=newPose)
                 NavigateAction([newPose]).resolve().perform()
                 marker.publish(Pose.from_pose_stamped(newPose), color=[1, 0, 1, 1], name="adjusted_pose")
-                placeObject(placingPoseTest)
+                placeObject(newPose)
         if step <= 3:
             NavigateAction([mapInstructorPose]).resolve().perform()
             TalkingMotion("I am ready to assist again").perform()
@@ -308,7 +319,7 @@ def demo(step: int):
 
 
 
-demo(2)
+demo(1)
 
 
 
