@@ -12,6 +12,8 @@ from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import String
 
 from demos.pycram_restaurant_demo.utils import misc
+
+from pycram.demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -48,6 +50,12 @@ global instructor_pose
 global instructor_found
 global pointing_pose
 global pointing_found
+# Initialize NLP variables
+callback = False
+pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
+nlp = NLP_GMAH()
+response = [None]
+nlpInstructor = False
 
 instructor_pose  = None
 pointing_pose = None
@@ -57,7 +65,7 @@ timeout = 10
 fts = ForceTorqueSensor(robot_name='hsrb')
 placingTest = Pose([5.36, 1.57, 1], [0, 0, 0, 1])
 placingPoseTest = Pose([5.36, 1.57, 0.75], [0,0,0,1])
-
+objectGoals = []
 class FixedRoomPositions(Enum):
     LIVING_ROOM = Pose([1.86, 2.59, 0], [0,0, -1, 1])
     KITCHEN = Pose([2.16, -1.93, 0], [0,0,0,1])
@@ -142,22 +150,30 @@ def look_around(increase: float, star_pose: PoseStamped, talk=True):
         if x == 1:
             tries += 1
             x = -0.5
+def callOutInstructor() -> bool:
+    test = nlp.check_Instructor()
+    return test
 
 def searching_for_instructor() -> Pose:
     #TODO transform pose from hgdb camera to map frame
 
     global instructor_pose
+    TalkingMotion("PLease raise your hand to identify yourself as my instructor").perform()
+    rospy.sleep(2)
     while not instructor_found:
         NavigateAction([FixedRoomPositions.LIVING_ROOM.value]).resolve().perform()
+        callOutInstructor()
         look_around(0.5, robot.get_pose())
         if instructor_found:
             return instructor_pose
         NavigateAction([FixedRoomPositions.KITCHEN.value]).resolve().perform()
+        callOutInstructor()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         look_around(0.5, robot.get_pose())
         if instructor_found:
             return instructor_pose
         NavigateAction([FixedRoomPositions.WORKING_AREA.value]).resolve().perform()
+        callOutInstructor()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         look_around(0.5, robot.get_pose())
         if instructor_found:
@@ -183,7 +199,7 @@ def placeObject(goal_Pose: Pose):
     z_pos = goal_Pose.pose.position.z
     MoveTorsoAction([0.2]).resolve().perform()
 
-    TalkingMotion("I will try to place the object now").perform()
+    TalkingMotion("PLacing Object now").perform()
     try:
         PlaceGivenObjectAction(["Crackerbox"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT], [True]).resolve().perform()
         placed = True
@@ -198,12 +214,13 @@ def placeObject(goal_Pose: Pose):
 def search_location() -> Pose:
     global pointing_pose, pointing_found
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+    MoveTorsoAction([0.2]).perform()
 
     try:
 
         pointing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
     except pycram.failures.PerceptionObjectNotFound:
-        rospy.logwarn("The location is not in the semantic map")
+        rospy.logwarn("The location is not known to me")
         TalkingMotion("Sorry, I am not sure where I should put it").perform()
         rospy.sleep(2)
         TalkingMotion("so I will bring it to my favourite table ").perform()
@@ -211,7 +228,7 @@ def search_location() -> Pose:
         pointing_pose = placingTest
     if pointing_pose:
         pointing_found = True
-        TalkingMotion("I will go now").perform()
+        TalkingMotion("I will try to place the object now").perform()
         rospy.sleep(1)
 
 def demo(step: int):
@@ -224,15 +241,14 @@ def demo(step: int):
         pakerino(config=config_for_placing)
         MoveTorsoAction([0.2]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        #TalkingMotion("Give me a Hand is starting.").perform()
+        TalkingMotion("Give me a Hand is starting.").perform()
         #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
 
         #Search for Instructor inside of map
-        #test = DetectAction(technique='gmahWaving', state='start').resolve().perform()
-        #print(test)
         if step <= 0:
             tries = 0
             while tries <= 4 and instructor_pose is None:
+
                 searching_for_instructor()
                 tries += 1
             if instructor_pose:
@@ -262,31 +278,30 @@ def demo(step: int):
             # Finding goal location
             TalkingMotion("Please point to the location where I should put the object").perform()
             rospy.sleep(2)
-            # Test
+            # Testing purposes
             pointing_pose = True
             while not pointing_found:
                 search_location()
-            #if pointing_found:
-                #newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" )
-                #newPose = set_pose_in_front(newPose, 0.2)
-                #NavigateAction([newPose]).resolve().perform()
-                #placeObject(pointing_pose)
+
             if pointing_found:
+                if pointing_pose is not None:
+                    objectGoals.append(pointing_pose)
                 print("Hallo")
                 #newPose = transform_camera_to_x(placingTest,"head_rgbd_sensor_link" )
                 newPose = set_pose_in_front(pointing_pose, 0.5)
                 print(newPose)
-                #move.pub_now(navpose=placingTest)
                 NavigateAction([newPose]).resolve().perform()
                 marker.publish(Pose.from_pose_stamped(newPose), color=[1, 0, 1, 1], name="adjusted_pose")
                 placeObject(placingPoseTest)
         if step <= 3:
             NavigateAction([mapInstructorPose]).resolve().perform()
-            #NavigateAction([newPose]).resolve().perform()
+            TalkingMotion("I am ready to assist again").perform()
+            while len(objectGoals) <= 3:
+                demo(1)
 
 
-        #if step <= 2:
-            # Placing object
+
+
 
 
 

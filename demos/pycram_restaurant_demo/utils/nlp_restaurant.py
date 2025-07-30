@@ -98,25 +98,21 @@ class RestaurantManager():
         """
 
         order_item = []
-
+        msgList = msg[0]
         print(msg)
-        if msg['intent'] == 'Order':
-            list_order = msg['Item']
-            #for entity in list_order:
-            print(list_order)
-            print("entitiy keys", list_order.keys())
-            tmpEnt = list_order['value']
-            tmpNum = list_order['numberAttribute']
-            num = []
-            ent = []
-            ent.append(tmpEnt)
-            if tmpNum == ():
-                num.append(1)
-            else:
-                tmpNumInt = tmpNum[0]
-                realInt = self.word_to_number(tmpNumInt)
-                num.append(realInt)
-            order_item = list(zip(ent, num))
+        if msgList['intent'] == 'Order':
+            for key, entity in msgList['entities'].items():
+                value = entity['value']
+                number = entity['numberAttribute']
+                print("tzpe of number ", type(number))
+                if not number:
+                    number = 1
+                elif not isinstance(number, int):
+                    print("hellloo")
+                    number = options.get(number[0])
+                    print(options.get(number))
+
+            order_item = list(zip(value, number))
         # for entity in nlp_data.get('Item'):
         #     item = entity.get('value')
         #     quantity = 1
