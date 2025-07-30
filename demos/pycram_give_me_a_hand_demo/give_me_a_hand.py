@@ -201,7 +201,7 @@ def placeObject(goal_Pose: Pose):
 
     TalkingMotion("PLacing Object now").perform()
     try:
-        PlaceGivenObjectAction(["Crackerbox"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT], [True]).resolve().perform()
+        PlaceGivenObjectAction(["Default"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT], [True]).resolve().perform()
         placed = True
     except pycram.failures.ManipulationFTSCheckNoObject:
         TalkingMotion("Oh no, It seems I can not reach my Placing Pose").perform()
