@@ -41,6 +41,12 @@ def move_pose_forwards(goal: Pose, distance: float):
     return movedPose
 
 def set_pose_in_front(goalPose: Pose, dist : float):
+    """
+    Creates a new pose given the created the moved pose and the old orientation from the input.
+    :param goalPose: Pose to move.
+    :param dist: Distance to move the goal.
+    :return: Moved Pose.
+    """
     new_pos = move_pose_forwards(goalPose, dist)
     adjusted_pose = Pose(position=[new_pos[0], new_pos[1], new_pos[2]], orientation=[goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w])
     return adjusted_pose

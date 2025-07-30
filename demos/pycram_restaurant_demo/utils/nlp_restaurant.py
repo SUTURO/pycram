@@ -65,6 +65,7 @@ class RestaurantManager():
     def _data_callback(self, data: String):
         """
         Receives the data from NLP and dumps it into a JSON, to optimize working with it.
+        :param data: NLP response
 
         """
 
@@ -84,6 +85,11 @@ class RestaurantManager():
             self.callback = False
 
     def word_to_number(self, word: str) -> int:
+        """
+        Fallback method if NLP returns the int in a string format,
+        :param: word: The number
+        :return: The number as an int
+        """
         try:
             intVer = options.get(word.lower())
         except Exception as e:
@@ -104,7 +110,7 @@ class RestaurantManager():
             for key, entity in msgList['entities'].items():
                 value = entity['value']
                 number = entity['numberAttribute']
-                print("tzpe of number ", type(number))
+                print("type of number ", type(number))
                 if not number:
                     number = 1
                 elif not isinstance(number, int):
@@ -113,16 +119,17 @@ class RestaurantManager():
                     print(options.get(number))
 
             order_item = list(zip(value, number))
-        # for entity in nlp_data.get('Item'):
-        #     item = entity.get('value')
-        #     quantity = 1
-        #     print(item)
-        #     if 'numberAttribute' in entity and entity.get('numberAttribute'):
-        #         num_str = entity.get('numberAttribute')
-        #         if not isinstance(num_str, int):
-        #             quantity = self.word_to_number(num_str)
-        #
-        #     order_item.append((item, quantity))
+        # for values in list_order.values():
+        #     print(values)
+        #     print(values["value"])
+        #     list_entity.append(values["value"])
+        #     tmp_num = values["numberAttribute"]
+        #     if tmp_num == ():
+        #         list_num.append(1)
+        #     else:
+        #         tmp = tmp_num[0]
+        #         real_int = options.get(tmp)
+        #         list_num.append(real_int)
         print(order_item)
         return order_item
 
@@ -168,7 +175,10 @@ class RestaurantManager():
             self.repeat_get_order(customer, 1)
 
     def confirm_order(self, customer: CustomerDescription, order:List[tuple]):
-        """Confirms the order"""
+        """Confirms the order
+            :param: customer: The customer that confirms the order
+            :param: order: The order to confirm
+        """
 
         HeadFollowMotion(state='start').perform()
 
