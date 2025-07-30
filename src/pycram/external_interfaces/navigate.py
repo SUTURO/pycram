@@ -37,6 +37,8 @@ class PoseNavigator:
         print("interrupting hehe")
         self.client.cancel_all_goals()
 
+    def get_client(self):
+        return self.client.feedback_cb
     def pub_now(self, navpose: PoseStamped, interrupt_bool: bool = True) -> bool:
         self.goal_pose = navpose
         goal = MoveBaseGoal()
