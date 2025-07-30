@@ -1,4 +1,5 @@
 import rospy
+from geometry_msgs.msg import PoseStamped
 from typing_extensions import Optional
 
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
@@ -15,7 +16,7 @@ from pycram.utilities.robocup_utils import ImageSendPublisher, StartSignalWaiter
 from pycram.worlds.bullet_world import BulletWorld
 from pycram.world_concepts.world_object import Object
 
-#TODO: write a function for deffering between NavigateAction and move.pub_now() + adjust calls in the code
+# TODO: write a function for deffering between NavigateAction and move.pub_now() + adjust calls in the code
 
 # Initialization of needed things for the demo
 tf_listener, marker, world, v, text_to_speech_publisher, image_switch_publisher, move, robot, kitchen = startup()
@@ -202,10 +203,10 @@ def place_object(object: Object):
     z_pos = x_y_z_pos[2]
 
     # Depending on the placing pose place the object from the left or the front of the dishwasher
-    move.pub_now(NavigatePose.DISHWASHER.value)
+    navigate_to(NavigatePose.DISHWASHER.value)
     # NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
     if x_pos >= 2.9:
-        move.pub_now(NavigatePose.DISHWASHER_LEFT.value)
+        navigate_to(NavigatePose.DISHWASHER_LEFT.value)
         # NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
 
     TalkingMotion("Placing").perform()
@@ -231,37 +232,37 @@ def pickup_and_place(objects_list: list):
     """
     # If any objects were found, move to the first object to pick it up
     if len(objects_list) != 0:
-        move.pub_now(Pose([objects_list[0].pose.position.x, NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
-                          NavigatePose.POPCORN_TABLE.value.pose.orientation))
+        navigate_to(Pose([objects_list[0].pose.position.x, NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
+                         NavigatePose.POPCORN_TABLE.value.pose.orientation))
         # NavigateAction([Pose([objects_list[0].pose.position.x, NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
         #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
     for value in range(len(objects_list)):
         pickup_object(objects_list[value])
         # Turn around
-        move.pub_now(Pose(robot.get_pose().pose.position,
-                          NavigatePose.DISHWASHER.value.pose.orientation))
+        navigate_to(Pose(robot.get_pose().pose.position,
+                         NavigatePose.DISHWASHER.value.pose.orientation))
         # NavigateAction([Pose(robot.get_pose().pose.position,
         #                      NavigatePose.DISHWASHER.value.pose.orientation)]).resolve().perform()
         # If the picked up object is a drink throw it in the trash can, otherwise place it in the dishwasher
         if objects_list[value].obj_type in DRINKS:
-            move.pub_now(NavigatePose.TRASH_CAN.value)
+            navigate_to(NavigatePose.TRASH_CAN.value)
             # NavigateAction([NavigatePose.TRASH_CAN.value]).resolve().perform()
             throw_object(objects_list[value])
         else:
-            move.pub_now(NavigatePose.DISHWASHER.value)
+            navigate_to(NavigatePose.DISHWASHER.value)
             # NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
             place_object(objects_list[value])
         # Navigate to table if there are any objects remaining for pickup
         if value + 1 < len(objects_list):
             # Turn around
-            move.pub_now(Pose(robot.get_pose().pose.position,
-                              NavigatePose.POPCORN_TABLE.value.pose.orientation))
+            navigate_to(Pose(robot.get_pose().pose.position,
+                             NavigatePose.POPCORN_TABLE.value.pose.orientation))
             # NavigateAction([Pose(robot.get_pose().pose.position,
             #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
             # Navigate to table
-            move.pub_now(Pose([objects_list[value + 1].pose.position.x,
-                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
-                              NavigatePose.POPCORN_TABLE.value.pose.orientation))
+            navigate_to(Pose([objects_list[value + 1].pose.position.x,
+                              NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
+                             NavigatePose.POPCORN_TABLE.value.pose.orientation))
             # NavigateAction([Pose([objects_list[value + 1].pose.position.x,
             #                       NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
             #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -314,7 +315,7 @@ def navigate_and_detect(location_name: NavigatePose):
     rospy.sleep(0.5)
 
     if location_name == NavigatePose.SHELF:
-        move.pub_now(NavigatePose.SHELF.value)
+        navigate_to(NavigatePose.SHELF.value)
         # NavigateAction([NavigatePose.SHELF.value]).resolve().perform()
         MoveTorsoAction([0.12]).resolve().perform()
         object_desig = try_detect_with_tilting(-0.4)
@@ -323,9 +324,9 @@ def navigate_and_detect(location_name: NavigatePose):
         image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
     elif location_name == NavigatePose.POPCORN_TABLE:
         # To perceive all objects perceive the left side and the right side of the table
-        move.pub_now(Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x - 0.4,
-                           NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
-                          NavigatePose.POPCORN_TABLE.value.pose.orientation))
+        navigate_to(Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x - 0.4,
+                          NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
+                         NavigatePose.POPCORN_TABLE.value.pose.orientation))
         # NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x - 0.4,
         #                       NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
         #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -336,9 +337,9 @@ def navigate_and_detect(location_name: NavigatePose):
         # object_desig1 = try_detect(Pose([robot.get_pose().pose.position.x, 4.9, 0.35], [0, 0, 0.7, 0.7]))
         objects_list1 = get_objects(object_desig1)
         image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
-        move.pub_now(Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
-                           NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
-                          NavigatePose.POPCORN_TABLE.value.pose.orientation))
+        navigate_to(Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
+                          NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
+                         NavigatePose.POPCORN_TABLE.value.pose.orientation))
         # NavigateAction([Pose([NavigatePose.POPCORN_TABLE.value.pose.position.x + 0.4,
         #                       NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
         #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
@@ -373,6 +374,19 @@ def navigate_and_detect(location_name: NavigatePose):
         raise ValueError(f'Incorrect location name: {location_name}.')
 
     return objects_list
+
+
+def navigate_to(pose: PoseStamped):
+    """
+    Lets the robot navigates to a pose using NavigateAction or move.pub_now()
+
+    :param pose: The pose the robot navigates to.
+    """
+    with_action = False
+    if with_action:
+        NavigateAction([pose]).resolve().perform()
+    else:
+        move.pub_now(pose)
 
 
 def failure_handling1(sorted_obj: list):
@@ -417,7 +431,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
     # failure handling part 2
     final_sorted_obj = sorted_obj + new_sorted_obj
     if len(final_sorted_obj) < LEN_WISHED_SORTED_OBJ_LIST:
-        move.pub_now(NavigatePose.POPCORN_TABLE.value)
+        navigate_to(NavigatePose.POPCORN_TABLE.value)
         # NavigateAction([NavigatePose.POPCORN_TABLE.value]).resolve().perform()
 
         print("second Check")
@@ -441,7 +455,7 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
 
             ParkArmsAction([Arms.LEFT]).resolve().perform()
 
-            move.pub_now(NavigatePose.DISHWASHER.value)
+            navigate_to(NavigatePose.DISHWASHER.value)
             # NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
 
             if wished_sorted_obj_list[val] == "Metalplate" or wished_sorted_obj_list[val] == "Metalbowl":
@@ -453,10 +467,10 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
             z_pos = x_y_z_pos[2]
 
             if x_pos >= 2.65:
-                move.pub_now(NavigatePose.DISHWASHER_LEFT.value)
+                navigate_to(NavigatePose.DISHWASHER_LEFT.value)
                 # NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
             else:
-                move.pub_now(NavigatePose.DISHWASHER_RIGHT.value)
+                navigate_to(NavigatePose.DISHWASHER_RIGHT.value)
                 # NavigateAction([NavigatePose.DISHWASHER_RIGHT.value]).resolve().perform()
 
             TalkingMotion("Placing").perform()
@@ -478,11 +492,11 @@ def failure_handling2(sorted_obj: list, new_sorted_obj: list):
             # navigates back if a next object exists
             if val + 1 < len(wished_sorted_obj_list):
                 # turn around
-                move.pub_now(Pose(robot.get_pose().pose.position,
-                                  NavigatePose.POPCORN_TABLE.value.pose.orientation))
+                navigate_to(Pose(robot.get_pose().pose.position,
+                                 NavigatePose.POPCORN_TABLE.value.pose.orientation))
                 # NavigateAction([Pose(robot.get_pose().pose.position,
                 #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
-                move.pub_now(NavigatePose.POPCORN_TABLE.value)
+                navigate_to(NavigatePose.POPCORN_TABLE.value)
                 # NavigateAction([NavigatePose.POPCORN_TABLE.value]).resolve().perform()
 
 
@@ -509,7 +523,7 @@ with (real_robot):
 
     park_arms_and_move_torso(0)
 
-    move.pub_now(NavigatePose.DISHWASHER_CLOSED.value)
+    navigate_to(NavigatePose.DISHWASHER_CLOSED.value)
     # NavigateAction([NavigatePose.DISHWASHER_CLOSED.value]).resolve().perform()
 
     if not opened:
@@ -525,8 +539,8 @@ with (real_robot):
     else:
         TalkingMotion("Please pull out the lower rack").perform()
 
-    move.pub_now(Pose(NavigatePose.DISHWASHER.value.pose.position,
-                      NavigatePose.POPCORN_TABLE.value.pose.orientation))
+    navigate_to(Pose(NavigatePose.DISHWASHER.value.pose.position,
+                     NavigatePose.POPCORN_TABLE.value.pose.orientation))
     # NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
     #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
 
