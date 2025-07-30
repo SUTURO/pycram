@@ -10,7 +10,7 @@ class ResponseLoader:
     def load_data(self):
         # JSON-Datei laden
         try:
-            with open("/home/suturo/suturo23_24/pycram_ws/src/pycram/demos/pycram_receptionist_demo/utils/resp.json") as file:
+            with open(f"/home/suturo/suturo23_24/pycram_ws/src/pycram/demos/pycram_receptionist_demo/utils/{self.json_file}") as file:
                 self.data = json.load(file)
                 print("Data loaded successfully.")
         except FileNotFoundError:

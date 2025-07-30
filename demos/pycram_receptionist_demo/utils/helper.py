@@ -8,9 +8,10 @@ from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
 
-look_couch = Pose([3.8, 0.3, 1])
+look_couch = Pose([3.8, 0.3, 0.8])
 text_to_img_publisher = TextToImagePublisher()
 img = ImageSwitchPublisher()
+
 
 def get_attributes(guest: HumanDescription, trys: Optional[int] = 0):
     """
@@ -293,6 +294,15 @@ def PoseStamped_to_Point(pose: PoseStamped):
     return point_pose
 
 
+def PoseStamped_to_Pose(pose: PointStamped):
+    """
+    function to transform PoseStamped to PointStamped in '/map' frame
+    :param pose: pose to be transformed
+    """
+    pycram_pose = Pose([pose.point.x,  pose.point.y,  pose.point.z])
+    return pycram_pose
+
+
 def describe(human: HumanDescription):
     """
     HRI-function for describing a human more detailed.
@@ -321,7 +331,6 @@ def describe(human: HumanDescription):
         # brightness of clothes
         TalkingMotion(f"they are wearing {human.attributes[3]}").perform()
         rospy.sleep(1)
-
 
 
 def check_drink_available(guest: HumanDescription):

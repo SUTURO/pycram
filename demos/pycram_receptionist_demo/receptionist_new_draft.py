@@ -160,9 +160,10 @@ def demo(step: int, two_guests: Optional[bool] = True):
 
                 if counter == 5:
                     try:
-                        rospy.logerr("host has no id")
-                        host_pose = DetectAction(technique='human_receptionist').resolve().perform()
-                        host.set_pose(host_pose)
+                        start_time = time.time()
+                        while start_time < 6 and not host.pose:
+                            host_pose = DetectAction(technique='human_receptionist').resolve().perform()
+                            host.set_pose(host_pose)
 
                     except Exception as e:
                         print(e)
@@ -181,10 +182,18 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 if guest_pose:
                     guest1.set_pose(guest_pose)
                 else:
-                    TalkingMotion("i am sorry i can not find a seat")
+                    TalkingMotion("i am sorry i can not find a seat").perform()
                     guest1.set_pose(guest_pose)
             else:
                 guest1.set_pose(guest_pose)
+
+        if not two_guests:
+            if host.pose:
+                LookAtAction([PoseStamped_to_Pose(host.pose)]).resolve().perform()
+                TalkingMotion(f"hey {host.name}, {guest1.name} has arrived").perform()
+                rospy.sleep(1.5)
+            LookAtAction([PoseStamped_to_Pose(guest1.pose)]).resolve().perform()
+            TalkingMotion(f"tell me if you need further assistance").perform()
 
         if two_guests:
             if step <= 8:

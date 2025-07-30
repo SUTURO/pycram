@@ -1,5 +1,4 @@
 import time
-import rospy
 from std_msgs.msg import String
 import json
 
@@ -24,7 +23,7 @@ class NLP_Helper:
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
         rospy.sleep(2)
-        self.res_loader = ResponseLoader("a.json")
+        self.res_loader = ResponseLoader("resp.json")
         self.res_loader.load_data()
         self.response = ["", ""]
         self.callback = False
@@ -35,10 +34,8 @@ class NLP_Helper:
         function to receive data from nlp via /nlp_out topic
         """
         self.image_switch_publisher.pub_now(ImageEnum.HI.value)
-
         self.parse_json_string(data.data)
         self.callback = True
-
 
     def welcome_guest(self, guest: HumanDescription):
         """
@@ -88,12 +85,6 @@ class NLP_Helper:
                 self.nlp_pub.publish("start listening")
                 self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
 
-
-            # if int(time.time() - start_time) == timeout2:
-            #     print("listen again")
-            #     self.nlp_pub.publish("start listening")
-            #     start_time = time.time()
-
         self.callback = False
         print(self.response)
 
@@ -112,7 +103,6 @@ class NLP_Helper:
             guest.set_name(self.name_repeat())
         self.image_switch_publisher.pub_now(ImageEnum.HI.value)
         TalkingMotion(f"Nice to meet you {guest.name}").perform()
-        #TalkingMotion(f"Nice to meet you Rania").perform()
 
         return guest
 
@@ -166,6 +156,7 @@ class NLP_Helper:
         self.nlp_pub.publish("start listening")
         rospy.sleep(2.2)
         self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+        # comment in to display a picture of how to interact with robot
         # self.image_switch_publisher.pub_now(ImageEnum.TALKING_DUMMIES.value)
 
         # wait for nlp answer
@@ -198,6 +189,7 @@ class NLP_Helper:
                 self.nlp_pub.publish("start listening")
                 rospy.sleep(2)
                 self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+                # comment in to display a picture of how to interact with robot
                 # self.image_switch_publisher.pub_now(ImageEnum.TALKING_DUMMIES.value)
 
             while not self.callback and trys < 2:
@@ -211,11 +203,6 @@ class NLP_Helper:
                     rospy.sleep(1.3)
                     self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
                     trys += 1
-                # if int(time.time() - start_time) == timeout2:
-                #     trys += 1
-                #     print("listen again")
-                #     self.nlp_pub.publish("start listening")
-                #     start_time = time.time()
 
             self.callback = False
             if self.response[0] == "Hobbies" and self.response[1].strip() != "":
@@ -263,10 +250,6 @@ class NLP_Helper:
                 rospy.sleep(1)
                 self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
                 trys += 1
-            # if int(time.time() - start_time) == timeout2:
-            #     print("listen again")
-            #     self.nlp_pub.publish("start listening")
-            #     start_time = time.time()
 
         self.callback = False
         print(self.response)
@@ -328,6 +311,7 @@ class NLP_Helper:
     def store_and_answer_hobby(self, guest: HumanDescription):
         """
         function to answer to hobby individually
+        :param guest: Human object to connect result to
         """
 
         # get interests
@@ -351,6 +335,10 @@ class NLP_Helper:
         TalkingMotion(toya_text).perform()
 
     def parse_json_string(self, json_string: str):
+        """
+        callback function to get needed values from nlp result
+        :param json_string: string containing json file content - nlp result
+        """
         # String to JSON-Object
         print(json_string)
         parsed = json.loads(json_string)
@@ -361,6 +349,7 @@ class NLP_Helper:
         value = ""
         entity = ""
 
+        # struktur ist so, weil die das auch in Knowlegde so haben
         if intent == "Hobbies":
             concept = parsed.get("Concept", {})
             value = concept.get("value")
@@ -372,7 +361,6 @@ class NLP_Helper:
 
             value = concept.get("value")
             entity = concept.get("entity")
-
 
         result = {
             "sentence": sentence,
@@ -388,8 +376,7 @@ class NLP_Helper:
 
     def test_nlp(self):
         """
-        sequence in which robot asks person for favorite drink and stores it
-        :param guest: variable that stores favorite drink
+        testing nlp silently
         """
         # TalkingMotion("tell me something").perform()
         # rospy.sleep(2)
