@@ -1,87 +1,44 @@
+import json
 import re
 import ast
 from typing import List, Tuple, Dict, Any
 
-from constants import OPTIONS, NUMBERS
+from demos.pycram_restaurant_demo.utils.NLP.constants import OPTIONS, NUMBERS
+
 
 class NLPProcessor:
     """Handles processing of NLP response and data formatting."""
+    def __init__(self):
+        self.options = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+           '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,}
 
-    @staticmethod
-    def get_order_data(nlp_response:str)->List[Tuple[str, int]]:
+        self.numbers = {'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', '1', '2', '3',
+           '4', '5', '6', '7', '8', '9', '10'}
+
+    def parse_input(self, data: str) -> dict:
         """
-        Extract order data from NLP response. Currently, works only with GPSR script.
-        :param: nlp_response: Raw NLP response string
-        :return: List of tuples (item, quantity)
+        Parses input data, handling both JSON and legacy string formats
         """
-        order_list = []
-        msg = ast.literal_eval(nlp_response)
-        if msg['intent'] == "Order":
-            list_order = msg['Item']
-            tmp_entity = list_order['value']
-            tmp_num = list_order['numberAttribute']
+        try:
+            return json.loads(data)
+        except json.JSONDecodeError:
+            print("Error, msg is not a json")
 
-            list_entity = [tmp_entity]
-            list_num = [1] if not tmp_num else [OPTIONS.get(tmp_num[0], 1)]
+    def extract_order(self, parsed_data: dict) -> List[tuple]:
+        """Extract order item from parsed data.
+        :param: parsed_data: JSON data from NLP
+        :return: List of tuples from the order"""
 
-            order_list = list(zip(list_entity, list_num))
+        if not parsed_data.get('intent') == "Order":
+            return []
+        return [
+            (entity['value'], self._get_quantity(entity))
+            for entity in parsed_data.get('entities', {}).values()
+        ]
+    def _get_quantity(self, entity: dict) -> int:
+        """Exchanges the written number of the entity data to the int version.
+        :param: entity: The entity from which we want to know the quantity of
+        :return: the int version of the quantity"""
+        num_attr = entity.get('numberAttribute', ())
+        return self.options.get(num_attr[0], 1) if num_attr else 1
 
-        return order_list
-
-    @staticmethod
-    def split_response(data: List[str]) -> List[str]:
-        """
-        Clean and split NLP response data.
-
-        :param: data: List of strings to clean
-        :return: Cleaned list of strings
-        """
-        new_tmp = [n.strip() for n in data]
-        return [re.sub('\W+', '', m) for m in new_tmp]
-
-    @staticmethod
-    def split_number_word(input_data: List[Tuple[str, int]]) -> List[Tuple[str, int]]:
-        """
-        Split combined number-word strings into separate components.
-
-        Args:
-            input_data: List of (item, quantity) tuples
-
-        Returns:
-            Processed list with separated components
-        """
-        result = []
-
-        for input_str in input_data:
-            str_order = input_str[0]
-            if input_str[1] != 1:
-                result.append((input_str[0], input_str[1]))
-
-            for number in NUMBERS:
-                if str_order.startswith(number):
-                    leftover = str_order[len(number):]
-                    tmp_num = OPTIONS[number]
-                    if (leftover, tmp_num) not in result:
-                        result.append((leftover, tmp_num))
-
-        return result
-
-    @staticmethod
-    def save_order(data: List[str]) -> List[Tuple[str, int]]:
-        """
-        Convert raw order data into structured format.
-
-        Args:
-            data: List of order items and quantities
-
-        Returns:
-            List of (item, quantity) tuples
-        """
-        tuple_order = [(x, OPTIONS[y]) for x, y in zip(data, data[1:]) if y in OPTIONS]
-
-        for order in tuple_order:
-            for num in NUMBERS:
-                if num in order[0]:
-                    return NLPProcessor.split_number_word(tuple_order)
-
-        return tuple_order

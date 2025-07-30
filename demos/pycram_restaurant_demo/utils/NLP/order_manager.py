@@ -2,12 +2,11 @@ from typing import List, Tuple
 import rospy
 import time
 
+from demos.pycram_restaurant_demo.utils.NLP.nlp_processor import NLPProcessor
+from demos.pycram_restaurant_demo.utils.NLP.speech_manager import SpeechManager
 from pycram.datastructures.enums import ImageEnum
 from pycram.designators.motion_designator import HeadFollowMotion
 from pycram.designators.object_designator import CustomerDescription
-from constants import TIMEOUT
-from speech_manager import SpeechManager
-from nlp_processor import NLPProcessor
 
 
 class OrderManager:

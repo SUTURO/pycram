@@ -17,7 +17,7 @@ from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
 from pycram.datastructures.pose import Pose
 from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction, \
-    NavigateAction
+    NavigateAction, PlaceGivenObjectAction
 from pycram.designators.motion_designator import TalkingMotion, MoveJointsMotion
 from pycram.designators.object_designator import CustomerDescription
 from pycram.external_interfaces.robokudo import get_used_annotator_list
@@ -49,11 +49,14 @@ global instructor_found
 global pointing_pose
 global pointing_found
 
+instructor_pose  = None
+pointing_pose = None
+instructor_found = False
+pointing_found = False
 timeout = 10
 fts = ForceTorqueSensor(robot_name='hsrb')
-
-
-
+placingTest = Pose([5.36, 1.57, 1], [0, 0, 0, 1])
+placingPoseTest = Pose([5.36, 1.57, 0.75], [0,0,0,1])
 
 class FixedRoomPositions(Enum):
     LIVING_ROOM = Pose([1.86, 2.59, 0], [0,0, -1, 1])
@@ -110,42 +113,57 @@ def look_around(increase: float, star_pose: PoseStamped, talk=True):
     Make robot look continuously from left to right. Stops if a human is perceived.    :param: increase: The increments in which Toya should look around.
     """
 
-    global human_posem ,instructor_found
-    human_pose = None
+    global instructor_pose ,instructor_found
+    instructor_pose = None
     tmp_x = star_pose.pose.position.x
     tmp_y = star_pose.pose.position.y
     tmp_z = star_pose.pose.position.z
     x = -0.5
     tries = 0
-    while x <= 1 and tries <= 3:
+    MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
 
+    while x <= 1 and tries <= 2:
+        print("Tries: " , tries)
         MoveJointsMotion(["head_pan_joint"], [x]).perform()
         try:
-            human_pose = DetectAction(technique='waving', state='start').resolve().perform()
+            print("hallo z1")
+            instructor_pose = DetectAction(technique='gmahWaving', state='start').resolve().perform()
+            print("halloe2")
+            print(instructor_pose)
         except pycram.failures.PerceptionObjectNotFound:
             print("oh no, no waving human was found")
-        if human_pose:
+        if instructor_pose:
             TalkingMotion("I found an instructor").perform()
             instructor_found = True
             break
 
         x += increase
         if x == 1:
-            x = -0.5
             tries += 1
+            x = -0.5
 
-def searching_for_instructor():
+def searching_for_instructor() -> Pose:
     #TODO transform pose from hgdb camera to map frame
+
     global instructor_pose
     while not instructor_found:
         NavigateAction([FixedRoomPositions.LIVING_ROOM.value]).resolve().perform()
         look_around(0.5, robot.get_pose())
+        if instructor_found:
+            return instructor_pose
         NavigateAction([FixedRoomPositions.KITCHEN.value]).resolve().perform()
+        #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         look_around(0.5, robot.get_pose())
+        if instructor_found:
+            return instructor_pose
         NavigateAction([FixedRoomPositions.WORKING_AREA.value]).resolve().perform()
-
+        #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+        look_around(0.5, robot.get_pose())
+        if instructor_found:
+            return instructor_pose
     if instructor_found:
-        NavigateAction([instructor_pose]).resolve().perform()
+        return instructor_pose
 
 def monitor_func():
     """
@@ -159,30 +177,73 @@ def monitor_func():
 
     return False
 
+def placeObject(goal_Pose: Pose):
+    x_pos = goal_Pose.pose.position.x
+    y_pos = goal_Pose.pose.position.y
+    z_pos = goal_Pose.pose.position.z
+    MoveTorsoAction([0.2]).resolve().perform()
+
+    TalkingMotion("I will try to place the object now").perform()
+    try:
+        PlaceGivenObjectAction(["Crackerbox"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT], [True]).resolve().perform()
+        placed = True
+    except pycram.failures.ManipulationFTSCheckNoObject:
+        TalkingMotion("Oh no, It seems I can not reach my Placing Pose").perform()
+        rospy.sleep(2)
+        TalkingMotion("I will open my gripper and let go of the object").perform()
+        MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+        TalkingMotion("I will go back now to my instructor ").perform()
+
+
 def search_location() -> Pose:
     global pointing_pose, pointing_found
+    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+
     try:
+
         pointing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
     except pycram.failures.PerceptionObjectNotFound:
         rospy.logwarn("The location is not in the semantic map")
-        TalkingMotion("Please make sure that you point towards a location that is known to me").perform()
+        TalkingMotion("Sorry, I am not sure where I should put it").perform()
+        rospy.sleep(2)
+        TalkingMotion("so I will bring it to my favourite table ").perform()
+        rospy.sleep(2)
+        pointing_pose = placingTest
     if pointing_pose:
         pointing_found = True
-        TalkingMotion("Location was recognized").perform()
+        TalkingMotion("I will go now").perform()
+        rospy.sleep(1)
 
 def demo(step: int):
      global instructor_pose, instructor_found, pointing_pose, pointing_found
      with real_robot:
         MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+        MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+        config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
+                               'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
+        pakerino(config=config_for_placing)
+        MoveTorsoAction([0.2]).resolve().perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        #TalkingMotion("Give me a Hand is starting.").perform()
+        #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+
         #Search for Instructor inside of map
         #test = DetectAction(technique='gmahWaving', state='start').resolve().perform()
         #print(test)
-        tries = 0
-        while tries <= 4:
-            searching_for_instructor()
-            tries += 1
-
         if step <= 0:
+            tries = 0
+            while tries <= 4 and instructor_pose is None:
+                searching_for_instructor()
+                tries += 1
+            if instructor_pose:
+                mapInstructorPose = transform_camera_to_x(instructor_pose,"head_rgbd_sensor_link" )
+                print("Hello", mapInstructorPose)#o9
+                newInstructor = set_pose_in_front(mapInstructorPose, 0.4)
+                print(newInstructor)
+                NavigateAction([mapInstructorPose]).resolve().perform()
+                marker.publish(Pose.from_pose_stamped(mapInstructorPose), color=[1, 1, 0, 1], name="human_waving_pose")
+                marker.publish(Pose.from_pose_stamped(newInstructor), color=[1, 0, 1, 1], name="adjusted_pose")
+        if step <= 1:
             # Getting Object step
             TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
             rospy.sleep(1)
@@ -197,17 +258,34 @@ def demo(step: int):
                 MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
 
             rospy.sleep(1)
-        if step <= 1:
+        if step <= 2:
             # Finding goal location
             TalkingMotion("Please point to the location where I should put the object").perform()
             rospy.sleep(2)
+            # Test
+            pointing_pose = True
             while not pointing_found:
                 search_location()
+            #if pointing_found:
+                #newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" )
+                #newPose = set_pose_in_front(newPose, 0.2)
+                #NavigateAction([newPose]).resolve().perform()
+                #placeObject(pointing_pose)
             if pointing_found:
-                newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" )
-                newPose = set_pose_in_front(newPose, 0.2)
+                print("Hallo")
+                #newPose = transform_camera_to_x(placingTest,"head_rgbd_sensor_link" )
+                newPose = set_pose_in_front(pointing_pose, 0.5)
+                print(newPose)
+                #move.pub_now(navpose=placingTest)
                 NavigateAction([newPose]).resolve().perform()
-        if step <= 2:
+                marker.publish(Pose.from_pose_stamped(newPose), color=[1, 0, 1, 1], name="adjusted_pose")
+                placeObject(placingPoseTest)
+        if step <= 3:
+            NavigateAction([mapInstructorPose]).resolve().perform()
+            #NavigateAction([newPose]).resolve().perform()
+
+
+        #if step <= 2:
             # Placing object
 
 
@@ -215,7 +293,7 @@ def demo(step: int):
 
 
 
-demo(0)
+demo(2)
 
 
 

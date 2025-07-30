@@ -1,19 +1,19 @@
 import rospy
 from std_msgs.msg import String
 
+from demos.pycram_restaurant_demo.utils.NLP.order_manager import OrderManager
+from demos.pycram_restaurant_demo.utils.NLP.speech_manager import SpeechManager
 from pycram.datastructures.enums import ImageEnum
 from pycram.designators.motion_designator import HeadFollowMotion
-from speech_manager import SpeechManager
-from order_manager import OrderManager
 
 
-class NLPRestaurant:
+class RestaurantNLP:
     """Main class for restaurant NLP interaction."""
 
     def __init__(self):
         self.speech_manager = SpeechManager()
         self.order_manager = OrderManager(self.speech_manager)
-        self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
+        self.sub_nlp = rospy.Subscriber("nlp_out", String, self.speech_manager.data_cb)
 
     def data_cb(self, data):
         """Callback for NLP data."""
