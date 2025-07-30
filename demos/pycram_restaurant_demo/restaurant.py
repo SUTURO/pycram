@@ -161,14 +161,6 @@ def cmd_vel_callback(msg):
             stuck = True
 
 
-def child_demo():
-    HeadFollowMotion(state='start').perform()
-    TalkingMotion("Hallo Vinzent, Jakob und Ryan. Ich bin Toya.").perform()
-    rospy.sleep(2)
-    TalkingMotion("Nice to meet you").perform()
-
-
-
 
 
 def demo(step: int):
@@ -185,17 +177,17 @@ def demo(step: int):
         rospy.sleep(2)
         # Due to the endless loop for this demo, this is only called once. Only necessary for robocup
 
-        # if len(customers) == 0:
-        #     TalkingMotion("start restaurant demo").perform()
-        #     rospy.sleep(2)
-        #     TalkingMotion("Please push down my gripper to start the demo ").perform()
-        #     image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
-        #
-        #     try:
-        #         plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-        #         plan.perform()
-        #     except SensorMonitoringCondition:
-        #         image_switch_publisher.pub_now(ImageEnum.HI.value)
+        if len(customers) == 0:
+            TalkingMotion("start restaurant demo").perform()
+            rospy.sleep(2)
+            TalkingMotion("Please push down my gripper to start the demo ").perform()
+            image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
+
+            try:
+                plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                plan.perform()
+            except SensorMonitoringCondition:
+                image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 0:
             #Preparation for the look around pose. Toyas torso needs to be high enough
