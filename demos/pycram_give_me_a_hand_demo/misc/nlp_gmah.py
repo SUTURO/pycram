@@ -93,10 +93,10 @@ class NLP_GMAH():
 
     def check_instructor(self):
 
-        TalkingMotion("I could not see the desired location.").perform()
+       # TalkingMotion("I could not see the desired location.").perform()
         rospy.sleep(2)
         TalkingMotion("Please tell me the location after my display changes").perform()
-        rospy.sleep(1)
+        rospy.sleep(2)
 
         self.nlp_pub.publish("start listening")
         rospy.sleep(2.3)
