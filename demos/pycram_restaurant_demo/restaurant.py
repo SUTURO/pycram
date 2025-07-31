@@ -10,7 +10,8 @@ from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import String
 
 from demos.pycram_restaurant_demo.utils import misc
-from demos.pycram_restaurant_demo.utils.nlp_restaurant import RestaurantManager
+
+from pycram.demos.pycram_restaurant_demo.utils.nlp_restaurant_json import NLPRestaurant
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 #from demos.pycram_restaurant_demo.utils.nlp_restaurant import nlp_restaurant
@@ -39,7 +40,7 @@ stopped = False
 #
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
-nlp = RestaurantManager()
+nlp = NLPRestaurant()
 odom_response = None
 pose_dict = OrderedDict()
 moving = False
@@ -206,8 +207,9 @@ def demo(step: int):
             #To show the perceived person, this needs to initialized beforehand
             annotator = get_used_annotator_list(Demos.RESTAURANT, as_topic_names=False)
 
-            isp = ImageSendPublisher(sub_topic=annotator[0])
-            isp.activate_subscriber()
+            #isp = ImageSendPublisher(sub_topic=annotator[0])
+
+            #isp.activate_subscriber()
             rospy.sleep(2)
 
             look_around(0.5)
@@ -216,7 +218,7 @@ def demo(step: int):
             if human_pose is not None:
                 # Changes image to the results of perception
 
-                image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
+                #image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
                 rospy.sleep(2)
                 drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
                 print("drive pose", drive_pose)
@@ -249,7 +251,7 @@ def demo(step: int):
             print(customer.order)
             rospy.sleep(2)
             if customer.order is not None:
-                nlp.response_handler.confirm_order(customer=customer, order=customer.order)
+                nlp.confirm_order(customer=customer)
         if step <= 3:  # Drive back step
             TalkingMotion("I will drive back now and return with your order").perform()
             rospy.sleep(2.5)
