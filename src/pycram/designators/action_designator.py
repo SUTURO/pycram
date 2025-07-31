@@ -739,7 +739,7 @@ class PlaceGivenObjectAction(ActionDesignatorDescription):
 
     def __init__(self,
                  object_types: List[str], arms: List[Arms], target_locations: List[Pose], grasps: List[Grasp],
-                 with_force_torque: List[bool], on_table: Optional[bool] = True, resolver=None):
+                 with_force_torque: List[bool], on_table: Optional[bool] = False, resolver=None):
         """
         Lets the robot place a human given object. The description needs an object type describing the object that
         should be placed, an arm that should be used as well as the target location where the object should be placed
@@ -1200,7 +1200,7 @@ class PlaceActionPerformable(ActionAbstract):
             else:
                 object_type = "Bowl"
             try:
-                MoveArmDownForceTorqueMotion(down_distance=0.3, object_type=object_type, speed_multi=0.1).perform()
+                MoveArmDownForceTorqueMotion(down_distance=0.5, object_type=object_type, speed_multi=0.1).perform()
             except ObjectForceTorqueThresholdException:
                 raise ManipulationFTSCheckNoObject(f"Could not place object after checking force-torque values")
         else:

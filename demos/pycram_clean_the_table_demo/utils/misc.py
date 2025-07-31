@@ -71,13 +71,20 @@ def sort_objects(found_objects_list: list, wished_objs_list: list):
         if obj.obj_type not in wished_objs_list and obj.obj_type not in DRINKS:
             sorted_objects.remove(obj)
 
+    final_sorted_objects = []
+    seen_types = []
+    for obj in sorted_objects:
+        if obj.obj_type not in seen_types:
+            seen_types.append(obj.obj_type)
+            final_sorted_objects.append(obj)
+
     # print which objects are in the final list
     test_list = []
-    for test_object in sorted_objects:
+    for test_object in final_sorted_objects:
         test_list.append(test_object.obj_type)
     print(test_list)
 
-    return sorted_objects
+    return final_sorted_objects
 
 
 def sort_objects_euclidian(robot: BulletWorld.robot, found_objects_list: list, wished_sorted_obj_list: list):

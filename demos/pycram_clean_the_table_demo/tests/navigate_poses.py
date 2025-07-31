@@ -1,7 +1,8 @@
 import rospy
 
+from demos.pycram_clean_the_table_demo.utils.misc import sort_objects
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
-from demos.pycram_serve_breakfast_demo.utils.misc import get_bowl, sort_objects, try_pick_up, get_free_spaces
+from demos.pycram_serve_breakfast_demo.utils.misc import get_bowl, try_pick_up, get_free_spaces
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
@@ -63,13 +64,21 @@ with (real_robot):
     print(robot.get_pose().pose)
     dishwasher = Pose([2.95, -1.85, 0], [0, 0, -1, 1])
     table = Pose([1.98, 4, 0], [0, 0, 0.7, 0.7])
-    NavigateAction([dishwasher]).resolve().perform()
+    # NavigateAction([dishwasher]).resolve().perform()
     # ParkArmsAction([Arms.LEFT]).resolve().perform()
-    # object_desig = DetectAction(technique='all').resolve().perform()
+    """
+    object_desig = DetectAction(technique='all').resolve().perform()
+    obj_list = []
+    for obj in object_desig.values():
+        obj_list.append(obj)
+    sorted_obj = sort_objects(obj_list, ["Metalbowl", "Metalmug", "Spoon"])
     # MoveTorsoAction([0.8]).resolve().perform()
     # NavigateAction([Pose([7.23, -0.22, 0], [0, 0, -0.7, 0.7])]).resolve().perform()
-    # PlaceGivenObjectAction(["Fork"], [Arms.LEFT], [Pose([7.22, -1.12, 0.5])],
-                           # [Grasp.FRONT], [False], False).resolve().perform()
+    """
+    MoveTorsoAction([0.4]).resolve().perform()
+    PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([3.1, -2.58, 0.55])],
+                           [Grasp.TOP], [True], False).resolve().perform()
+    ParkArmsAction([Arms.LEFT]).resolve().perform()
     # NavigateAction([Pose([2.8, -2.1, 0], [0, 0, -1, 1])]).resolve().perform()
     # MoveJointsMotion(["head_tilt_joint"], [-0.8]).perform()
     # MoveJointsMotion(["head_pan_joint"], [-1]).perform()
