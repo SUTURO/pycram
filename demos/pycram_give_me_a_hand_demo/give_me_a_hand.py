@@ -3,6 +3,7 @@ import threading
 import time
 from collections import OrderedDict
 from cv_bridge import CvBridge, CvBridgeError
+import tf
 from tf.transformations import quaternion_matrix
 
 import pycram
@@ -15,8 +16,7 @@ from demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from demos.pycram_restaurant_demo.utils import misc
 import demos.pycram_give_me_a_hand_demo.misc.location_gmah
 
-from pycram.demos.pycram_give_me_a_hand_demo.misc.location_gmah import associated_location_by_pose, \
-    intermediate_location
+
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -53,6 +53,7 @@ global instructor_pose
 global instructor_found
 global pointing_pose
 global pointing_found
+global notFound
 # Initialize NLP variables
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
@@ -64,11 +65,28 @@ instructor_pose  = None
 pointing_pose = None
 instructor_found = False
 pointing_found = False
+notFound = False
 timeout = 10
 fts = ForceTorqueSensor(robot_name='hsrb')
 placingTest = Pose([5.36, 1.57, 1], [0, 0, 0, 1])
 placingPoseTest = Pose([5.36, 1.57, 0.35], [0,0,0,1])
 objectGoals = []
+
+current_locations = {
+    'popcorn_table_left': 1.49,
+    'popcorn_table_right': 2.67,
+    'popcorn_table_center': 2.08,
+    'long_table' : 3.36,
+    'couch_table':5.3
+}
+
+intermediate_locations = {
+    'popcorn_table_left': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'popcorn_table_right': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'popcorn_table_center': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'long_table' : Pose([3.73, 2.68, 0], [0,0,0.999,0.006]),
+    'couch_table': Pose([3.75, 1.37, 0], [0,0,0,1])
+}
 class FixedRoomPositions(Enum):
     LIVING_ROOM = Pose([1.86, 2.59, 0], [0,0, -1, 1])
     KITCHEN = Pose([2.16, -1.93, 0], [0,0,0,1])
@@ -119,6 +137,25 @@ def transform_camera_to_x(pose, frame_x, human:bool):
 
     return tPm
 
+def intermediate_location(location: String) -> Pose:
+    """
+    Returns the intermediate location of the given location.
+    :param: location: The location
+    :return: The intermediate location
+    """
+    print(type(location))
+    intermediate = intermediate_locations[location]
+    print(intermediate)
+    return intermediate
+
+def associated_location_by_pose(pose: Pose) -> String:
+    """
+    Returns the associated location of the given pose4
+    :param: pose: The pose
+    :return: The associated location
+    """
+    location = [key for key, val in intermediate_locations.items() if val == pose.pose.position.x]
+    return location
 
 def get_intermediate_point(goal: Pose) -> Pose:
     """
@@ -126,7 +163,7 @@ def get_intermediate_point(goal: Pose) -> Pose:
     :param goal: Pose
     :return: intermediate pose
     """
-    associated_location = associated_location_by_pose(goal)
+    associated_location =associated_location_by_pose(goal)
     intermediatePose = intermediate_location(associated_location)
     return intermediatePose
 
@@ -251,13 +288,13 @@ def search_location() -> Pose:
     Method to find the desired location for the object.
     :return: Pose : The middle point of the location in the semantic map
     """
-    global pointing_pose, pointing_found
+    global pointing_pose, pointing_found, notFound
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
 
     try:
-        TalkingMotion("I detected the location").perform()
-        rospy.sleep(2)
         pointing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
+        TalkingMotion("I detected the location").perform()
+
     except pycram.failures.PerceptionObjectNotFound:
         # If no intersection from the vector and the squares inside the semantic map
         # was found or if the perception results are none,
@@ -268,14 +305,39 @@ def search_location() -> Pose:
         rospy.sleep(2)
         TalkingMotion("so I will bring it to my favourite table ").perform()
         rospy.sleep(2)
-        pointing_pose = placingTest
+        pointing_pose = placingPoseTest
+        notFound = True
     if pointing_pose:
         pointing_found = True
         TalkingMotion("I will try to place the object now").perform()
         rospy.sleep(1)
 
+def change_orientation(startPose: Pose, direction: str = 'left'):
+    """
+    Rotates the base of the HSR in a 180-degree rotation around the origin.
+    :param startPose: Pose to rotate around.
+    :return: Rotated Pose.
+    """
+    quat_orientation = (startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z,
+              startPose.pose.orientation.w)
+
+    # Set rotation angle based on direction
+    if direction == 'left':
+        angle = np.pi/2 # +90
+    elif direction == 'right':
+        angle = -np.pi/2 # -90
+    else:
+        raise ValueError("Direction must be left or right")
+    quat_add = tf.transformations.quaternion_from_euler(0, 0, angle)
+    quat_add_new = (quat_add[0], quat_add[1], quat_add[2], quat_add[3])
+
+    q_new = tf.transformations.quaternion_multiply(quat_orientation, quat_add_new)
+    new_angle = (q_new[0], q_new[1], q_new[2], q_new[3])
+    newPose = Pose([startPose.pose.position.x, startPose.pose.position.y, startPose.pose.position.z],
+                   [new_angle[0], new_angle[1], new_angle[2], new_angle[3]])
+    return newPose
 def demo(step: int):
-     global instructor_pose, instructor_found, pointing_pose, pointing_found
+     global instructor_pose, instructor_found, pointing_pose, pointing_found, notFound
      with real_robot:
         MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
@@ -284,8 +346,9 @@ def demo(step: int):
         pakerino(config=config_for_placing)
         MoveTorsoAction([0.0]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-        TalkingMotion("Give me a Hand is starting.").perform()
-
+       # TalkingMotion("Give me a Hand is starting.").perform()
+        rospy.sleep(2)
+        #test = nlp.check_location()
         #Search for Instructor inside of map
         if step <= 0:
             tries = 0
@@ -303,6 +366,8 @@ def demo(step: int):
             # Getting Object step
             TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
             rospy.sleep(2)
+            MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+
             image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
             try:
                 plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
@@ -329,16 +394,29 @@ def demo(step: int):
                 if pointing_pose is not None:
                     objectGoals.append(pointing_pose)
                 print("Hallo")
-                newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" , False)
-                associatedLocation = associated_location_by_pose(newPose)
-                TalkingMotion(f"I will bring this object to {associatedLocation}").perform()
-                rospy.sleep(2)
+                if not notFound:
+                    newPose = transform_camera_to_x(pointing_pose, "head_rgbd_sensor_link", False)
+                    textToImg = f"({newPose.pose.position.x},{newPose.pose.position.y},{newPose.pose.position.z})"
+                    text_to_img_publisher.pub_now(textToImg)
+                    rospy.sleep(2)
+                    image_switch_publisher.pub_now(ImageEnum.GENERATED_TEXT.value)
+                    #associatedLocation = get_intermediate_point(newPose)
+                    #TalkingMotion(f"I will bring this object to {associatedLocation}").perform()
+                    print("if found ", newPose)
+                elif notFound:
+                    newPose = pointing_pose
+                    newPose.header.frame_id = "/map"
+                    print("If not found: ", newPose)
 
-                #newPose = set_pose_in_front(newPose, 0.5)
-                print(newPose)
-                #move.pub_now(navpose=newPose)
+                rospy.sleep(2)
+                changeOrientPose = change_orientation(newPose, 'left')
+                #NavigateAction([changeOrientPose]).resolve().perform()
+                rospy.sleep(1)
                 NavigateAction([newPose]).resolve().perform()
-                marker.publish(Pose.from_pose_stamped(newPose), color=[1, 0, 1, 1], name="adjusted_pose")
+                newPosemoved = set_pose_in_front(newPose, 0.5)
+                #move.pub_now(navpose=newPose)
+                NavigateAction([newPosemoved]).resolve().perform()
+                marker.publish(Pose.from_pose_stamped(newPosemoved), color=[1, 0, 1, 1], name="adjusted_pose")
                 placeObject(newPose)
         if step <= 3:
             NavigateAction([mapInstructorPose]).resolve().perform()
@@ -355,7 +433,7 @@ def demo(step: int):
 
 
 
-demo(1)
+demo(0)
 
 
 

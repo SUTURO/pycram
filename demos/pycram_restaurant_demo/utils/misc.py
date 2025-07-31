@@ -1,8 +1,9 @@
 import numpy as np
-from hsrb_simple_actions import tf
+import tf
 from tf.transformations import quaternion_matrix
 
 from pycram.datastructures.pose import Pose
+from pycram.local_transformer import LocalTransformer
 
 
 def change_orientation(startPose: Pose):

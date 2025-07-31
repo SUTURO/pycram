@@ -78,9 +78,9 @@ class PlacingXPose(Enum):
     FORK = 2.67
     PLASTICKNIFE = 2.67
     KNIFE = 2.67
-    METALBOWL = 3.0
-    METALMUG = 2.98
-    METALPLATE = 2.82
+    METALBOWL = 2.92
+    METALMUG = 3.05
+    METALPLATE = 3.1
 
 
 class PlacingYPose(Enum):
@@ -92,9 +92,9 @@ class PlacingYPose(Enum):
     FORK = -2.57
     PLASTICKNIFE = -2.57
     KNIFE = -2.57
-    METALBOWL = -2.66
-    METALMUG = -2.59
-    METALPLATE = -2.65
+    METALBOWL = -2.57
+    METALMUG = -2.74
+    METALPLATE = -2.58
 
 
 class PlacingZPose(Enum):
@@ -103,6 +103,7 @@ class PlacingZPose(Enum):
     """
     METALPLATE = 0.52
     OTHER = 0.47
+    CUTLERY = 0.55
     UPPER = 0.77
 
 
@@ -136,7 +137,6 @@ def pickup_object(object: Object):
             TalkingMotion("Grasping.").perform()
             MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
     else:
-        """
         # The height of the table where the robot pick up the objects
         table_height = 0.71
         if object.obj_type in CUTLERY:
@@ -146,7 +146,6 @@ def pickup_object(object: Object):
         if object.obj_type == "Metalbowl":
             # Here it is similar to the previous one too, but we add 0.01 more to the table height for better pickup
             object.pose.position.z = table_height + 0.01
-        """
         TalkingMotion(f"Picking up the {object.obj_type} from: " + (str(grasp)[6:]).lower()).perform()
         # To pick up Objects from TOP the robot needs more space to do that so the Torso should be higher than
         # pickup from FRONT
@@ -186,8 +185,8 @@ def pickup_object(object: Object):
         MoveTorsoAction([0]).resolve().perform()
 
     # Move the gripper to the right oto avoid collision with kitchen counter while moving
-    if object.obj_type == "Metalplate" or object.obj_type == "Metalbowl":
-        MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
+    # if object.obj_type == "Metalplate" or object.obj_type == "Metalbowl":
+    MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
 
 
 def place_object(object: Object):
@@ -205,7 +204,7 @@ def place_object(object: Object):
     # Depending on the placing pose place the object from the left or the front of the dishwasher
     navigate_to(NavigatePose.DISHWASHER.value)
     # NavigateAction([NavigatePose.DISHWASHER.value]).resolve().perform()
-    if x_pos >= 2.9:
+    if object.obj_type == "Metalmug":
         navigate_to(NavigatePose.DISHWASHER_LEFT.value)
         # NavigateAction([NavigatePose.DISHWASHER_LEFT.value]).resolve().perform()
 
@@ -213,11 +212,20 @@ def place_object(object: Object):
     grasp = Grasp.FRONT
 
     MoveTorsoAction([0.2]).resolve().perform()
-    if object.obj_type == "Metalplate":
+    # if object.obj_type == "Metalplate":
         # For the Plate use PlaceGivenObjectAction, because the plate was given to the robot and not picked up
-        PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [grasp], [False])
+        # PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])],
+        #                        [grasp], [False], False)
+    if object.obj_type in CUTLERY:
+        PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT],
+                    [False]).resolve().perform()
     else:
-        PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT], [False]).resolve().perform()
+        MoveTorsoAction([0.4]).resolve().perform()
+        PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [Grasp.TOP], [Arms.LEFT],
+                    [True]).resolve().perform()
+        if object.obj_type == "Metalmug":
+            NavigateAction([Pose([robot.get_pose().pose.position.x, robot.get_pose().pose.position.y + 0.3, 0],
+                                 robot.get_pose().pose.orientation)]).resolve().perform()
 
     # For the safety in cases where the HSR is not placing, better drop the object to not collide with the kitchen
     # drawer when moving to parkArms arm config
@@ -257,8 +265,11 @@ def pickup_and_place(objects_list: list):
             # Turn around
             navigate_to(Pose(robot.get_pose().pose.position,
                              NavigatePose.POPCORN_TABLE.value.pose.orientation))
-            # NavigateAction([Pose(robot.get_pose().pose.position,
-            #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
+            if objects_list[value].obj_type not in CUTLERY and objects_list[value].obj_type not  in DRINKS:
+                NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
+                                     NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
+            # re-localize
+            giskard.turning_left_and_back(45)
             # Navigate to table
             navigate_to(Pose([objects_list[value + 1].pose.position.x,
                               NavigatePose.POPCORN_TABLE.value.pose.position.y, 0],
@@ -273,10 +284,12 @@ def throw_object(obj: Object):
     Navigate to trash can and throw an object in there
     :param obj: The object that has to be thrown in the trash can
     """
-    obj_desig = try_detect_with_tilting(-0.8)
-    ParkArmsAction([Arms.LEFT]).resolve().perform()
-    real_trash_can = get_object(obj_desig, "Trashbin")
-    PlaceAction(obj, [Pose([real_trash_can.pose.position.x, real_trash_can.pose.position.y, 0.6])], [Grasp.FRONT],
+    # obj_desig = try_detect_with_tilting(-0.8)
+    # ParkArmsAction([Arms.LEFT]).resolve().perform()
+    # real_trash_can = get_object(obj_desig, "Trashbin")
+    # PlaceAction(obj, [Pose([real_trash_can.pose.position.x, real_trash_can.pose.position.y, 0.6])], [Grasp.FRONT],
+    #             [Arms.LEFT], [False]).resolve().perform()
+    PlaceAction(obj, [Pose([0.905, 2.48, 0.6])], [Grasp.FRONT],
                 [Arms.LEFT], [False]).resolve().perform()
     park_arms_and_move_torso(0)
 
@@ -292,10 +305,12 @@ def get_pos(obj_type: str):
     y_val = PlacingYPose[obj_type].value
     if obj_type == "Metalplate":
         z_val = PlacingZPose.METALPLATE.value
-    elif (obj_type == "Metalbowl" or obj_type == "Metalmug") and with_upper_rack:
-        z_val = PlacingZPose.UPPER.value
-    else:
+    elif obj_type == "Metalbowl" or obj_type == "Metalmug":
         z_val = PlacingZPose.OTHER.value
+        if with_upper_rack:
+            z_val = PlacingZPose.UPPER.value
+    else:
+        z_val = PlacingZPose.CUTLERY.value
     return x_val, y_val, z_val
 
 
@@ -376,7 +391,7 @@ def navigate_and_detect(location_name: NavigatePose):
     return objects_list
 
 
-def navigate_to(pose: PoseStamped):
+def navigate_to(pose: Pose):
     """
     Lets the robot navigates to a pose using NavigateAction or move.pub_now()
 
@@ -511,6 +526,7 @@ def park_arms_and_move_torso(height: float):
 
 # Main interaction sequence with real robot
 with (real_robot):
+    """
     rospy.loginfo("Starting demo")
     TalkingMotion("Starting demo").perform()
 
@@ -544,6 +560,7 @@ with (real_robot):
     # NavigateAction([Pose(NavigatePose.DISHWASHER.value.pose.position,
     #                      NavigatePose.POPCORN_TABLE.value.pose.orientation)]).resolve().perform()
 
+    """
     # detect objects
     object_desig_list = navigate_and_detect(NavigatePose.POPCORN_TABLE)
 
