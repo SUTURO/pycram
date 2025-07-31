@@ -15,6 +15,14 @@ confirmation = []
 callback = False
 timeout = 10
 
+# "{"sentence": "Bring the cup to the brown table .",
+# "intent": "Transporting"\
+#   , "entities": [{"role": "Item", "value": "cup", "entity": "Transportable"\
+#   , "propertyAttribute": [], "actionAttribute": [], "numberAttribute": []},\
+#   \ {"role": "Destination", "value": "table", "entity": "DesignedFurniture"\
+#   , "propertyAttribute": ["brown"], "actionAttribute": [], "numberAttribute"\
+#   : []}]}"
+
 text_to_image_pub = TextToImagePublisher()
 image_switch_pub = ImageSwitchPublisher()
 # Hot fix because NLP returns the amount sometimes as a written out string or the int as a string
@@ -83,9 +91,52 @@ class NLP_GMAH():
             self.response = None
             self.callback = False
 
-    def check_instructor(self, data):
-        msgList = data[0]
+    def check_instructor(self):
+
+        TalkingMotion("I could not see the desired location.").perform()
+        rospy.sleep(2)
+        TalkingMotion("Please tell me the location after my display changes").perform()
+        rospy.sleep(1)
+
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2.3)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+        msgList = self.response[0]
         print(msgList)
-        if msgList['intent'] == 'Instructor':
+        if msgList['intent'] == 'Callout':
             return True
 
+
+    def check_location(self):
+        HeadFollowMotion(state='start').perform()
+        TalkingMotion("I could not see the desired location.").perform()
+        rospy.sleep(2)
+        TalkingMotion("Please tell me the location after my display changes").perform()
+        rospy.sleep(1)
+
+
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2.3)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
+
+        print(self.response)
+        print(type(self.response))
+        #msgList = data[0]
+        #print(msgList)
+
+        start_time = time.time()
+        while not self.callback and (time.time() - start_time) < timeout:
+            rospy.sleep(0.1)
+        if not self.callback:
+            rospy.logwarn("No response received from NLP")
+            self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+        self.callback = False
+
+
+        if self.response['intent'] == 'Transporting':
+            print("Yipii")
+            for  entity in self.response['entities']:
+                if entity['role'] == 'Destination':
+                    loc = entity['value']
+                    return loc
+        return None

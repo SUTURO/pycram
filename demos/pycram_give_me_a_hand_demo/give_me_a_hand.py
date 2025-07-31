@@ -13,7 +13,10 @@ from std_msgs.msg import String
 
 from demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from demos.pycram_restaurant_demo.utils import misc
+import demos.pycram_give_me_a_hand_demo.misc.location_gmah
 
+from pycram.demos.pycram_give_me_a_hand_demo.misc.location_gmah import associated_location_by_pose, \
+    intermediate_location
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -116,6 +119,16 @@ def transform_camera_to_x(pose, frame_x, human:bool):
 
     return tPm
 
+
+def get_intermediate_point(goal: Pose) -> Pose:
+    """
+    Returns an intermediate pose from goal pose received by perception.
+    :param goal: Pose
+    :return: intermediate pose
+    """
+    associated_location = associated_location_by_pose(goal)
+    intermediatePose = intermediate_location(associated_location)
+    return intermediatePose
 
 def look_around(increase: float):
     """
@@ -242,6 +255,8 @@ def search_location() -> Pose:
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
 
     try:
+        TalkingMotion("I detected the location").perform()
+        rospy.sleep(2)
         pointing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
     except pycram.failures.PerceptionObjectNotFound:
         # If no intersection from the vector and the squares inside the semantic map
@@ -315,6 +330,10 @@ def demo(step: int):
                     objectGoals.append(pointing_pose)
                 print("Hallo")
                 newPose = transform_camera_to_x(pointing_pose,"head_rgbd_sensor_link" , False)
+                associatedLocation = associated_location_by_pose(newPose)
+                TalkingMotion(f"I will bring this object to {associatedLocation}").perform()
+                rospy.sleep(2)
+
                 #newPose = set_pose_in_front(newPose, 0.5)
                 print(newPose)
                 #move.pub_now(navpose=newPose)
