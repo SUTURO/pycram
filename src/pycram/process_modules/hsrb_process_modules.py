@@ -367,10 +367,11 @@ class HSRBDetectingReal(ProcessModule):
                     pass
         elif desig.technique == 'gmahWaving':
             query_result = query_gmah_waving_human()
-            print(query_result)
+           # print(query_result)
             for i in range(0, len(query_result.res)):
                 try:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose[0])
+                    print("human ", human_pose)
                     return human_pose
                 except IndexError:
                     human_pose = Pose.from_pose_stamped(query_result.res[i].pose)

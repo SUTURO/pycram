@@ -415,7 +415,7 @@ def demo(step: int):
                 NavigateAction([newPose]).resolve().perform()
                 newPosemoved = set_pose_in_front(newPose, 0.5)
                 #move.pub_now(navpose=newPose)
-                NavigateAction([newPosemoved]).resolve().perform()
+                #NavigateAction([newPosemoved]).resolve().perform()
                 marker.publish(Pose.from_pose_stamped(newPosemoved), color=[1, 0, 1, 1], name="adjusted_pose")
                 placeObject(newPose)
         if step <= 3:
@@ -433,7 +433,7 @@ def demo(step: int):
 
 
 
-demo(0)
+demo(2)
 
 
 

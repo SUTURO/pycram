@@ -14,6 +14,8 @@ response = [None, None]
 confirmation = None
 callback = False
 timeout = 15
+# Due to the possibility that NLP will return the amount of the item, we have
+# to use this dictionary to map the string versions to the corresponding int version
 options = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
            '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, }
 
@@ -153,6 +155,11 @@ class NLPRestaurant:
                         tries += 1
 
     def repeat_get_order(self, customer: CustomerDescription):
+        """
+        Method for the case if HSR did not understood the order correctly.
+        :param: customer: The customer associated with the order
+
+        """
         global order
         HeadFollowMotion(state='start').perform()
         self.image_switch_publisher.pub_now(ImageEnum.HI.value)
@@ -263,7 +270,6 @@ class NLPRestaurant:
                     else:
                         tries += 1
 
-    # {"sentence": "I would like to order one banana and one apple .", "intent": "Order", "Item": {"value": "apple", "entity": "food", "propertyAttribute": [], "actionAttribute": [], "numberAttribute": ["one"]}}
 
     def parse_confirmation_string(self, json_string : str):
         print(json_string)
@@ -279,6 +285,13 @@ class NLPRestaurant:
 
 
     def parse_json_string(self, json_string: str):
+        """
+        Method do transform the received data from NLP to a workable
+        list of tuples representing the order of a customer or the confirmation of
+        the order.
+        :param: json_string: the received data from NLP
+
+        """
         print(json_string)
         try:
             parsed_list = ast.literal_eval(json_string)
