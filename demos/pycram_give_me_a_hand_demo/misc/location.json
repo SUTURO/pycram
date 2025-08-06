@@ -1,0 +1,76 @@
+{
+  "location":
+  {
+    "white table": [
+      "couch_table"
+    ],
+    "couch table": [
+      "couch_table"
+    ],
+    "dining table": [
+      "long_table"
+    ],
+    "food counter": [
+      "popcorn_table_left",
+      "popcorn_table_right",
+      "popcorn_table_center"
+    ],
+    "kitchen counter": [
+      "popcorn_table_left",
+      "popcorn_table_right",
+      "popcorn_table_center"
+    ],
+    "table": [
+      "long_table"
+    ]
+  },
+  "fallback": [
+
+    "couch_table"
+  ],
+  "fallback_position": [
+    {
+        "x": 5.3,
+        "y": 1.44,
+        "z": 0.43
+    }
+  ],
+  "positions": {
+    "popcorn_table_left": [
+      {
+        "x": 1.49,
+        "y": 4.98,
+        "z": 0.71
+      }
+    ],
+    "popcorn_table_right": [
+      {
+        "x": 2.67,
+        "y": 4.98,
+        "z": 0.71
+      }
+    ],
+    "popcorn_table_center": [
+      {
+        "x": 2.08,
+        "y": 4.98,
+        "z": 0.71
+      }
+    ],
+    "couch_table": [
+      {
+        "x": 5.3,
+        "y": 1.44,
+        "z": 0.43
+      }
+
+    ],
+    "long_table": [
+      {
+        "x": 3.36,
+        "y": 1.44,
+        "z": 0.74
+      }
+    ]
+  }
+}
