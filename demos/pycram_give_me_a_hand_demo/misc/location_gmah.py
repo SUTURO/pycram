@@ -67,27 +67,30 @@ current_locations = {
 }
 
 intermediate_locations = {
-    'popcorn_table_left': 1,
-    'popcorn_table_right': 2,
-    'popcorn_table_center': 3,
-    'long_table' : 4,
-    'couch_table': 5
+    'popcorn_table_left': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'popcorn_table_right': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'popcorn_table_center': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
+    'long_table' : Pose([3.73, 2.68, 0], [0,0,0.999,0.006]),
+    'couch_table': Pose([3.75, 1.37, 0], [0,0,0,1])
 }
+class GMAH_misc():
 
-def intermediate_location(location:String) -> Pose:
-    """
-    Returns the intermediate location of the given location.
-    :param: location: The location
-    :return: The intermediate location
-    """
-    intermediate = intermediate_locations.get(location)
-    return intermediate
+    def intermediate_location(location:String) -> Pose:
+        """
+        Returns the intermediate location of the given location.
+        :param: location: The location
+        :return: The intermediate location
+        """
+        intermediate = intermediate_locations.get(location)
+        print(intermediate)
+        return intermediate
 
-def associated_location_by_pose(pose:Pose)-> String:
-    """
-    Returns the associated location of the given pose4
-    :param: pose: The pose
-    :return: The associated location
-    """
-    location = [key for key , val in intermediate_locations.items() if val == pose.pose.position.x]
-    return location[0]
+    def associated_location_by_pose(pose:Pose)-> String:
+        """
+        Returns the associated location of the given pose4
+        :param: pose: The pose
+        :return: The associated location
+        """
+        location = [key for key , val in intermediate_locations.items() if val == pose.pose.position.x]
+        print(location[0])
+        return location[0]

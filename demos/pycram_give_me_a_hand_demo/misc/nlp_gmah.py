@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 import rospy
 from std_msgs.msg import String
 
+from demos.pycram_give_me_a_hand_demo.misc.location_helper import LocationHelper
 from pycram.datastructures.enums import ImageEnum
 from pycram.designators.motion_designator import HeadFollowMotion, TalkingMotion
 from pycram.designators.object_designator import CustomerDescription
@@ -13,56 +14,27 @@ from pycram.utilities.robocup_utils import ImageSwitchPublisher, TextToImagePubl
 response = []
 confirmation = []
 callback = False
-timeout = 10
+timeout = 15
 
-# "{"sentence": "Bring the cup to the brown table .",
-# "intent": "Transporting"\
-#   , "entities": [{"role": "Item", "value": "cup", "entity": "Transportable"\
-#   , "propertyAttribute": [], "actionAttribute": [], "numberAttribute": []},\
-#   \ {"role": "Destination", "value": "table", "entity": "DesignedFurniture"\
-#   , "propertyAttribute": ["brown"], "actionAttribute": [], "numberAttribute"\
-#   : []}]}"
+
 
 text_to_image_pub = TextToImagePublisher()
 image_switch_pub = ImageSwitchPublisher()
-# Hot fix because NLP returns the amount sometimes as a written out string or the int as a string
-options = {
-    'one' :1,
-    'two':2,
-    'three': 3,
-    'four': 4,
-    'five': 5,
-    'six':6,
-    'seven':7,
-    'eight': 8,
-    'nine': 9,
-    'ten':10,
-    '1': 1,
-    '2': 2,
-    '3': 3,
-    '4': 4,
-    '5': 5,
-    '6': 6,
-    '7': 7,
-    '8': 8,
-    '9': 9,
-    '10': 10
-}
-# Similar to options, we have to check if these numbers are part of the received data callback
-numbers = {
-    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'
-}
+
+
+
 class NLP_GMAH():
     def __init__(self):
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self._data_callback)
         self.response = None
+        self.location_helper = LocationHelper("location.json", "ignore_words.json")
+        self.location_helper.load_file()
         self.callback = False
         self.image_switch_publisher = ImageSwitchPublisher()
         self.text_to_image_pub = TextToImagePublisher()
 
-    def parse_nlp_response(self, data:str):
+    def parse_nlp_response(self, data: str):
         print(data)
         try:
             return json.loads(data)
@@ -70,73 +42,115 @@ class NLP_GMAH():
             rospy.logwarn("Failed to parse NLP")
             return None
 
-    def _data_callback(self, data: String):
+    def _data_callback(self, data):
         """
         Receives the data from NLP and dumps it into a JSON, to optimize working with it.
 
         """
+        self.parse_json_string(data.data)
+        self.callback = True
+    ##### EXAMPL SENTENCE ####
+    # {"sentence": "Please bring the object to the kitchen counter .",
+    # "intent": "Transporting",
+    # "entities":
+    # [{"role": "Item", "value": "object", "entity": "Transportable", "propertyAttribute": [], "actionAttribute": [], "numberAttribute": []},
+    # {"role": "Destination", "value": "kitchen counter", "entity": "DesignedFurniture", "propertyAttribute": [], "actionAttribute": [], "numberAttribute": []}]}
 
+    def parse_json_string(self, json_string: str):
+        """
+        Method to transfrom the received data from NLP
+        """
+        global destination, item
+        print(json_string)
         try:
-            self.response = self.parse_nlp_response(data.data)
-            print(self.response)
-            print("Type " , type(self.response))
-            print(self.response.keys())
-            if self.response:
-                self.callback = True
-                rospy.loginfo("Received NLP data")
+            parsed = json.loads(json_string)
+            intent = parsed.get('intent')
+            print(intent)
+            if intent == "Transporting":
+                entities = parsed.get('entities')
+                for entity in entities:
+                    item = ""
+                    destination = ""
+                    if entity.get('role') == "Item":
+                        item = entity.get('value')
+                    elif entity.get('role') == "Destination":
+                        destination = entity.get('value')
+                    print(item)
+                    print(destination)
+                is_invalid = self.location_helper.is_valid_location_name(item)
+                print(is_invalid)
+                if not is_invalid:
+                    location = item + " " + destination
+                else:
+                    location = destination
+                self.response = [intent, location]
+        except (ValueError, SyntaxError, IndexError) as e:
+            print(f"Error parsing string: {e}")
+            self.response = ["Transporting", "long table"]
+
+    def find_location(self, timeout=15, max_tries=3):
+        """
+        Method that is called if Perception returns no known location.
+        Guides the user to repeat where the object should go using NLP
+        """
+        self._guide_user_to_speak()
+        rospy.sleep(2)
+        for attempt in range(max_tries + 1):
+            self._start_listening()
+            success, official_name, pose = self._handle_nlp_response()
+
+            if success:
+                return official_name, pose
             else:
-                rospy.logwarn("Received empty")
-        except Exception as e:
-            rospy.logerr(f"Error processing NLP {e}")
-            self.response = None
-            self.callback = False
+                rospy.logwarn("Did not understand the location, asking to repeat")
+                self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+        rospy.logwarn("Failed to get a valid location after multiple attempts")
+        return None, None
 
-    def check_instructor(self):
-
-       # TalkingMotion("I could not see the desired location.").perform()
-        rospy.sleep(2)
-        TalkingMotion("Please tell me the location after my display changes").perform()
-        rospy.sleep(2)
-
-        self.nlp_pub.publish("start listening")
-        rospy.sleep(2.3)
-        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
-        msgList = self.response[0]
-        print(msgList)
-        if msgList['intent'] == 'Callout':
-            return True
-
-
-    def check_location(self):
+    def _guide_user_to_speak(self):
+        """
+        Helper method to make the HSR say the needed phrases
+        """
         HeadFollowMotion(state='start').perform()
-        TalkingMotion("I could not see the desired location.").perform()
         rospy.sleep(2)
-        TalkingMotion("Please tell me the location after my display changes").perform()
-        rospy.sleep(1)
 
+        phrases = [
+            "Sorry, I could not make out where I should put this object",
+            "Please come close to me and tell me where I should put it",
+            "Please use the sentence: Please bring the object to the table after my display changes"
+        ]
+        for phrase in phrases:
+            TalkingMotion(phrase).perform()
+            rospy.sleep(2.8)
 
+    def _start_listening(self):
+        """
+        Helper Method to start the NLP side of this challenge
+        """
+        print("NLP start")
         self.nlp_pub.publish("start listening")
-        rospy.sleep(2.3)
+        rospy.sleep(2)
         self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
-        print(self.response)
-        print(type(self.response))
-        #msgList = data[0]
-        #print(msgList)
-
+    def _handle_nlp_response(self, timeout=15):
+        """
+        Helper Method to handle firstly the first NLP response as well as the possibility
+        that the HSR did not understand the user correctly
+        """
         start_time = time.time()
-        while not self.callback and (time.time() - start_time) < timeout:
-            rospy.sleep(0.1)
-        if not self.callback:
-            rospy.logwarn("No response received from NLP")
-            self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
+        while not self.callback:
+            rospy.sleep(1)
+            if time.time() - start_time > timeout:
+                return False, None, None
+
         self.callback = False
 
+        if self.response[0] == "Transporting":
+            loc = self.response[1]
+            if loc:
+                offical_name = self.location_helper.get_location(loc)
+                pose = self.location_helper.get_position(offical_name)
+                if pose:
+                    return True, offical_name, pose
+        return False, None, None
 
-        if self.response['intent'] == 'Transporting':
-            print("Yipii")
-            for  entity in self.response['entities']:
-                if entity['role'] == 'Destination':
-                    loc = entity['value']
-                    return loc
-        return None

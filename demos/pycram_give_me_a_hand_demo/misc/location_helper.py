@@ -3,8 +3,10 @@ import random
 
 
 class LocationHelper:
-    def __init__(self, json_file='location.json'):
+    def __init__(self, json_file='location.json', ignore_words='ignore_words.json'):
         self.json_file = json_file
+        self.ignore = ignore_words
+        self.ignore_data = None
         self.data = None
 
     def load_file(self):
@@ -18,17 +20,36 @@ class LocationHelper:
             with open(
                     f"/home/suturo/suturo23_24/pycram_ws/src/pycram/demos/pycram_give_me_a_hand_demo/misc/{self.json_file}") as file:
                 self.data = json.load(file)
-                print("Successfully loaded")
+                print("Successfully loaded Locations")
+
         except FileNotFoundError:
             raise FileNotFoundError(f"JSON file {self.json_file} not found")
+        try:
+            with open(f"/home/suturo/suturo23_24/pycram_ws/src/pycram/demos/pycram_give_me_a_hand_demo/misc/{self.ignore}") as file2:
+                ignore = json.load(file2)
+                self.ignore_data = ignore.get("ignore_words", [])
+                print("Successfully loaded Ignore Data")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"JSON file {self.ignore} not found")
 
-    def _get_location(self, locName: str) -> str:
+    def is_valid_location_name(self, name: str) -> bool:
+        """
+        Method to filter unwanted str from the NLP response. Please feel free to expand on the json file for
+        forbidden words, such as 'object', 'thing' etc.
+        :param: name: str of the NLP response
+        :return: if str is present in json file
+        """
+        return name.strip().lower() not in self.ignore_data
+    def get_location(self, locName: str) -> str:
         """
         Method to find the official region name in the semantic map, given the understood location name.
         List of these possibilities is not finished yet.
         :param: locName: The NLP data
         :return: Either the current fallback location or the official perception name for the region
         """
+        locName = locName.strip()
+        locName = locName.lower()
+        print("input name", locName)
         if self.data is None:
             raise ValueError("Please load the json first")
 
@@ -42,7 +63,7 @@ class LocationHelper:
             except KeyError as e:
                 print(f"Entry was not found due to {e}")
 
-    def _get_position(self, locName: str) -> (float, float, float):
+    def get_position(self, locName: str) -> (float, float, float):
         """
         Method to get the position of the official region in the semantic map from perception.
         Please make sure that you first got the official name of the region before trying to
@@ -52,7 +73,10 @@ class LocationHelper:
         """
         if self.data is None:
             raise ValueError("Please load the json first")
-
+        print(self.data)
+        print(type(self.data))
+        locName = locName[0].strip()
+        locName = locName.lower()
         if not locName in self.data['positions']:
             resp = self.data['fallback_position']
             x = resp[0].get('x')

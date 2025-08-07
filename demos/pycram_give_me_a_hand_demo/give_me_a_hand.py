@@ -44,7 +44,6 @@ response = [None, None]
 stopped = False
 #
 callback = False
-pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 
 ###########################################################################
 
@@ -301,16 +300,25 @@ def search_location() -> Pose:
         # Toya will bring it to a pre-fixed place.
         # Currently this is the white table besides the couch
         rospy.logwarn("The location is not known to me")
-        TalkingMotion("Sorry, I am not sure where I should put it").perform()
         rospy.sleep(2)
-        TalkingMotion("so I will bring it to my favourite table ").perform()
-        rospy.sleep(2)
-        pointing_pose = placingPoseTest
-        notFound = True
+        #TalkingMotion("so I will bring it to my favourite table ").perform()
+       # pointing_pose = placingPoseTest
+        #notFound = True
+        get_location_nlp()
     if pointing_pose:
         pointing_found = True
         TalkingMotion("I will try to place the object now").perform()
         rospy.sleep(1)
+def get_location_nlp() :
+    """
+    Method to call the NLP components for this challenge.
+    It is currently used to get the location should Perception return no valid Pose/location
+    """
+    tmp_location = nlp.find_location()
+    if tmp_location[1] is not None:
+        TalkingMotion(f"I understood the location as {tmp_location[0]}").perform()
+        print(tmp_location[0])
+        print(tmp_location[1])
 
 def change_orientation(startPose: Pose, direction: str = 'left'):
     """
@@ -349,12 +357,15 @@ def demo(step: int):
        # TalkingMotion("Give me a Hand is starting.").perform()
         rospy.sleep(2)
         #test = nlp.check_location()
+       # test = nlp.find_location()
+        #if test[0] is not None:
+         #   TalkingMotion(f"{test[0]}").perform()
         #Search for Instructor inside of map
         if step <= 0:
             tries = 0
             # Toya will drive through the pre-set points
             while tries <= 4 and instructor_pose is None:
-                searching_for_instructor()
+                #searching_for_instructor()
                 tries += 1
             if instructor_pose:
                 mapInstructorPose = transform_camera_to_x(instructor_pose,"head_rgbd_sensor_link", True )
@@ -364,7 +375,7 @@ def demo(step: int):
                 marker.publish(Pose.from_pose_stamped(newInstructor), color=[1, 0, 1, 1], name="adjusted_pose")
         if step <= 1:
             # Getting Object step
-            TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
+            #TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
             rospy.sleep(2)
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 

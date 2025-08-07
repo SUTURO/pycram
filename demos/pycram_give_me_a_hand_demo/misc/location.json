@@ -22,6 +22,51 @@
     ],
     "table": [
       "long_table"
+    ],
+    "counter": [
+      "popcorn_table_left",
+      "popcorn_table_right",
+      "popcorn_table_center"
+    ],
+    "snack table": [
+      "popcorn_table_left",
+      "popcorn_table_right",
+      "popcorn_table_center"
+    ],
+    "coffee table": [
+      "popcorn_table_left",
+      "popcorn_table_right",
+      "popcorn_table_center"
+    ],
+    "serving table": [
+      "long_table"
+    ],
+    "conference table": [
+      "long_table"
+    ],
+    "side table": [
+      "couch_table"
+    ],
+    "end table": [
+      "couch_table"
+    ],
+    "sofa table": [
+      "couch_table"
+    ],
+    "table on the left": [
+      "popcorn_table_left"
+    ],
+    "table on the right": [
+      "popcorn_table_right"
+    ],
+    "table in the center": [
+      "popcorn_table_center"
+    ],
+    "main table": [
+      "long_table"
+    ],
+    "table next to the couch": [
+      "couch_table"
     ]
   },
   "fallback": [
