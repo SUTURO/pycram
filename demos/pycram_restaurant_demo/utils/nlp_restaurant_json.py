@@ -29,9 +29,11 @@ class NLPRestaurant:
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
         self.sub_nlp = rospy.Subscriber("nlp_out", String, self.data_cb)
         rospy.sleep(2)
+        self.order = None
         self.response = ["", [(str, int)]]
         self.confirmation = ""
         self.callback = False
+        self.timeout = 15
         self.image_switch_publisher = ImageSwitchPublisher()
         self.text_image_switch_publisher = TextToImagePublisher()
 
@@ -101,8 +103,8 @@ class NLPRestaurant:
             TalkingMotion("Do you want to order the following items").perform()
             txt_order = ""
             for n in currentOrder:
-                TalkingMotion(f"{n[0][1]} {n[0][0]} and").perform()
-                txt_order += f"{n[0][1]} {n[0][0]}"
+                TalkingMotion(f"{n[1]} {n[0]} and").perform()
+                txt_order += f"{n[1]} {n[0]}"
                 rospy.sleep(2)
             self.text_image_switch_publisher.pub_now(txt_order)
             TalkingMotion("Confirm your order with a yes, after my display changes").perform()
@@ -270,19 +272,100 @@ class NLPRestaurant:
                     else:
                         tries += 1
 
+    def wait_for_callback(self, timeout=None) -> bool:
+        """
+        Waits for the NLP callback to be triggered within the timeout.
+        :return: True if callback was triggered, False otherwise
+        """
+        timeout = timeout or self.timeout
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+            if time.time() - start_time > timeout:
+                return False
+        return True
+    def retry_nlp_attempts(self, max_retries=2) -> bool:
+        """
+        Retry NLP listening and parsing for confirmation or order.
+        Returns True if successful confirmation or order received.
+        """
+        for _ in range(max_retries):
+            self._start_listening()
+            if self.wait_for_callback():
+                self.callback = False
+                if self.con
+    def _handle_nlp_response_get_order(self, timeout = 15):
+        """
+        Helper Method to handle the normal ordering step
+        """
+        start_time = time.time()
+        while not self.callback:
+            rospy.sleep(1)
+            if time.time() - start_time > timeout:
+                return
+    def _start_listening(self):
+        """
+        Helper Method to start the NLP side of this challenge
+        """
+        print("NLP start")
+        self.nlp_pub.publish("start listening")
+        rospy.sleep(2)
+        self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
-    def parse_confirmation_string(self, json_string : str):
-        print(json_string)
-        try:
-            parsed = json.loads(json_string)
-            intent = parsed.get('intent')
-            if intent == "affirm":
-                self.confirmation = intent
-            elif intent == "deny":
-                self.confirmation = intent
-        except (ValueError, SyntaxError, IndexError) as e:
-            self.confirmation = "affirm"
+    def _guide_user_to_order(self):
+        """
+        Helper metho to make the HSR say the needed phrases
+        """
+        HeadFollowMotion(state='start').perform()
+        rospy.sleep(2)
 
+        phrases = [
+            "Welcome, what can I get for you?",
+            "Please come close to me and order when my display changes"
+        ]
+        for phrase in phrases:
+            TalkingMotion(phrase).perform()
+            rospy.sleep(2.8)
+
+    def _confirm_order_with_guest(self, order: [(str, int)]):
+        """
+        Helper Method to confirm the received order with the customer.
+        :param: order: The order that the customer needs to confirm
+        """
+        HeadFollowMotion(state='start').perform()
+        rospy.sleep(2)
+        prepared_order = [str]
+        for n in order:
+            item = n[0]
+            amount = n[1]
+            prepared_order.append(str(amount) + " " + item )
+        TalkingMotion("Please confirm with a yes or no the following order: ").perform()
+        rospy.sleep(2.5)
+        for entity in order:
+            TalkingMotion(entity).perform()
+            rospy.sleep(2)
+
+    def _prepare_order_for_text(self, order: [(str, int)]):
+        """
+        Helper Method to prepare the order to be published on the display of the HSR
+        :param: order: The received order of the customer
+        """
+        tmp_ord = [str]
+        for n in order:
+            item = n[0]
+            amount = n[1]
+            tmp_str = str(amount) + " " + item
+            tmp_ord.append(tmp_str)
+        self.text_image_switch_publisher.pub_now(tmp_ord)
+        rospy.sleep(2.5)
+
+
+
+### EXAMPLE SENTENCE ###
+    #{"sentence": "I would like to order one fry and one burger .",
+    # "intent": "Order",
+    # "entities": [{"role": "Item", "value": "fry", "entity": "food", "propertyAttribute": [], "actionAttribute": [], "numberAttribute": ["one"]},
+    # {"role": "Item", "value": "burger", "entity": "food", "propertyAttribute": [], "actionAttribute": [], "numberAttribute": ["one"]}]}
 
     def parse_json_string(self, json_string: str):
         """
@@ -294,7 +377,6 @@ class NLPRestaurant:
         """
         print(json_string)
         try:
-            parsed_list = ast.literal_eval(json_string)
             parsed = json.loads(json_string)
 
             intent = parsed.get('intent')
@@ -304,38 +386,26 @@ class NLPRestaurant:
                 self.confirmation = intent
             elif intent == "deny":
                 self.confirmation = intent
-            entities = parsed.get('Item', {})
-            print("Entities", )
-            items = []
-            amount = []
+            entities = parsed.get('entities')
             order = []
-
             if intent == "Order":
-                if isinstance(entities, dict) and 'value' in entities:
-                    entities = {'item1': entities}
 
-                for key, entity in entities.items():
-                    print("\t", key, entity)
-                    print(entity['value'])
-                    print(entity.get('numberAttribute'))
+                for entity in entities:
                     item = entity.get('value')
-                    num = entity.get('numberAttribute')
-                    if num == ():
+                    amount = entity.get('numberAttribute')
+                    num = 0
+                    if amount[0] == "":
                         num = 1
-                    elif isinstance(num[0], str):
-                        print(type(options))
+                    elif isinstance(amount[0], str):
                         try:
-                            num = options[num[0]]
+                            num = options[amount[0]]
                         except KeyError:
                             num = 1
-                        print(num)
-                    elif isinstance(num[0], int):
-                        num = num[0]
-                    items.append(item)
-                    amount.append(num)
+                    elif isinstance(amount[0], int):
+                            num = amount[0]
+                    order.append((item,num))
+            self.response = [intent, order]
 
-                order = list(zip(items, amount))
-                self.response = [intent, order]
 
 
         except (ValueError, SyntaxError, IndexError) as e:
