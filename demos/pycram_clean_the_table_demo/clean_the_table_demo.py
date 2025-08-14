@@ -103,7 +103,7 @@ class PlacingZPose(Enum):
     """
     METALPLATE = 0.52
     OTHER = 0.47
-    CUTLERY = 0.55
+    CUTLERY = 0.58
     UPPER = 0.77
 
 
@@ -186,7 +186,8 @@ def pickup_object(object: Object):
 
     # Move the gripper to the right oto avoid collision with kitchen counter while moving
     # if object.obj_type == "Metalplate" or object.obj_type == "Metalbowl":
-    MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
+    if object.obj_type not in DRINKS:
+        MoveJointsMotion(["arm_roll_joint"], [-1.5]).perform()
 
 
 def place_object(object: Object):
@@ -211,7 +212,7 @@ def place_object(object: Object):
     TalkingMotion("Placing").perform()
     grasp = Grasp.FRONT
 
-    MoveTorsoAction([0.2]).resolve().perform()
+    MoveTorsoAction([0.4]).resolve().perform()
     # if object.obj_type == "Metalplate":
         # For the Plate use PlaceGivenObjectAction, because the plate was given to the robot and not picked up
         # PlaceGivenObjectAction(["Metalplate"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])],
@@ -220,7 +221,6 @@ def place_object(object: Object):
         PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [grasp], [Arms.LEFT],
                     [False]).resolve().perform()
     else:
-        MoveTorsoAction([0.4]).resolve().perform()
         PlaceAction(object, [Pose([x_pos, y_pos, z_pos])], [Grasp.TOP], [Arms.LEFT],
                     [True]).resolve().perform()
         if object.obj_type == "Metalmug":

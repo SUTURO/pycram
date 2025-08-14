@@ -1,5 +1,7 @@
 import rospy
 
+from demos.pycram_clean_the_table_demo.utils.misc import try_pick_up_c
+from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from demos.pycram_serve_breakfast_demo.utils.misc import get_bowl, sort_objects, try_pick_up, get_free_spaces
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
@@ -43,7 +45,8 @@ with (real_robot):
     MoveTorsoAction([0.2]).resolve().perform()
 
     pickup = "popcorn_table"
-    placing = "popcorn_table"
+    placing = "none"
+
 
     if pickup == "shelf":
         # shelf pickup
@@ -72,7 +75,13 @@ with (real_robot):
     # obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Milkpack"])
 
     # MoveJointsMotion(list(pre_pick_place_config.keys()), list(pre_pick_place_config.values())).perform()
-    PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
+    grasp = Grasp.TOP
+    if grasp == Grasp.FRONT:
+        MoveTorsoAction([0.2]).resolve().perform()
+    else:
+        MoveTorsoAction([0.6]).resolve().perform()
+    try_pick_up_c(robot, obj_list[0], grasp, Pose([1.98, 4, 0], [0, 0, 0.7, 0.7]))
+    # PickUpAction(obj_list[0], [Arms.LEFT], [Grasp.FRONT]).resolve().perform()
 
     if pickup == "shelf":
         # shelf pickup

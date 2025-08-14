@@ -1035,7 +1035,8 @@ class PickUpActionPerformable(ActionAbstract):
         # Execute Bool, because sometimes u only want to visualize the poses to pp.py things
         if execute:
             MoveTCPMotion(pre_pose_oTmG, self.arm, allow_gripper_collision=False).perform()
-            MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).perform()
+            if self.grasp == Grasp.FRONT:
+                MoveTCPMotion(oTmG, self.arm, allow_gripper_collision=False).perform()
 
         # Calculate and apply any special knowledge offsets based on the robot and object type
         # Note: This currently includes robot-specific logic that should be generalized
@@ -1146,17 +1147,6 @@ class PlaceActionPerformable(ActionAbstract):
 
     @with_tree
     def perform(self) -> None:
-        fts = ForceTorqueSensor(robot_name='hsrb')
-
-        def monitor_func():
-            der: WrenchStamped() = fts.get_last_value()
-            print(abs(der.wrench.force.y))
-            if abs(der.wrench.force.y) > 0.45:
-                print(abs(der.wrench.force.y))
-                print(abs(der.wrench.torque.y))
-                return SensorMonitoringCondition
-            return False
-
         pre_pick_place_config = {'arm_flex_joint': 0.0, 'arm_roll_joint': 0, 'wrist_flex_joint': -1.5,
                                  'wrist_roll_joint': 0.0}
         MoveJointsMotion(list(pre_pick_place_config.keys()), list(pre_pick_place_config.values())).perform()
@@ -1200,7 +1190,7 @@ class PlaceActionPerformable(ActionAbstract):
             else:
                 object_type = "Bowl"
             try:
-                MoveArmDownForceTorqueMotion(down_distance=0.5, object_type=object_type, speed_multi=0.1).perform()
+                MoveArmDownForceTorqueMotion(down_distance=0.75, object_type=object_type, speed_multi=0.1).perform()
             except ObjectForceTorqueThresholdException:
                 raise ManipulationFTSCheckNoObject(f"Could not place object after checking force-torque values")
         else:
@@ -1218,21 +1208,6 @@ class PlaceActionPerformable(ActionAbstract):
             World.current_world.add_vis_axis(push_baseTm)
             if execute:
                 MoveTCPMotion(push_baseTm, self.arm).perform()
-
-            # if self.object_designator.obj_type == "Metalplate":
-            #     # rTb = Pose([0,-0.1,0], [0,0,0,1],"base_link")
-            #     rospy.logwarn("sidepush monitoring")
-            #     TalkingMotion("sidepush.").perform()
-            #     side_push = Pose(
-            #         [push_baseTm.pose.position.x, push_baseTm.pose.position.y + 0.08, push_baseTm.pose.position.z],
-            #         [push_baseTm.orientation.x, push_baseTm.orientation.y, push_baseTm.orientation.z,
-            #          push_baseTm.orientation.w])
-            #     try:
-            #         plan = MoveTCPMotion(side_push, self.arm) >> Monitor(monitor_func)
-            #         plan.perform()
-            #     except SensorMonitoringCondition:
-            #         rospy.logwarn("Open Gripper")
-            #         MoveGripperMotion(motion=GripperState.OPEN, gripper=self.arm).perform()
 
         # Finalize the placing by opening the gripper and lifting the arm
         rospy.logwarn("Open Gripper")
