@@ -293,7 +293,11 @@ class NLPRestaurant:
             self._start_listening()
             if self.wait_for_callback():
                 self.callback = False
-                if self.con
+                if self.confirmation == "affirm":
+                    return True
+                elif self.confirmation == "deny":
+                    return False
+        return False
     def _handle_nlp_response_get_order(self, timeout = 15):
         """
         Helper Method to handle the normal ordering step

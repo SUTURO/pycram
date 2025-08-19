@@ -20,10 +20,11 @@ options = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seve
            '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, }
 
 
-class NLPRestaurant:
+class NLPRestaurant_refactord:
     """
     Class that stores the information about an order of a customer
     """
+
     def __init__(self):
         # Variables for the NLP Publisher and Subscriber
         self.nlp_pub = rospy.Publisher('/startListener', String, queue_size=16)
@@ -36,7 +37,7 @@ class NLPRestaurant:
         self.image_switch_publisher = ImageSwitchPublisher()
         self.text_image_switch_publisher = TextToImagePublisher()
 
-    #---------NLP Handling-------------
+    # ---------NLP Handling-------------
 
     def data_cb(self, data):
         self.response = self.parse_json_string(data.data)
@@ -44,6 +45,12 @@ class NLPRestaurant:
         self.callback = True
 
     def parse_json_string(self, json_string: str):
+        """
+        Method to transform the received NLP output to a list consisting
+        of the intent and the understood order.
+        :param: json_string: The NLP output
+        :return: List of [intent, [order]]
+        """
         try:
             parsed = json.loads(json_string)
             intent = parsed.get('intent')
@@ -62,12 +69,18 @@ class NLPRestaurant:
             return ["Order", [("water", 1)]]
 
     def _start_listening(self):
+        """
+        Helper method to start listening to the customer
+        """
         rospy.loginfo("NLP start")
         self.nlp_pub.publish("start listening")
         rospy.sleep(2)
         self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
     def wait_for_callback(self, timeout=None):
+        """
+        Helper Method to wait for NLP while listeningen
+        """
         timeout = timeout or self.timeout
         start_time = time.time()
         while not self.callback:
@@ -77,6 +90,10 @@ class NLPRestaurant:
         return True
 
     def retry_nlp_attempts(self, max_retires=2):
+        """
+        Method to retry listening to the customer. Currently, this is
+        set to max. 2 tries.
+        """
         for _ in range(max_retires):
             self._start_listening()
             if self.wait_for_callback():
@@ -87,9 +104,13 @@ class NLPRestaurant:
                     return False
         return False
 
-
-    #----------------------- Order Confirmation------------------
+    # ----------------------- Order Confirmation------------------
     def confirm_order(self, customer: CustomerDescription):
+        """
+        Method to either confirm or modify the received order.
+        :param: customer: The customer associated with the order
+        :return: Bool if confirmed or denied
+        """
         HeadFollowMotion(state='start').perform()
         order = customer.order
         if len(order) == 1:
@@ -98,20 +119,25 @@ class NLPRestaurant:
             self._confirm_multiple_items_order(order)
 
         if self.confirmation == "affirm":
-            HeadFollowMotion(state='stop').perform
+            HeadFollowMotion(state='stop').perform()
             return True
-        elif self.confirmation =="deny":
+        elif self.confirmation == "deny":
+            self.repeat_get_order(customer)
             return False
 
         else:
             return self.retry_nlp_attempts()
 
     def _confirm_single_item_order(self, item):
+        """
+        Helper method if order only has one item
+        :param: item: The item of the order
+        """
         name, amount = item
         TalkingMotion(f"Do you want to order {amount} {name} ?").perform()
         self.text_image_switch_publisher.pub_now(f"order: {amount} {name}")
         rospy.sleep(2)
-        TalkingMotion("Please confirm with a yes or a no after my display changes").perform()4
+        TalkingMotion("Please confirm with a yes or a no after my display changes").perform()
         rospy.sleep(2.5)
 
         self._start_listening()
@@ -119,6 +145,10 @@ class NLPRestaurant:
         self.callback = False
 
     def _confirm_multiple_items_order(self, order):
+        """
+        Helper method to confirm or deny a order with at least 2 items.
+        :param: order: The list of items in the order
+        """
         TalkingMotion("Do you want to order the following items").perform()
         txt_order = ""
         rospy.sleep(2)
@@ -132,3 +162,65 @@ class NLPRestaurant:
         self._start_listening()
         self.wait_for_callback()
         self.callback = False
+
+    # ---------------- Get Order Flow --------------------
+    def get_order(self, customer: CustomerDescription):
+        """
+        Method to get the order from a customer.
+        :param: customer: The customer associated with the order
+        """
+        HeadFollowMotion(state='start').perform()
+        TalkingMotion("Welcome, waht can I get for you?").perform()
+        rospy.sleep(2)
+        TalkingMotion("Please come close to me and order when my display changes").perform()
+        rospy.sleep(2.5)
+
+        self._start_listening()
+        if not self.wait_for_callback():
+            self.retry_nlp_attempts()
+        self.callback = False
+        intent, order = self.response
+        if intent == "Order" and order:
+            customer.set_order(order)
+        else:
+            customer.set_order([("water", 1)])
+
+    def repeat_get_order(self, customer: CustomerDescription):
+        """
+        Method for the possibility that HSR did not understood the order
+        correctly.
+        :param: customer: The customer associated with the order
+        """
+        HeadFollowMotion(state="start").perform()
+        self.image_switch_publisher.pub_now(ImageEnum.HI.value)
+        TalkingMotion("Please repeat your order when my display changes").perform()
+        rospy.sleep(2.3)
+
+        self._start_listening()
+
+        if not self.wait_for_callback():
+            self.retry_nlp_attempts()
+        self.callback = False
+        intent, order = self.response
+        if intent == "Order" and order:
+            customer.set_order(order)
+            self.confirm_order(customer)
+
+    # -------------------- Display & Confirmation Helpers ----------------
+
+    def _confirm_order_with_guest(self, order):
+        HeadFollowMotion(state='start').perform()
+
+        phrases = [f"{amount} {item}" for item, amount in order]
+        for phrase in phrases:
+            TalkingMotion(phrase).perform()
+            rospy.sleep(2)
+        TalkingMotion("Please confirm your order after the display changes").perform()
+        self.text_image_switch_publisher.pub_now(" ".join(phrases))
+        rospy.sleep(2.5)
+        self._start_listening()
+
+    def _prepare_order_for_text(self, order):
+        tmp_order = [f"{amount} {item}" for item, amount in order]
+        self.text_image_switch_publisher.pub_now(" ".join(tmp_order))
+        rospy.sleep(2.5)

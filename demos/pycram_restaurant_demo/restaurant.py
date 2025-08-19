@@ -9,6 +9,7 @@ from tf.transformations import quaternion_matrix
 import pycram
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from demos.pycram_restaurant_demo.utils.nlp_restaurant_json import NLPRestaurant
+from demos.pycram_restaurant_demo.utils.nlp_json_refactored import NLPRestaurant_refactord
 from pycram.datastructures.enums import Arms, ImageEnum
 from pycram.datastructures.pose import Pose
 from pycram.designators.action_designator import ParkArmsAction, DetectAction, LookAtAction, MoveTorsoAction, \
@@ -35,6 +36,7 @@ stopped = False
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
 nlp = NLPRestaurant()
+nlp_test = NLPRestaurant_refactord()
 odom_response = None
 pose_dict = OrderedDict()
 moving = False
@@ -201,7 +203,6 @@ def set_pose_in_front(goalPose: Pose, dist: float):
     return adjusted_pose
 
 
-humanP = Pose([-4.42, -1.29, 0])
 
 
 def demo(step: int):
@@ -277,12 +278,12 @@ def demo(step: int):
             LookAtAction([Pose([robot.pose.position.x, robot.pose.position.y, 0.8])])
             rospy.sleep(1)
             Timmi = CustomerDescription(id=1, pose=start_pose)
-            #customer = Timmi
-            nlp.get_order(customer=customer)
+            customer = Timmi
+            nlp_test.get_order(customer=customer)
             print(customer.order)
             rospy.sleep(2)
             if customer.order is not None:
-                nlp.confirm_order(customer=customer)
+                nlp_test.confirm_order(customer=customer)
         if step <= 3:  # Drive back step
             TalkingMotion("I will drive back now and return with your order").perform()
             rospy.sleep(2.5)
@@ -344,4 +345,4 @@ def demo(step: int):
                 demo(0)
 
 
-demo(0)
+demo(2)

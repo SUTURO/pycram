@@ -208,7 +208,7 @@ def query_for_forbidden_room():
 @init_robokudo_interface
 def query_waving_human() -> Pose:
     """Query RoboKudo for detecting a waving human."""
-    result = send_query(obj_type='waving')
+    result = send_query(obj_type='human', attributes=['waving'])
     if result:
         return result
 
