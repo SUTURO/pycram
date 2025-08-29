@@ -256,6 +256,8 @@ def get_annotators_of_demo(demo: Demos):
         annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.YOLOANNOTATOR]
     elif demo == Demos.RESTAURANT:
         annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.WAVING]
+    elif demo == Demos.GMAH:
+        annotator_result: List[RobokudoAnnotator] = [RobokudoAnnotator.POINTING]
     else:
         logwarn(f"Demo {demo_name} does not have assigned annotators yet")
         return []

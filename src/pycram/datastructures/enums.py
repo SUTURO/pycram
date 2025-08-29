@@ -185,6 +185,7 @@ class ImageEnum(Enum):
     PERCEPTION_RESULT = 41
     CLOCK = 42
     TALKING_DUMMIES = 43
+    DISHWASHER_OPENING = 44
 
 
 
@@ -300,6 +301,7 @@ class MultiverseJointCMD(MultiverseJointProperty):
 class RobokudoAnnotator(Enum):
     YOLOANNOTATOR = "YoloAnnotator"
     WAVING = "/robokudo/Restaurant/WavingResult/output_image"
+    POINTING = "/robokudo/GMAH/HumanPointingAnnotator/output_image"
 
 
 class Demos(Enum):
@@ -307,3 +309,4 @@ class Demos(Enum):
     RECEPTIONIST = auto()
     CLEAN_THE_TABLE = auto()
     RESTAURANT = auto()
+    GMAH = auto()
