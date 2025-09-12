@@ -5,6 +5,7 @@ from demos.pycram_receptionist_demo.utils.helper import *
 from pycram.designators.action_designator import *
 from pycram.designators.motion_designator import *
 from pycram.designators.object_designator import *
+from pycram.external_interfaces.giskard import door_open_ft
 from pycram.process_module import real_robot
 from pycram.ros_utils.robot_state_updater import RobotStateUpdater
 from pycram.ros_utils.viz_marker_publisher import VizMarkerPublisher
@@ -55,23 +56,29 @@ nav_pose_to_drink = Pose([2, 0.6, 0], orientation=[0, 0, 0.7, 0.7])
 nav_pose_to_couch = Pose([2.2, 1.95, 0], orientation=[0, 0, -0.7, 0.7])
 greet_guest_pose = Pose(position=[1.9, -0.18, 0], orientation=[0, 0, -0.8, 0.5])
 beverage_pose = Pose(position=[2.2, 4, 0], orientation=[0, 0, 0.9, 0.3])
+prepose_door_open = Pose(position=[1.8, -0.7, 0], orientation=[0, 0, -1, 0])
+start_pose = Pose(position=[1.7, -0.13, 0], orientation=[0, 0, -0.7, 0.7])
+
 ########################################################
 
 
 def demo(step: int, two_guests: Optional[bool] = True):
 
     with (real_robot):
-        nlp.welcome_guest(guest1)
-        nlp.get_fav_drink(guest1)
-        nlp.store_and_answer_hobby(guest1)
+        image_switch_publisher.pub_now(ImageEnum.HI.value)
+
+        NavigateAction([prepose_door_open]).resolve().perform()
+
+        door_open_ft()
+
         rospy.loginfo("start demo at step " + str(step))
 
         # set neutral pose
-        image_switch_publisher.pub_now(ImageEnum.HI.value)
+        NavigateAction([start_pose]).resolve().perform()
+        ParkArmsAction([Arms.LEFT]).resolve().perform()
+        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
         MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
-        ParkArmsAction([Arms.LEFT]).resolve().perform()
-        MoveJointsMotion(["arm_flex_joint"], [-0.2]).perform()
 
         if step <= 1:
 

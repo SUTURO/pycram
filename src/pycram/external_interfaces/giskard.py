@@ -10,7 +10,7 @@ from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vect
 from giskardpy.data_types.exceptions import PreemptedException, \
     ObjectForceTorqueThresholdException, ExecutionException
 from giskardpy.data_types.suturo_types import ForceTorqueThresholds
-from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
+from giskardpy.motion_statechart.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy_ros.ros1 import tfwrapper as giskard_tf
 from giskardpy.utils.math import quaternion_from_axis_angle
 from typing_extensions import List, Dict, Callable, Optional
@@ -631,7 +631,7 @@ def achieve_cartesian_goal_w_fts(goal_pose: Pose,
     giskard_wrapper.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
     # gripper_closed = self.monitors.add_close_hsr_gripper()
 
-    mon = giskard_wrapper.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+    mon = giskard_wrapper.monitors.add_monitor(class_name=PayloadForceTorque.__name__,
                                                name=PayloadForceTorque.__name__,
                                                topic='/filtered_raw/diff',
                                                start_condition='',
@@ -1056,97 +1056,68 @@ def arm_down_ft(down_distance: float = 0.3, object_type: str = 'Default', speed_
 
 @init_giskard_interface
 @thread_safe
-def door_open_ft(handle_name: str,
-                 tip: str,
-                 handle_turn_limit: float,
-                 hinge_turn_limit: float,
-                 handle_length: float,
-                 ref_speed: float,
-                 handle_retract_distance: float,
-                 pre_grasp_distance: float,
-                 grasp_into_distance: float,
-                 offset_leftright: float):
-    ft_timeout = 10
+def door_open_ft(handle_name: str = "iai_kitchen/iai_kitchen:arena:door_handle_inside",
+                 tip: str = 'hand_gripper_tool_frame',
+                 ref_speed: float = 0.5,
+                 handle_retract_distance: float = -0.063,
+                 hinge_joint: str = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint",
+                 door_handle_for_hinge: str = "iai_kitchen/iai_kitchen:arena:door_handle_link",
+                 pre_grasp_distance: float = -0.15,
+                 grasp_into_distance: float = 0.2,
+                 offset_along_handle: float = 0.03,
+                 door_center: str = "iai_kitchen/iai_kitchen:arena:door_center",
+                 handle_turn_limit: float = 0.5,
+                 hinge_turn_limit: float = -1.4):
+    """
+    door opening for receptionist with pulling door open and moving around door.
+    Adjust frame-ids of joints as needed for door, other parameters are used to optimize opening
+    """
+    # From door_handle_grasping
+    """
+    Door handle grasping with force-torque-sensor and optionally hand camera. Preparation for opening door
 
-    x_gripper = Vector3Stamped()
-    x_gripper.header.frame_id = tip
-    x_gripper.vector.z = 1
+    :param handle_name: frame id of the door handle
+    :param hinge_joint: frame id of the door hinge
+    :param handle_retract_distance: distance gripper retracts after collision with door handle
+    :param tip_link: tip link of the kin chain
+    :param ref_speed: reference speed for approaching the handle for forcetorque detection
+    :param pre_grasp_distance: distance in front of the handle, from where the ft movement starts
+    :param grasp_into_distance: distance from handle position how far further the gripper can go
+    :param offset_along_handle: offset from center of handle for better grasping position
+    :param ft_timeout: time in seconds after which the ft throws an error when no collision is detected
+    :param camera_link: Optional camera link for visual servoing approach with RoboKudo
+    """
+    giskard_wrapper.door_handle_grasping(handle_name=handle_name,
+                                         hinge_joint=hinge_joint,
+                                         tip_link=tip,
+                                         ref_speed=ref_speed,
+                                         pre_grasp_distance=pre_grasp_distance,
+                                         grasp_into_distance=grasp_into_distance,
+                                         offset_along_handle=offset_along_handle,
+                                         handle_retract_distance=handle_retract_distance,
+                                         camera_link=None)
+    # From door_opening_with_moving_around
+    """
+    Door opening with moving around the door to open it from the inside
 
-    x_goal = Vector3Stamped()
-    x_goal.header.frame_id = handle_name
-    x_goal.vector.z = -1
-
-    pre_grasp = giskard_wrapper.monitors.add_local_minimum_reached(name='pre grasp local min')
-
-    offset_pre = Vector3Stamped()
-    offset_pre.header.frame_id = tip
-    offset_pre.vector.y = pre_grasp_distance
-    offset_pre.vector.z = offset_leftright
-
-    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(name='pre grasp', handle_name=handle_name,
-                                                        handle_bar_length=handle_length,
-                                                        grasp_axis_offset=offset_pre, end_condition=pre_grasp)
-
-    open_gripper = giskard_wrapper.monitors.add_open_hsr_gripper(start_condition=pre_grasp)
-
-    giskard_wrapper.motion_goals.add_align_planes(name='pre grasp align',
-                                                  tip_link=tip,
-                                                  tip_normal=x_gripper,
-                                                  goal_normal=x_goal,
-                                                  root_link='map',
-                                                  end_condition=open_gripper)
-
-    giskard_wrapper.motion_goals.add_align_planes(name='grasp align',
-                                                  tip_link=tip,
-                                                  tip_normal=x_gripper,
-                                                  goal_normal=x_goal,
-                                                  root_link='map',
-                                                  start_condition=open_gripper)
-
-    offset = Vector3Stamped()
-    offset.header.frame_id = tip
-    offset.vector.y = grasp_into_distance
-    offset.vector.z = offset_leftright
-
-    slep = giskard_wrapper.monitors.add_sleep(name='grasp sleep', seconds=ft_timeout, start_condition=open_gripper)
-    force = giskard_wrapper.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value, object_type='',
-                                                      start_condition=open_gripper)
-    giskard_wrapper.motion_goals.hsrb_door_handle_grasp(name='grasp', handle_name=handle_name,
-                                                        handle_bar_length=handle_length,
-                                                        grasp_axis_offset=offset, ref_speed=ref_speed,
-                                                        start_condition=open_gripper,
-                                                        end_condition=force)
-
-    goal_point = PointStamped()
-    goal_point.header.frame_id = 'base_link'
-
-    handle_retract_direction = Vector3Stamped()
-    handle_retract_direction.header.frame_id = handle_name
-    handle_retract_direction.vector.z = handle_retract_distance
-
-    base_retract = giskard_tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
-
-    goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
-
-    giskard_wrapper.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
-                                                                 goal_point=goal_point, start_condition=force)
-    grasped = giskard_wrapper.monitors.add_local_minimum_reached(name='grasped monitor', start_condition=force)
-
-    giskard_wrapper.monitors.add_end_motion(start_condition=grasped)
-    giskard_wrapper.monitors.add_cancel_motion(f'not {force} and {slep} ',
-                                               ObjectForceTorqueThresholdException('Door not touched!'))
-
-    giskard_wrapper.motion_goals.allow_all_collisions()
-    giskard_wrapper.execute()
-
-    close_gripper = giskard_wrapper.monitors.add_close_hsr_gripper()
-
-    giskard_wrapper.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=handle_turn_limit,
-                                                     hinge_limit=hinge_turn_limit,
-                                                     start_condition=close_gripper)
-
-    giskard_wrapper.motion_goals.allow_all_collisions()
-    giskard_wrapper.execute()
+    :param root_link: root link of the kin chain (e.g. map)
+    :param tip_link: tip_link of the kin chain (e.g. hand_gripper_tool_frame)
+    :param handle_name: frame id of the door handle (e.g. iai_kitchen/iai_kitchen:arena:door_handle_inside)
+    :param door_handle_for_hinge: Handle frame id for the hinge movement (e.g. iai_kitchen/iai_kitchen:arena:door_handle_link)
+    :param door_center: frame id of door center used for opening door fully
+    :param handle_retract_distance: distance the gripper retracts after partly opening the door to be able to push
+    :param handle_turn_limit: how much the handle is to be turned
+    :param full_hinge_turn_limit: how far the door is to be opened in the end
+    :param pre_push_hinge_turn_limit: how far the door is opened before the pushing sequence is used
+    :param height_offset: height offset for reaching around door handle to not collide with the handle
+    """
+    giskard_wrapper.door_opening_with_moving_around(handle_name=handle_name,
+                                                    door_handle_for_hinge=door_handle_for_hinge,
+                                                    door_center=door_center,
+                                                    handle_turn_limit=handle_turn_limit,
+                                                    full_hinge_turn_limit=hinge_turn_limit,
+                                                    tip_link='hand_gripper_tool_frame',
+                                                    root_link='map')
 
 
 ##############################################################
