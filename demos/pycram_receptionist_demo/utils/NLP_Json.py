@@ -198,7 +198,6 @@ class NLP_Helper:
 
                 if int(time.time() - start_time) == timeout:
                     rospy.logwarn("guest needs to repeat")
-                    print("listen again")
                     self.nlp_pub.publish("start listening")
                     rospy.sleep(1.3)
                     self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
@@ -349,18 +348,28 @@ class NLP_Helper:
         value = ""
         entity = ""
 
-        # struktur ist so, weil die das auch in Knowlegde so haben
-        if intent == "Hobbies":
-            concept = parsed.get("Concept", {})
-            value = concept.get("value")
-            entity = concept.get("entity")
-        if intent == "Receptionist":
-            concept = parsed.get("BeneficiaryRole", {})
-            if not concept:
-                concept = parsed.get("Item", {})
 
-            value = concept.get("value")
-            entity = concept.get("entity")
+        # struktur ist so, weil die das auch in Knowlegde so haben
+        ##### GPSR #####
+        # if intent == "Hobbies":
+        #     concept = parsed.get("Concept", {})
+        #     value = concept.get("value")
+        #     entity = concept.get("entity")
+        # if intent == "Receptionist":
+        #     print("wtf why?")
+        #     concept = parsed.get("BeneficiaryRole", {})
+        #     if not concept:
+        #         concept = parsed.get("Item", {})
+        #
+        #     value = concept.get("value")
+        #     entity = concept.get("entity")
+
+        #### MCSR #####
+        entities = parsed.get("entities")
+        if len(entities) >= 1:
+            json_entities = entities[0]
+            value = json_entities.get("value")
+            entity = json_entities.get("entity")
 
         result = {
             "sentence": sentence,
@@ -370,6 +379,7 @@ class NLP_Helper:
         }
 
         self.response = [intent, value]
+        print(self.response)
         print("######################")
         print(result["value"])
         print("######################")

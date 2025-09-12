@@ -46,7 +46,7 @@ guest2.set_attributes(['female', 'with a hat', 'wearing a t-shirt', ' a bright t
 
 ############### important poses #######################
 couch_pose_semantik = Pose(position=[3.8, 2.1, 0], orientation=[0, 0, -0.7, 0.7])
-look_couch = Pose([3.8, 0.3, 0.75])
+look_couch = Pose([4.4, 0.3, 0.75])
 look_drinks = Pose([2.3, 4.7, -0.03])
 #look_person_drinks = Pose([1.9, 4.1, 1])
 look_person_drinks = Pose([1.3, 3.6, 1])
@@ -61,6 +61,9 @@ beverage_pose = Pose(position=[2.2, 4, 0], orientation=[0, 0, 0.9, 0.3])
 def demo(step: int, two_guests: Optional[bool] = True):
 
     with (real_robot):
+        nlp.welcome_guest(guest1)
+        nlp.get_fav_drink(guest1)
+        nlp.store_and_answer_hobby(guest1)
         rospy.loginfo("start demo at step " + str(step))
 
         # set neutral pose

@@ -8,7 +8,7 @@ from pycram.designators.object_designator import HumanDescription
 from pycram.failures import PerceptionObjectNotFound
 from pycram.utilities.robocup_utils import TextToImagePublisher, ImageSwitchPublisher
 
-look_couch = Pose([3.8, 0.3, 0.8])
+look_couch = Pose([4.4, 0.3, 0.75])
 text_to_img_publisher = TextToImagePublisher()
 img = ImageSwitchPublisher()
 
@@ -88,10 +88,10 @@ def detect_point_to_seat(robot, no_sofa: Optional[bool] = False):
                 lt = LocalTransformer()
                 pose_in_robot_frame = lt.transform_pose(pose_in_map, robot.get_link_tf_frame("base_link"))
                 print(pose_in_robot_frame.pose.position.y)
-                if pose_in_robot_frame.pose.position.y > 0.45:
+                if pose_in_robot_frame.pose.position.y > 0.6:
                     TalkingMotion("please take a seat to the left from me").perform()
                     # move pose more to the left for clear pointing pose
-                    pose_in_robot_frame.pose.position.y += 0.6
+                    pose_in_robot_frame.pose.position.y += 0.2
 
                 elif pose_in_robot_frame.pose.position.y < -0.3:
                     TalkingMotion("please take a seat to the right from me").perform()

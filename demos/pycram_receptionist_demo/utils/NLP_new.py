@@ -10,7 +10,7 @@ from pycram.utilities.robocup_utils import ImageSwitchPublisher
 
 response = [None, None, None]
 callback = False
-timeout = 12
+timeout = 15
 timeout2 = 17
 
 
