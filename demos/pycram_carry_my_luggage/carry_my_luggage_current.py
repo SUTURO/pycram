@@ -52,7 +52,7 @@ def demo(step: int, clear_path: Optional[bool] = True):
 
     with (real_robot):
         if step <= 1:
-            # TalkingMotion("Starting Carry my Luggage demo.").perform()
+            TalkingMotion("Starting Carry my Luggage demo.").perform()
             MoveJointsMotion(["wrist_flex_joint"], [-1.6]).perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
@@ -101,7 +101,6 @@ def demo(step: int, clear_path: Optional[bool] = True):
                 rospy.sleep(4)
                 img.pub_now(ImageEnum.GENERATED_TEXT.value)
                 TalkingMotion("please put the bag in my gripper and push down my gripper").perform()
-                # TODO: Timer einbauen? falls gripper nicht gedrückt wird
                 try:
                     plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func_no_timer)
                     plan.perform()
