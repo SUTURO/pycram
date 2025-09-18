@@ -67,9 +67,8 @@ def demo(step: int, two_guests: Optional[bool] = True):
     with (real_robot):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
 
-        NavigateAction([prepose_door_open]).resolve().perform()
-
-        door_open_ft()
+        # NavigateAction([prepose_door_open]).resolve().perform()
+        # door_open_ft()
 
         rospy.loginfo("start demo at step " + str(step))
 
@@ -292,10 +291,10 @@ def demo(step: int, two_guests: Optional[bool] = True):
                     if guest_pose:
                         guest2.set_pose(guest_pose)
                     else:
-                        TalkingMotion("i am sorry i can not find a seat")
+                        TalkingMotion("i am sorry i can not find a seat").perform()
                         # guest1.set_pose(guest_pose)
                         rospy.sleep(2)
-                        TalkingMotion("please find a seat yourself")
+                        TalkingMotion("please find a seat yourself").perform()
                         rospy.sleep(1)
                 else:
                     guest2.set_pose(guest_pose)
@@ -307,7 +306,9 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 introduce(guest1, guest2)
                 rospy.sleep(3)
                 describe(guest1)
+                rospy.sleep(1.5)
                 MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
+                TalkingMotion("have fun at the party").perform()
 
 
-demo(0, False)
+demo(0, True)
