@@ -5,9 +5,16 @@ ros_client = rosprolog_client.Prolog()
 
 ##### Infos about Knowrob querys #####
 # communication via strings
-# query once (one result) und qoery all solutions (all results)
-# dot at the end ofquery string important, if . is not there query won't stop
+# query once (one result) und query all solutions (all results)
+# dot at the end of query string important, if . is not there query won't stop
 # there is a difference between "" and '', you will need 'data'
+
+#### Launching Knowledge ############
+# type in new terminal
+# kn (sources knowledge workspace)
+# mongodb     (um Datenbank zu aktivieren)
+# roslaunch suturo_knowledge suturo_knowledge.launch
+# (rosrun suturo_knowledge object_info_server.py) old
 ########################################
 
 def save_person_drink(name: str, drink: str):
