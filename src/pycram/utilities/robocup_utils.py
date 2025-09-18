@@ -79,7 +79,11 @@ class StartSignalWaiter:
 
         def laser_scan_callback(msg):
             ranges = list(msg.ranges)
-            if len(ranges) > 481 and ranges[481] > 0.5:
+
+            # the list ranges contains data about the distances in meter of obstacles around the robot
+            # at around 480 is the data from the center of the Laser Scanner
+            # we continue when nothing is in range of 90cm of the robots center
+            if len(ranges) > 481 and ranges[481] > 0.9:
                 self.fluent.set_value(True)
                 rospy.loginfo("Door is open, unsubscribing from topic")
                 self.current_subscriber.unregister()
@@ -106,7 +110,6 @@ class StartSignalWaiter:
                 obstacle_detected = False
                 # Check if any value in the range 461 to 501 is smaller than 1.0
                 for i in range(470, 510):
-                    # print(ranges[i])
                     if ranges[i] < 0.98:
                         obstacle_detected = True
                         rospy.loginfo(f"Obstacle detected at index {i} with range {ranges[i]}")
@@ -167,7 +170,7 @@ class TextToSpeechPublisher():
         rospy.logerr("talking sentence: " + str(sentence))
         if talk_bool:
             while not rospy.is_shutdown():
-                if not self.status_list or not wait_bool:  # Check if the status list is empty
+                if not self.status_list or self.status_list[0].status == 3 and len(self.status_list) == 1 or not wait_bool:  # Check if the status list is empty
                     goal_msg = TalkRequestActionGoal()
                     goal_msg.header.stamp = rospy.Time.now()
                     goal_msg.goal.data.language = 1
@@ -177,6 +180,9 @@ class TextToSpeechPublisher():
                         rospy.sleep(0.1)
 
                     self.pub.publish(goal_msg)
+                    rospy.sleep(0.5)
+                    while not self.status_list[0].status == 3:
+                        rospy.sleep(0.5)
                     break
 
 
@@ -206,7 +212,7 @@ class ImageSwitchPublisher:
         Initializes the ImageSwitchPublisher with a ROS publisher.
 
         :param topic: The ROS topic to publish image switch requests to. Default is '/image_switch_topic'.
-        :param queue_size: The size of the message queue for the publisher. Default is 10.
+        :param queue_size: The smedia_switch_topicize of the message queue for the publisher. Default is 10.
         :param latch: Whether the publisher should latch messages. Default is True.
         """
         self.pub = rospy.Publisher(topic, Int32, queue_size=queue_size, latch=latch)
@@ -364,7 +370,7 @@ class ImageSendPublisher:
         self.pub.publish(image)
 
         # Wait for published message
-        rospy.sleep(0.1)
+        rospy.sleep(1)
 
         if self.kill_sub_after_pub:
             self.deactivate_subscriber()
