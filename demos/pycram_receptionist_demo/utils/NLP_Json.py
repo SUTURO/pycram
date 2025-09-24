@@ -115,28 +115,29 @@ class NLP_Helper:
         trys = 0
 
         while trys < 2:
-            self.image_switch_publisher.pub_now(ImageEnum.CLOCK.value)
+            self.image_switch_publisher.pub_now(ImageEnum.HI.value)
             TalkingMotion("i am sorry, please repeat your name").perform()
-            self.image_switch_publisher.pub_now(ImageEnum.CLOCK.value)
             rospy.sleep(2)
             TalkingMotion("use the sentence my name is").perform()
             rospy.sleep(1.2)
 
             self.nlp_pub.publish("start")
             rospy.sleep(2.5)
-            self.image_switch_publisher.pub_now(ImageEnum.TALKING_DUMMIES.value)
+            self.image_switch_publisher.pub_now(ImageEnum.TALK.value)
 
             # wait for response
             start_time = time.time()
-            while not self.callback:
+            while not self.callback and trys < 2:
                 # signal repeat to human
                 if time.time() - start_time == timeout:
                     rospy.logwarn("guest needs to repeat")
                     self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
                 if int(time.time() - start_time) == timeout2:
                     print("listen again")
+                    self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
                     self.nlp_pub.publish("start listening")
                     start_time = time.time()
+                    trys += 1
 
             self.image_switch_publisher.pub_now(ImageEnum.HI.value)
             self.callback = False

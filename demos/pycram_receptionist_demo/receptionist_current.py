@@ -66,9 +66,10 @@ def demo(step: int, two_guests: Optional[bool] = True):
 
     with (real_robot):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
+        MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
 
-        # NavigateAction([prepose_door_open]).resolve().perform()
-        # door_open_ft()
+        NavigateAction([prepose_door_open]).resolve().perform()
+        door_open_ft()
 
         rospy.loginfo("start demo at step " + str(step))
 
@@ -87,36 +88,36 @@ def demo(step: int, two_guests: Optional[bool] = True):
 
         if step <= 2:
             # perceive attributes of guest
-            MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
             get_attributes(guest1)
             TalkingMotion("i will show you around now").perform()
             rospy.sleep(2)
+
+        if step <= 3:
+            # navigation sequence to beverages
             TalkingMotion("please step out of the way and follow me").perform()
             MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
             image_switch_publisher.pub_now(ImageEnum.HI.value)
 
-        if step <= 3:
             NavigateAction([nav_pose_to_drink]).resolve().perform()
             NavigateAction([beverage_pose]).resolve().perform()
 
             TalkingMotion("here you can get yourself a drink").perform()
-            MoveJointsMotion(["torso_lift_joint"], [0.1]).perform()
 
         if step <= 4:
+            # eye contact again
             LookAtAction([look_person_drinks]).resolve().perform()
-
             DetectAction(technique='human_receptionist', state="start").resolve().perform()
             HeadFollowMotion(state="start").perform()
+
             nlp.get_fav_drink(guest1)
             display_info(f"guest favorite drink is: {guest1.fav_drink}")
 
-        if step <= 4:
-            # ParkArmsAction([Arms.LEFT]).resolve().perform()
             TalkingMotion(f"let me see if {guest1.fav_drink} is available").perform()
             LookAtAction([look_drinks]).resolve().perform()
 
-            rospy.sleep(1)
+        if step <= 4:
+            # hobby conversation
             check_drink_available(guest1)
             rospy.sleep(2)
             TalkingMotion("i love cleaning up this table").perform()
@@ -170,7 +171,7 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 if counter == 5:
                     try:
                         start_time = time.time()
-                        while start_time < 6 and not host.pose:
+                        while start_time < 4 and not host.pose:
                             host_pose = DetectAction(technique='human_receptionist').resolve().perform()
                             host.set_pose(host_pose)
 
@@ -210,13 +211,11 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 TalkingMotion("i will go back to the entrance to assist other guests").perform()
                 MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
-
             if step <= 9:
                 # go back to start-pose
                 NavigateAction([greet_guest_pose]).resolve().perform()
                 ParkArmsAction([Arms.LEFT]).resolve().perform()
                 MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
-                MoveJointsMotion(["arm_flex_joint"], [-0.2]).perform()
                 image_switch_publisher.pub_now(ImageEnum.HI.value)
 
             if step <= 10:
@@ -227,6 +226,8 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 MoveJointsMotion(["torso_lift_joint"], [0.0]).perform()
                 TalkingMotion("i will show you around").perform()
                 rospy.sleep(1)
+
+                # navigation to beverage area
                 TalkingMotion("please step out of the way and follow me").perform()
                 image_switch_publisher.pub_now(ImageEnum.HI.value)
                 MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
@@ -311,4 +312,4 @@ def demo(step: int, two_guests: Optional[bool] = True):
                 TalkingMotion("have fun at the party").perform()
 
 
-demo(0, True)
+demo(0, False)
