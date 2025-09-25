@@ -16,7 +16,6 @@ from demos.pycram_give_me_a_hand_demo.misc.nlp_gmah import NLP_GMAH
 from demos.pycram_restaurant_demo.utils import misc
 import demos.pycram_give_me_a_hand_demo.misc.location_gmah
 
-
 from pycram.designators.motion_designator import *
 from demos.pycram_hsrb_real_test_demos.utils.startup import startup
 from pycram.datastructures.enums import Arms, ImageEnum
@@ -52,7 +51,9 @@ global instructor_pose
 global instructor_found
 global pointing_pose
 global pointing_found
+global placing_pose
 global notFound
+global foundByNLP
 # Initialize NLP variables
 callback = False
 pub_nlp = rospy.Publisher('/startListener', String, queue_size=16)
@@ -60,36 +61,40 @@ nlp = NLP_GMAH()
 response = [None]
 nlpInstructor = False
 
-instructor_pose  = None
+instructor_pose = None
 pointing_pose = None
 instructor_found = False
 pointing_found = False
 notFound = False
+foundByNLP = False
 timeout = 10
 fts = ForceTorqueSensor(robot_name='hsrb')
 placingTest = Pose([5.36, 1.57, 1], [0, 0, 0, 1])
-placingPoseTest = Pose([5.36, 1.57, 0.35], [0,0,0,1])
+placingPoseTest = Pose([5.36, 1.57, 0.35], [0, 0, 0, 1])
 objectGoals = []
 
 current_locations = {
     'popcorn_table_left': 1.49,
     'popcorn_table_right': 2.67,
     'popcorn_table_center': 2.08,
-    'long_table' : 3.36,
-    'couch_table':5.3
+    'long_table': 3.36,
+    'couch_table': 5.3
 }
 
 intermediate_locations = {
-    'popcorn_table_left': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
-    'popcorn_table_right': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
-    'popcorn_table_center': Pose([1.44, 2.6, 0], [0,0,0.71,0.71]),
-    'long_table' : Pose([3.73, 2.68, 0], [0,0,0.999,0.006]),
-    'couch_table': Pose([3.75, 1.37, 0], [0,0,0,1])
+    'popcorn_table_left': Pose([1.44, 2.6, 0], [0, 0, 0.71, 0.71]),
+    'popcorn_table_right': Pose([1.44, 2.6, 0], [0, 0, 0.71, 0.71]),
+    'popcorn_table_center': Pose([1.44, 2.6, 0], [0, 0, 0.71, 0.71]),
+    'long_table': Pose([3.73, 2.68, 0], [0, 0, 0.999, 0.006]),
+    'couch_table': Pose([3.75, 1.37, 0], [0, 0, 0, 1])
 }
+
+
 class FixedRoomPositions(Enum):
-    LIVING_ROOM = Pose([1.86, 2.59, 0], [0,0, -1, 1])
-    KITCHEN = Pose([2.16, -1.93, 0], [0,0,0,1])
+    LIVING_ROOM = Pose([1.86, 2.59, 0], [0, 0, -1, 1])
+    KITCHEN = Pose([2.16, -1.93, 0], [0, 0, 0, 1])
     WORKING_AREA = Pose([3.19, 2.46, 0], [0, 0, 0, 1])
+
 
 def move_pose_forwards(goal: Pose, distance: float):
     """
@@ -104,11 +109,12 @@ def move_pose_forwards(goal: Pose, distance: float):
                                    goal.pose.orientation.w])
     forward_vector = rotMatrix[:3, 0]
     movedPose = np.array([goal.pose.position.x,
-                      goal.pose.position.y,
-                      goal.pose.position.z]) - distance * forward_vector
+                          goal.pose.position.y,
+                          goal.pose.position.z]) - distance * forward_vector
     return movedPose
 
-def set_pose_in_front(goalPose: Pose, dist : float):
+
+def set_pose_in_front(goalPose: Pose, dist: float):
     """
     Creates a pose in front of the received goal. Changes the orientation to the goal pose orientation.
     :param: goalPose: transformed goal pose of customer
@@ -116,15 +122,16 @@ def set_pose_in_front(goalPose: Pose, dist : float):
     :return: newly moved pose
     """
     new_pos = move_pose_forwards(goalPose, dist)
-    adjusted_pose = Pose(position=[new_pos[0], new_pos[1], new_pos[2]], orientation=[goalPose.pose.orientation.x, goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w])
+    adjusted_pose = Pose(position=[new_pos[0], new_pos[1], new_pos[2]],
+                         orientation=[goalPose.pose.orientation.x, goalPose.pose.orientation.y,
+                                      goalPose.pose.orientation.z, goalPose.pose.orientation.w])
     return adjusted_pose
 
 
-def transform_camera_to_x(pose, frame_x, human:bool):
+def transform_camera_to_x(pose, frame_x, human: bool):
     """
     transforms the pose with given frame_x, orientation will be head ori and z is minus 1.3
     """
-    #pose.pose.position.z -= 1.3
 
     pose.header.frame_id = "hsrb/" + frame_x
     tPm = tf_listener.transform_pose(pose=pose, target_frame="/map")
@@ -135,6 +142,7 @@ def transform_camera_to_x(pose, frame_x, human:bool):
     tPm.pose.orientation = pan_pose.pose.orientation
 
     return tPm
+
 
 def intermediate_location(location: String) -> Pose:
     """
@@ -147,6 +155,7 @@ def intermediate_location(location: String) -> Pose:
     print(intermediate)
     return intermediate
 
+
 def associated_location_by_pose(pose: Pose) -> String:
     """
     Returns the associated location of the given pose4
@@ -156,15 +165,17 @@ def associated_location_by_pose(pose: Pose) -> String:
     location = [key for key, val in intermediate_locations.items() if val == pose.pose.position.x]
     return location
 
+
 def get_intermediate_point(goal: Pose) -> Pose:
     """
     Returns an intermediate pose from goal pose received by perception.
     :param goal: Pose
     :return: intermediate pose
     """
-    associated_location =associated_location_by_pose(goal)
+    associated_location = associated_location_by_pose(goal)
     intermediatePose = intermediate_location(associated_location)
     return intermediatePose
+
 
 def look_around(increase: float):
     """
@@ -174,7 +185,7 @@ def look_around(increase: float):
     """
     TalkingMotion("PLease raise your hand to identify yourself as my instructor").perform()
 
-    global instructor_pose ,instructor_found
+    global instructor_pose, instructor_found
     instructor_pose = None
 
     x = -1
@@ -183,10 +194,10 @@ def look_around(increase: float):
     MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
 
     while x <= 1.5 and tries <= 2:
-        print("Tries: " , tries)
+        print("Tries: ", tries)
         MoveJointsMotion(["head_pan_joint"], [x]).perform()
         try:
-            #IMPORTANT: This is the specific waving query just for GMAH, please use 'waving' in restaurant
+            # IMPORTANT: This is the specific waving query just for GMAH, please use 'waving' in restaurant
             instructor_pose = DetectAction(technique='gmahWaving', state='start').resolve().perform()
             print(instructor_pose)
         except pycram.failures.PerceptionObjectNotFound:
@@ -200,9 +211,12 @@ def look_around(increase: float):
         if x == 1.5:
             tries += 1
             x = -1
+
+
 def callOutInstructor() -> bool:
     test = nlp.check_Instructor()
     return test
+
 
 def searching_for_instructor() -> Pose:
     """
@@ -215,24 +229,24 @@ def searching_for_instructor() -> Pose:
     rospy.sleep(2)
     while not instructor_found:
         NavigateAction([FixedRoomPositions.LIVING_ROOM.value]).resolve().perform()
-        #callOutInstructor()
-        look_around(0.5)
-        if instructor_found:
-            return instructor_pose
-        NavigateAction([FixedRoomPositions.KITCHEN.value]).resolve().perform()
-        #callOutInstructor()
-        #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+
         look_around(0.5)
         if instructor_found:
             return instructor_pose
         NavigateAction([FixedRoomPositions.WORKING_AREA.value]).resolve().perform()
-        #callOutInstructor()
-        #MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
+
+        look_around(0.5)
+        if instructor_found:
+            return instructor_pose
+        NavigateAction([FixedRoomPositions.KITCHEN.value]).resolve().perform()
+
         look_around(0.5)
         if instructor_found:
             return instructor_pose
     if instructor_found:
         return instructor_pose
+    rospy.sleep(2)
+
 
 def monitor_func():
     """
@@ -245,6 +259,7 @@ def monitor_func():
         return SensorMonitoringCondition
 
     return False
+
 
 def placeObject(goal_Pose: Pose):
     """
@@ -260,7 +275,8 @@ def placeObject(goal_Pose: Pose):
     try:
         # We have to set the object_type to default,
         # because we are currently not working with real object detection
-        PlaceGivenObjectAction(["Default"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT], [True]).resolve().perform()
+        PlaceGivenObjectAction(["Default"], [Arms.LEFT], [Pose([x_pos, y_pos, z_pos])], [Grasp.FRONT],
+                               [True]).resolve().perform()
         placed = True
     except pycram.failures.ManipulationFTSCheckNoObject:
         # If no contact is made between the object in the gripper and
@@ -287,38 +303,57 @@ def search_location() -> Pose:
     Method to find the desired location for the object.
     :return: Pose : The middle point of the location in the semantic map
     """
-    global pointing_pose, pointing_found, notFound
-    MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+    global placing_pose, pointing_found, notFound
 
     try:
-        pointing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
+        rospy.sleep(2)
+        placing_pose = DetectAction(technique='pointing', state='start').resolve().perform()
         TalkingMotion("I detected the location").perform()
+        foundByNLP = False
 
     except pycram.failures.PerceptionObjectNotFound:
         # If no intersection from the vector and the squares inside the semantic map
         # was found or if the perception results are none,
         # Toya will bring it to a pre-fixed place.
-        # Currently this is the white table besides the couch
+        # Currently, this is the white table besides the couch
         rospy.logwarn("The location is not known to me")
         rospy.sleep(2)
-        #TalkingMotion("so I will bring it to my favourite table ").perform()
-       # pointing_pose = placingPoseTest
-        #notFound = True
+
         get_location_nlp()
-    if pointing_pose:
+    if placing_pose:
         pointing_found = True
+        foundByNLP = False
         TalkingMotion("I will try to place the object now").perform()
         rospy.sleep(1)
-def get_location_nlp() :
+
+
+def get_location_nlp():
     """
     Method to call the NLP components for this challenge.
     It is currently used to get the location should Perception return no valid Pose/location
     """
+    global pointing_pose, pointing_found, foundByNLP, placing_pose
     tmp_location = nlp.find_location()
     if tmp_location[1] is not None:
+        pointing_found = True
+        tmp_name = tmp_location[0]
+
+
         TalkingMotion(f"I understood the location as {tmp_location[0]}").perform()
         print(tmp_location[0])
         print(tmp_location[1])
+        print("drive Pose", tmp_location[2])
+        if "popcorn" in tmp_name:
+            pointing_pose = Pose([tmp_location[2][0], tmp_location[2][1], tmp_location[2][2]], [0,0,0.7, 0.7])
+        elif "long" in tmp_name:
+            pointing_pose = Pose([tmp_location[2][0], tmp_location[2][1], tmp_location[2][2]], [0, 0, 1, 0])
+        else:
+            pointing_pose = Pose([tmp_location[2][0], tmp_location[2][1], tmp_location[2][2]] )
+
+
+        placing_pose = Pose([tmp_location[1][0], tmp_location[1][1], tmp_location[1][2]])
+        foundByNLP = True
+
 
 def change_orientation(startPose: Pose, direction: str = 'left'):
     """
@@ -327,13 +362,13 @@ def change_orientation(startPose: Pose, direction: str = 'left'):
     :return: Rotated Pose.
     """
     quat_orientation = (startPose.pose.orientation.x, startPose.pose.orientation.y, startPose.pose.orientation.z,
-              startPose.pose.orientation.w)
+                        startPose.pose.orientation.w)
 
     # Set rotation angle based on direction
     if direction == 'left':
-        angle = np.pi/2 # +90
+        angle = np.pi / 2  # +90
     elif direction == 'right':
-        angle = -np.pi/2 # -90
+        angle = -np.pi / 2  # -90
     else:
         raise ValueError("Direction must be left or right")
     quat_add = tf.transformations.quaternion_from_euler(0, 0, angle)
@@ -344,38 +379,36 @@ def change_orientation(startPose: Pose, direction: str = 'left'):
     newPose = Pose([startPose.pose.position.x, startPose.pose.position.y, startPose.pose.position.z],
                    [new_angle[0], new_angle[1], new_angle[2], new_angle[3]])
     return newPose
+
+
 def demo(step: int):
-     global instructor_pose, instructor_found, pointing_pose, pointing_found, notFound
-     with real_robot:
+    global instructor_pose, instructor_found, pointing_pose, pointing_found, notFound, foundByNLP, placing_pose
+    with real_robot:
         MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
         MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
         config_for_placing = {'arm_lift_joint': -1, 'arm_flex_joint': -0.16, 'arm_roll_joint': -0.0145,
-                               'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
+                              'wrist_flex_joint': -1.417, 'wrist_roll_joint': 0.0}
         pakerino(config=config_for_placing)
         MoveTorsoAction([0.0]).resolve().perform()
         ParkArmsAction([Arms.LEFT]).resolve().perform()
-       # TalkingMotion("Give me a Hand is starting.").perform()
+        #TalkingMotion("Give me a Hand is starting.").perform()
         rospy.sleep(2)
-        #test = nlp.check_location()
-       # test = nlp.find_location()
-        #if test[0] is not None:
-         #   TalkingMotion(f"{test[0]}").perform()
-        #Search for Instructor inside of map
+
         if step <= 0:
             tries = 0
             # Toya will drive through the pre-set points
             while tries <= 4 and instructor_pose is None:
-                #searching_for_instructor()
+                searching_for_instructor()
                 tries += 1
             if instructor_pose:
-                mapInstructorPose = transform_camera_to_x(instructor_pose,"head_rgbd_sensor_link", True )
+                mapInstructorPose = transform_camera_to_x(instructor_pose, "head_rgbd_sensor_link", True)
                 newInstructor = set_pose_in_front(mapInstructorPose, 0.8)
                 NavigateAction([mapInstructorPose]).resolve().perform()
                 marker.publish(Pose.from_pose_stamped(mapInstructorPose), color=[1, 1, 0, 1], name="human_waving_pose")
                 marker.publish(Pose.from_pose_stamped(newInstructor), color=[1, 0, 1, 1], name="adjusted_pose")
         if step <= 1:
             # Getting Object step
-            #TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
+            TalkingMotion("Please place the object into my gripper and push down when my display changes").perform()
             rospy.sleep(2)
             MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
 
@@ -392,12 +425,14 @@ def demo(step: int):
             rospy.sleep(1)
         if step <= 2:
             # Finding goal location
+            rospy.sleep(2)
+            MoveJointsMotion(["head_tilt_joint"], [0.0]).perform()
+            rospy.sleep(2)
             TalkingMotion("Please step one meter away from me").perform()
             rospy.sleep(2)
             TalkingMotion("Please point to the location where I should put the object").perform()
             rospy.sleep(2)
-            # Testing purposes
-            #pointing_pose = True
+
             while not pointing_found:
                 search_location()
 
@@ -405,48 +440,46 @@ def demo(step: int):
                 if pointing_pose is not None:
                     objectGoals.append(pointing_pose)
                 print("Hallo")
-                if not notFound:
-                    newPose = transform_camera_to_x(pointing_pose, "head_rgbd_sensor_link", False)
+                if not notFound and not foundByNLP:
+                    newPose = transform_camera_to_x(placing_pose, "head_rgbd_sensor_link", False)
                     textToImg = f"({newPose.pose.position.x},{newPose.pose.position.y},{newPose.pose.position.z})"
                     text_to_img_publisher.pub_now(textToImg)
                     rospy.sleep(2)
                     image_switch_publisher.pub_now(ImageEnum.GENERATED_TEXT.value)
-                    #associatedLocation = get_intermediate_point(newPose)
-                    #TalkingMotion(f"I will bring this object to {associatedLocation}").perform()
+                    # associatedLocation = get_intermediate_point(newPose)
+                    # TalkingMotion(f"I will bring this object to {associatedLocation}").perform()
                     print("if found ", newPose)
-                elif notFound:
+                elif foundByNLP:
                     newPose = pointing_pose
-                    newPose.header.frame_id = "/map"
+                    newPose.header.frame_id = "map"
                     print("If not found: ", newPose)
 
                 rospy.sleep(2)
-                changeOrientPose = change_orientation(newPose, 'left')
-                #NavigateAction([changeOrientPose]).resolve().perform()
+
                 rospy.sleep(1)
-                NavigateAction([newPose]).resolve().perform()
-                newPosemoved = set_pose_in_front(newPose, 0.5)
-                #move.pub_now(navpose=newPose)
-                #NavigateAction([newPosemoved]).resolve().perform()
-                marker.publish(Pose.from_pose_stamped(newPosemoved), color=[1, 0, 1, 1], name="adjusted_pose")
-                placeObject(newPose)
         if step <= 3:
+            placePose = None
+            drivePose = None
+            if foundByNLP:
+                placePose = placing_pose
+                drivePose = newPose
+                print("NLP pose", newPose)
+            elif not foundByNLP:
+                placePose = newPose
+                drivePose = placePose
+                print("Perception Pose", newPose)
+
+            if drivePose is not None:
+                marker.publish(Pose.from_pose_stamped(drivePose), color=[1, 0, 1, 1], name="adjusted_pose")
+                move.pub_now(drivePose)
+                rospy.sleep(1)
+                rospy.sleep(1)
+                placeObject(placePose)
+        if step <= 4:
             NavigateAction([mapInstructorPose]).resolve().perform()
             TalkingMotion("I am ready to assist again").perform()
             while len(objectGoals) <= 3:
                 demo(1)
 
 
-
-
-
-
-
-
-
-
-demo(2)
-
-
-
-
-
+demo(0)

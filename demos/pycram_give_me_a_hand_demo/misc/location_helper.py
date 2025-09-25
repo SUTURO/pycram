@@ -75,9 +75,9 @@ class LocationHelper:
             raise ValueError("Please load the json first")
         print(self.data)
         print(type(self.data))
-        locName = locName[0].strip()
-        locName = locName.lower()
+
         if not locName in self.data['positions']:
+            print("Hello")
             resp = self.data['fallback_position']
             x = resp[0].get('x')
             y = resp[0].get('y')
@@ -94,3 +94,28 @@ class LocationHelper:
             except KeyError as e:
                 print(f"Entry was not found due to {e}")
 
+    def get_drive_positions(self, locName:str) -> (float, float, float):
+
+        """
+        Because we get the middle points of the tables as a result, we need to have specific drive poses for the robot
+        """
+
+        if self.data is None:
+            raise ValueError("Please load the json first")
+
+        if not locName in self.data['drive_positions']:
+            resp = self.data['fallback_position']
+            x = resp[0].get('x')
+            y = resp[0].get('y')
+            z = resp[0].get('z')
+            return x, y, z
+
+        if locName in self.data['drive_positions']:
+            try:
+                resp = self.data['drive_positions'][locName]
+                x = resp[0].get('x')
+                y = resp[0].get('y')
+                z = resp[0].get('z')
+                return x,y,z
+            except KeyError as e:
+                print(f"Entry was not found due to {e}")

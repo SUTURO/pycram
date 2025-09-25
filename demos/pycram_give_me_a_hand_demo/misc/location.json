@@ -11,30 +11,25 @@
       "long_table"
     ],
     "food counter": [
-      "popcorn_table_left",
       "popcorn_table_right",
       "popcorn_table_center"
     ],
     "kitchen counter": [
-      "popcorn_table_left",
       "popcorn_table_right",
       "popcorn_table_center"
     ],
     "table": [
-      "long_table"
+      "couch_table"
     ],
     "counter": [
-      "popcorn_table_left",
       "popcorn_table_right",
       "popcorn_table_center"
     ],
     "snack table": [
-      "popcorn_table_left",
       "popcorn_table_right",
       "popcorn_table_center"
     ],
     "coffee table": [
-      "popcorn_table_left",
       "popcorn_table_right",
       "popcorn_table_center"
     ],
@@ -80,6 +75,44 @@
         "z": 0.43
     }
   ],
+  "drive_positions": {
+    "popcorn_table_left": [
+      {
+        "x": 1.53,
+        "y": 4.6,
+        "z": 0.71
+      }
+    ],
+    "popcorn_table_right": [
+      {
+        "x": 2.26,
+        "y": 4.42,
+        "z": 0.71
+      }
+    ],
+    "popcorn_table_center": [
+      {
+        "x": 1.65,
+        "y": 4.41,
+        "z": 0.71
+      }
+    ],
+    "couch_table": [
+      {
+        "x": 4.81,
+        "y": 1.7,
+        "z": 0.43
+      }
+
+    ],
+    "long_table": [
+      {
+        "x": 3.67,
+        "y": 4.28,
+        "z": 0.74
+      }
+    ]
+  },
   "positions": {
     "popcorn_table_left": [
       {

@@ -218,17 +218,17 @@ def demo(step: int):
         image_switch_publisher.pub_now(ImageEnum.HI.value)
         rospy.sleep(2)
 
-        # if len(customers) == 0:
-        #      TalkingMotion("start restaurant demo").perform()
-        #      rospy.sleep(2)
-        #      TalkingMotion("Please push down my gripper to start the demo ").perform()
-        #      image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
-        #
-        #      try:
-        #          plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
-        #          plan.perform()
-        #      except SensorMonitoringCondition:
-        #          image_switch_publisher.pub_now(ImageEnum.HI.value)
+        if len(customers) == 0:
+             TalkingMotion("start restaurant demo").perform()
+             rospy.sleep(2)
+             TalkingMotion("Please push down my gripper to start the demo ").perform()
+             image_switch_publisher.pub_now(ImageEnum.PUSHBUTTONS.value)
+
+             try:
+                 plan = Code(lambda: rospy.sleep(1)) * 99999999 >> Monitor(monitor_func)
+                 plan.perform()
+             except SensorMonitoringCondition:
+                 image_switch_publisher.pub_now(ImageEnum.HI.value)
 
         if step <= 0:
             MoveJointsMotion(["head_pan_joint"], [0.0]).perform()
@@ -256,17 +256,19 @@ def demo(step: int):
                 image_switch_publisher.pub_now(ImageEnum.PERCEPTION_RESULT.value)
                 rospy.sleep(2)
                 drive_pose = transform_camera_to_x(human_pose, "head_rgbd_sensor_link")
+                adjusted_pose = set_pose_in_front(drive_pose, 0.8)
                 print(drive_pose)
 
                 customerCounter += 1
 
-                customer = CustomerDescription(customerCounter, drive_pose)
-                customer.set_pose(drive_pose)
+                customer = CustomerDescription(customerCounter, adjusted_pose)
+                customer.set_pose(adjusted_pose)
                 customers.append(customer)
 
             marker.publish(Pose.from_pose_stamped(drive_pose), color=[1, 1, 0, 1], name="human_waving_pose")
+            marker.publish(Pose.from_pose_stamped(adjusted_pose), color=[1,0,0,1], name="adjusted_pose")
             rospy.sleep(2.5)
-            move.pub_now(drive_pose)
+            move.pub_now(adjusted_pose)
             # plan = Code(move.pub_now(navpose=drive_pose) | lol(drive_pose))
             # plan.perform()
 
@@ -278,7 +280,7 @@ def demo(step: int):
             LookAtAction([Pose([robot.pose.position.x, robot.pose.position.y, 0.8])])
             rospy.sleep(1)
             Timmi = CustomerDescription(id=1, pose=start_pose)
-            customer = Timmi
+            #customer = Timmi
             nlp_test.get_order(customer=customer)
             print(customer.order)
             rospy.sleep(2)
@@ -297,7 +299,8 @@ def demo(step: int):
 
             order_kitchen_pose = change_orientation(kitchen_pose)
 
-            move.pub_now(navpose=order_kitchen_pose)
+            move.pub_now(navpose=kitchen_pose)
+            NavigateAction([order_kitchen_pose]).resolve().perform()
 
             rospy.sleep(2.5)
             print("order", customer.order)
@@ -310,7 +313,8 @@ def demo(step: int):
                 TalkingMotion("Please prepare the following order").perform()
                 txt_order = ""
                 for n in customer.order:
-                    TalkingMotion(f"{n[1]}{n[0]} ").perform()
+                    TalkingMotion(f"{n[1]} {n[0]} ").perform()
+                    rospy.sleep(1)
                     txt_order += f" {n[1]} {n[0]} " + "\n"
                 text_to_img_publisher.pub_now(txt_order)
                 rospy.sleep(2)
@@ -345,4 +349,4 @@ def demo(step: int):
                 demo(0)
 
 
-demo(2)
+demo(0)

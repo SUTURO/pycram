@@ -97,10 +97,11 @@ class NLP_GMAH():
         rospy.sleep(2)
         for attempt in range(max_tries + 1):
             self._start_listening()
-            success, official_name, pose = self._handle_nlp_response()
+            success, official_name, pose, drive_pose = self._handle_nlp_response()
 
             if success:
-                return official_name, pose
+                HeadFollowMotion(state='stop').perform()
+                return official_name, pose, drive_pose
             else:
                 rospy.logwarn("Did not understand the location, asking to repeat")
                 self.image_switch_publisher.pub_now(ImageEnum.JREPEAT.value)
@@ -150,7 +151,8 @@ class NLP_GMAH():
             if loc:
                 offical_name = self.location_helper.get_location(loc)
                 pose = self.location_helper.get_position(offical_name)
+                drive_pose = self.location_helper.get_drive_positions(offical_name)
                 if pose:
-                    return True, offical_name, pose
+                    return True, offical_name, pose, drive_pose
         return False, None, None
 
