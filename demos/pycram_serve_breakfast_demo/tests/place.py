@@ -75,7 +75,7 @@ with (real_robot):
     # obj_list = sort_objects(object_desig,  wished_sorted_obj_list=["Milkpack"])
 
     # MoveJointsMotion(list(pre_pick_place_config.keys()), list(pre_pick_place_config.values())).perform()
-    grasp = Grasp.TOP
+    grasp = Grasp.FRONT
     if grasp == Grasp.FRONT:
         MoveTorsoAction([0.2]).resolve().perform()
     else:

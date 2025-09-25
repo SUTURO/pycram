@@ -275,7 +275,8 @@ def ask_for_human_help(object_type: ObjectType, pickup_object):
         MoveGripperMotion(GripperState.CLOSE, Arms.LEFT).perform()
 
 
-# TODO: comment out and use same try_pickup for "Clean the Table" and "Serve Breakfast"
+# TODO: comment out and use same try_pickup for "Clean the Table" and "Serve Breakfast" (try_pick_up_c is the correct
+#  function)
 def try_pick_up_robocup(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
     """
     Picking up any object with failure handling.

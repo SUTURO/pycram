@@ -12,7 +12,7 @@ from pycram.world_concepts.world_object import Object
 from pycram.worlds.bullet_world import BulletWorld
 
 # Initialize the Bullet world for simulation
-world = BulletWorld()
+world = BulletWorld(WorldMode.GUI)
 
 # Visualization Marker Publisher for ROS
 v = VizMarkerPublisher()
@@ -49,6 +49,9 @@ with (real_robot):
     MoveTorsoAction([0.2]).resolve().perform()
     PlaceGivenObjectAction(["Metalplate"],  [Arms.LEFT], [Pose([2.82, -2.65, 0.52])],
                            [Grasp.FRONT], [False], False).resolve().perform()
+
+    # NavigateAction(target_locations=[Pose([1.4, 3.9, 0], [0, 0, 0.7, 0.7])]).resolve().perform()
+    # PouringAction([Pose([3.6, 4.9, 0.72])], [Arms.LEFT], ["right"], [115])
 
     MoveGripperMotion(GripperState.OPEN, Arms.LEFT).perform()
     ParkArmsAction([Arms.LEFT]).resolve().perform()

@@ -99,7 +99,8 @@ def get_free_spaces(location_list: list):
     print(test_list)
     return sorted_places
 
-
+# TODO: comment out and use same try_pick_up for "Serve Breakfast" and "Clean the Table" (try_pick_up_c is the correct
+#  function)
 def try_pick_up(robot: BulletWorld.robot, obj: ObjectDesignatorDescription.Object, grasps: Grasp):
     """
     Picking up any object with failure handling.
@@ -141,18 +142,6 @@ def step_back(robot: BulletWorld.robot, distance: float):
     rTbm = lt.transform_pose(rTb, "map")
     NavigateAction(target_locations=[rTbm]).resolve().perform()
 
-"""
-def reposition(robot, robot_orientation, obj):
-    TalkingMotion("repositioning").perform()
-    lt = LocalTransformer()
-    oTm = obj.pose
-    oTb = lt.transform_pose(oTm, robot.get_link_tf_frame("base_link"))
-
-    oTb.pose.position.x -= 1.2
-    oTbm = lt.transform_pose(oTb, "map")
-    oTbm.pose.orientation = robot_orientation
-    NavigateAction(target_locations=[oTbm]).resolve().perform()
-"""
 
 def try_detect(pose: Pose, technique: Optional[str] = None):
     """

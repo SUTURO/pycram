@@ -140,7 +140,7 @@ class MoveTCPForceTorqueMotion(BaseMotion):
     """
     threshold: GiskardStateFTS
     """
-    Target pose to which the TCP should be moved
+    The thresholh the robot of force torque for a specific object
     """
     allow_gripper_collision: Optional[bool] = None
     """

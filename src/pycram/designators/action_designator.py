@@ -1001,13 +1001,6 @@ class PickUpActionPerformable(ActionAbstract):
 
         # Adjust object pose for top-grasping, if applicable
         if self.grasp == Grasp.TOP:
-            print("Metalbowl from top")
-            # Handle special cases for certain object types (e.g., Cutlery, Metalbowl)
-            # Note: This includes hardcoded adjustments and should ideally be generalized
-            # if self.object_designator.type == "Cutlery":
-            # todo: this z is the popcorn-table height, we need to define location to get that z otherwise it
-            #  is hardcoded
-            # oTm.pose.position.z = 0.71
             oTm.pose.position.z += 0.035
 
         # Determine the grasp orientation and transform the pose to the base link frame
@@ -1043,8 +1036,8 @@ class PickUpActionPerformable(ActionAbstract):
         tool_frame = RobotDescription.current_robot_description.get_arm_tool_frame(self.arm)
         special_knowledge_offset = lt.transform_pose(oTmG, robot.get_link_tf_frame(tool_frame))
 
-        # todo: this is for hsrb only at the moment we will need a function that returns us special knowledge
-        #  depending on robot
+        # todo: this is for specific objects only at the moment we will need a function that returns us special
+        #  knowledge depending on the object
         if robot.name == "hsrb":
             if self.grasp == Grasp.TOP:
                 if self.object_designator.obj_type in ["Spoon", "Fork", "Knife", "Plasticknife"]:
@@ -1060,8 +1053,6 @@ class PickUpActionPerformable(ActionAbstract):
             z = 0.04
             if self.grasp == Grasp.TOP:
                 z = 0.036
-                # if self.object_designator.obj_type == "Metalbowl":
-                #     z = 0.035
             push_base.pose.position.z += z
         push_baseTm = lt.transform_pose(push_base, "map")
         special_knowledge_offsetTm = lt.transform_pose(special_knowledge_offset, "map")
@@ -1069,8 +1060,6 @@ class PickUpActionPerformable(ActionAbstract):
         # Grasping from the top inherently requires calculating an offset, whereas front grasping involves
         # slightly pushing the object forward.
         rospy.logwarn("Offset now")
-        # m = ManualMarkerPublisher()
-        # m.create_marker("pose_pickup", special_knowledge_offsetTm)
         World.current_world.add_vis_axis(special_knowledge_offsetTm)
         if execute:
             MoveTCPMotion(special_knowledge_offsetTm, self.arm, allow_gripper_collision=False).perform()
